@@ -12,6 +12,8 @@ return {
 		MinimumCleanedPolylineLength = 0.18,
 		NormalizedMin = -1,
 		NormalizedMax = 1,
+		StrokeSubmitCooldown = 0.20,
+		MaxStrokePayloadBytes = 4096,
 	},
 	LegGeometry = {
 		LegCanvasHalfSpan = 3.15,
