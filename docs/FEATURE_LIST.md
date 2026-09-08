@@ -3,8 +3,8 @@
 Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
-**Current gameplay feature:** M0-01 — DrawCanvas input + stroke preview = implementation items **B01 + B02**.  
-**Exact current implementation item:** **B02 — DrawingController local stroke preview**. Bootstrap A01–A04 and B01 are ACCEPTED; B03 starts only after B02 acceptance.  
+**Current gameplay feature:** Stroke cleaning / simplification / resample = implementation items **B03 + B04 + B05**.  
+**Exact current implementation item:** **B03 — StrokeTypes + StrokeMath Dedupe/Clamp**. Bootstrap A01–A04 and B01–B02 are ACCEPTED; B04 starts only after B03 acceptance.  
 **Rule:** only one gameplay feature may be `ACTIVE` at a time. `SESSION.md` owns the exact current implementation item; `25` owns sequence.
 
 ## Bootstrap — required before M0
@@ -14,8 +14,8 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - ACCEPTED — A04 deployment registry + exact Studio root contract (`64/65/70`)
 
 ## M0 — Physics Lab
-- ACTIVE — DrawCanvas input + stroke preview (`59` layout)
-- BACKLOG — Stroke cleaning/simplification/resample
+- ACCEPTED — DrawCanvas input + stroke preview (`59` layout; B01+B02)
+- ACTIVE — Stroke cleaning/simplification/resample (B03+B04+B05)
 - BACKLOG — Leg collider builder
 - BACKLOG — Two-leg hinge locomotion
 - BACKLOG — Body stabilization + lane constraint
