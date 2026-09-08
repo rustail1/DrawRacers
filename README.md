@@ -14,9 +14,9 @@ Before any implementation task, read:
 6. only the owner specs named by that row
 
 ## Current task
-**A02 — Shared/config/type + server/client bootstrap roots.**
+**A03 — M0 test scene.**
 
-A01 is ACCEPTED with local `rojo build`, `rojo serve`, Roblox Studio connection, live filesystem→Studio sync and clean Git verification. Do not start A03/A04/gameplay until A02 passes its acceptance contract.
+A01 and A02 are ACCEPTED. Do not start A04 or gameplay until A03 passes its acceptance contract.
 
 ## Toolchain
 Rokit manages the project Rojo version. The repository currently pins Rojo in `rokit.toml`.
@@ -32,11 +32,10 @@ rojo serve
 
 Then connect the Rojo plugin in Roblox Studio to the localhost server shown by `rojo serve`.
 
-## A02 minimal structure
-- `src/shared/Config` -> `ReplicatedStorage/Shared/Config`
-- `src/shared/Types` -> `ReplicatedStorage/Shared/Types`
-- `src/server/Bootstrap.server.lua` -> `ServerScriptService/Bootstrap`
-- `src/client/Bootstrap.client.lua` -> `StarterPlayer/StarterPlayerScripts/Bootstrap`
+## Accepted bootstrap state
+- A01: Git/Rojo baseline, build/serve and Studio sync round-trip accepted.
+- A02: `src/shared/Config`, `src/shared/Types`, `Bootstrap.server.lua`, `Bootstrap.client.lua` accepted in Studio Play.
+- A03 is next: reproducible M0 lane/test scene using the canonical level/Studio contracts.
 
 A02 deliberately does **not** create empty future `Services`, `Runtime`, `Controllers`, `Math`, or `Net` roots. Those appear only when their owning implementation task needs them.
 
