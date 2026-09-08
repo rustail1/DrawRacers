@@ -118,6 +118,17 @@ local function ensureRuntimeFolder(model: Model, name: string): Folder
 	return folder
 end
 
+local function captureLegPhaseDegrees(leg: any, hub: Part, fallbackDegrees: number): number
+	if leg == nil then
+		return fallbackDegrees
+	end
+
+	local root = leg:GetRoot()
+	local relative = hub.CFrame:ToObjectSpace(root.CFrame)
+	local _, _, z = relative:ToOrientation()
+	return math.deg(z)
+end
+
 function RacerRuntime.new(params: SpawnParams)
 	assert(params.slotIndex >= 1 and params.slotIndex <= 8, "slotIndex must be 1..8")
 	assert(params.laneIndex >= 1 and params.laneIndex <= 8, "laneIndex must be 1..8")
@@ -205,43 +216,84 @@ function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: bo
 	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
 	assert(#normalizedPoints >= 2, "ApplyShape requires at least two normalized points")
 
-	if self.leftLeg then
-		self.leftLeg:Destroy()
-		self.leftLeg = nil
-	end
-	if self.rightLeg then
-		self.rightLeg:Destroy()
-		self.rightLeg = nil
-	end
+	local model = self.model
+	local leftHub = model:FindFirstChild("LeftHub")
+	local rightHub = model:FindFirstChild("RightHub")
+	local legsFolder = model:FindFirstChild("Legs")
+	assert(leftHub and leftHub:IsA("Part"), "RacerRuntime missing LeftHub")
+	assert(rightHub and rightHub:IsA("Part"), "RacerRuntime missing RightHub")
+	assert(legsFolder and legsFolder:IsA("Folder"), "RacerRuntime missing Legs folder")
 
-	local leftLeg = LegAssembly.new({
-		racerModel = self.model,
-		side = "Left",
-		normalizedPoints = normalizedPoints,
-		motorEnabled = motorEnabled,
-		initialPhaseDegrees = 0,
-	})
+	local oldLeftLeg = self.leftLeg
+	local oldRightLeg = self.rightLeg
+	local leftPhaseDegrees = captureLegPhaseDegrees(oldLeftLeg, leftHub, 0)
+	local rightPhaseDegrees = captureLegPhaseDegrees(
+		oldRightLeg,
+		rightHub,
+		PhysicsConfig.Motor.RightPhaseOffsetDegrees
+	)
 
-	local rightOk, rightResult = pcall(function()
-		return LegAssembly.new({
-			racerModel = self.model,
+	local stagedLeftLeg = nil
+	local stagedRightLeg = nil
+	local buildOk, buildError = pcall(function()
+		stagedLeftLeg = LegAssembly.new({
+			racerModel = model,
+			side = "Left",
+			normalizedPoints = normalizedPoints,
+			motorEnabled = false,
+			initialPhaseDegrees = leftPhaseDegrees,
+			staged = true,
+		})
+
+		stagedRightLeg = LegAssembly.new({
+			racerModel = model,
 			side = "Right",
 			normalizedPoints = normalizedPoints,
-			motorEnabled = motorEnabled,
-			initialPhaseDegrees = PhysicsConfig.Motor.RightPhaseOffsetDegrees,
+			motorEnabled = false,
+			initialPhaseDegrees = rightPhaseDegrees,
+			staged = true,
 		})
 	end)
 
-	if not rightOk then
-		leftLeg:Destroy()
-		error(rightResult)
+	if not buildOk then
+		if stagedLeftLeg ~= nil then
+			stagedLeftLeg:Destroy()
+		end
+		if stagedRightLeg ~= nil then
+			stagedRightLeg:Destroy()
+		end
+		error(buildError)
 	end
 
-	local rightLeg = rightResult
-	self.leftLeg = leftLeg
-	self.rightLeg = rightLeg
+	assert(stagedLeftLeg ~= nil and stagedRightLeg ~= nil, "atomic redraw staging produced incomplete legs")
 
-	return leftLeg, rightLeg
+	local oldLeftModel = if oldLeftLeg ~= nil then oldLeftLeg:GetModel() else nil
+	local oldRightModel = if oldRightLeg ~= nil then oldRightLeg:GetModel() else nil
+	if oldLeftModel ~= nil then
+		oldLeftModel.Name = "LeftLeg_Retiring"
+	end
+	if oldRightModel ~= nil then
+		oldRightModel.Name = "RightLeg_Retiring"
+	end
+
+	-- No yield occurs between staging completion and the commit below. Roblox physics cannot
+	-- step between these statements, so both ready assemblies replace the previous pair as one
+	-- server transaction without writing BodyCollider CFrame or assembly velocities.
+	stagedLeftLeg:Commit()
+	stagedRightLeg:Commit()
+	stagedLeftLeg:SetEnabled(motorEnabled == true)
+	stagedRightLeg:SetEnabled(motorEnabled == true)
+	self.leftLeg = stagedLeftLeg
+	self.rightLeg = stagedRightLeg
+
+	if oldLeftLeg ~= nil then
+		oldLeftLeg:Destroy()
+	end
+	if oldRightLeg ~= nil then
+		oldRightLeg:Destroy()
+	end
+
+	return stagedLeftLeg, stagedRightLeg
 end
 
 function RacerRuntime:ApplyValidatedShape(shapeSpec: any, motorEnabled: boolean?)

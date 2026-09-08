@@ -34,6 +34,9 @@ if RunService:IsStudio() then
 	local B12StrokeRemoteSpec = require(testsFolder:WaitForChild("B12StrokeRemoteSpec"))
 	B12StrokeRemoteSpec.run()
 
+	local B13AtomicRedrawSpec = require(testsFolder:WaitForChild("B13AtomicRedrawSpec"))
+	B13AtomicRedrawSpec.run()
+
 	local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
 	B08OneHingeMotorHarness.start()
 

@@ -19,6 +19,7 @@ export type BuildParams = {
 	normalizedPoints: { Vector2 },
 	motorEnabled: boolean?,
 	initialPhaseDegrees: number?,
+	staged: boolean?,
 }
 
 local function mapPoint(point: Vector2): Vector2
@@ -70,6 +71,7 @@ function LegAssembly.new(params: BuildParams)
 	local hubName = if side == "Left" then "LeftHub" else "RightHub"
 	local legName = if side == "Left" then "LeftLeg" else "RightLeg"
 	local initialPhaseDegrees = params.initialPhaseDegrees or 0
+	local staged = params.staged == true
 
 	local hub = racerModel:FindFirstChild(hubName)
 	assert(hub and hub:IsA("Part"), string.format("racerModel missing %s", hubName))
@@ -78,16 +80,20 @@ function LegAssembly.new(params: BuildParams)
 	hubAttachment.Axis = Vector3.zAxis
 	hubAttachment.SecondaryAxis = Vector3.yAxis
 
-	local existing = legsFolder:FindFirstChild(legName)
-	if existing then
-		existing:Destroy()
+	if not staged then
+		local existing = legsFolder:FindFirstChild(legName)
+		if existing then
+			existing:Destroy()
+		end
 	end
 
 	local model = Instance.new("Model")
 	model.Name = legName
 	model:SetAttribute("Side", side)
 	model:SetAttribute("InitialPhaseDegrees", initialPhaseDegrees)
-	model.Parent = legsFolder
+	if not staged then
+		model.Parent = legsFolder
+	end
 
 	local root = Instance.new("Part")
 	root.Name = "LegRoot"
@@ -188,6 +194,8 @@ function LegAssembly.new(params: BuildParams)
 		segments = segments,
 		mappedPoints = mappedPoints,
 		initialPhaseDegrees = initialPhaseDegrees,
+		legsFolder = legsFolder,
+		committed = not staged,
 		destroyed = false,
 	}, LegAssembly)
 
@@ -224,6 +232,21 @@ function LegAssembly:GetInitialPhaseDegrees(): number
 	return self.initialPhaseDegrees
 end
 
+function LegAssembly:IsCommitted(): boolean
+	assert(not self.destroyed, "LegAssembly is destroyed")
+	return self.committed
+end
+
+function LegAssembly:Commit()
+	assert(not self.destroyed, "LegAssembly is destroyed")
+	if self.committed then
+		return
+	end
+	assert(self.model.Parent == nil, "staged LegAssembly already has a parent")
+	self.model.Parent = self.legsFolder
+	self.committed = true
+end
+
 function LegAssembly:SetEnabled(enabled: boolean)
 	assert(not self.destroyed, "LegAssembly is destroyed")
 	self.joint.Enabled = enabled
@@ -240,6 +263,7 @@ function LegAssembly:Destroy()
 	self.model = nil
 	self.root = nil
 	self.joint = nil
+	self.legsFolder = nil
 	table.clear(self.segments)
 	table.clear(self.mappedPoints)
 end
