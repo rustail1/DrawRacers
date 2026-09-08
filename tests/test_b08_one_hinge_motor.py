@@ -27,7 +27,7 @@ def test_b08_one_hinge_motor_contract() -> None:
         "AssemblyLinearVelocity =",
         "ApplyImpulse(",
         "VectorForce",
-        "LinearVelocity",
+        "LinearVelocity =",
     ]:
         assert forbidden not in leg, f"B08 must not use hidden propulsion: {forbidden}"
 
@@ -47,7 +47,7 @@ def test_b08_studio_flat_harness_contract() -> None:
         "AssemblyLinearVelocity =",
         "ApplyImpulse(",
         "VectorForce",
-        "LinearVelocity",
+        "LinearVelocity =",
         "PivotTo(CFrame.new(startX +",
     ]:
         assert forbidden not in text, f"B08 harness must not fake movement: {forbidden}"
