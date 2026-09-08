@@ -30,6 +30,7 @@ function B10StabilizationSpec.run()
 
 	assert(laneAlign.Mode == Enum.PositionAlignmentMode.OneAttachment)
 	assert(laneAlign.ForceLimitMode == Enum.ForceLimitMode.PerAxis)
+	assert(laneAlign.ForceRelativeTo == Enum.ActuatorRelativeTo.World)
 	assert(laneAlign.MaxAxesForce.X == 0, "B10 lane stabilizer must apply zero X force")
 	assert(laneAlign.MaxAxesForce.Y == 0, "B10 lane stabilizer must apply zero Y force")
 	assert(laneAlign.MaxAxesForce.Z == config.LaneMaxForceZ, "B10 lane stabilizer must apply only configured Z force")
