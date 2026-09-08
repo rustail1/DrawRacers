@@ -37,16 +37,25 @@ Evidence:
 - live filesystem → Studio sync verified by creating `src/shared/A01SyncProbe.lua`, observing `ReplicatedStorage/Shared/A01SyncProbe`, then deleting the probe;
 - final local `git status` reported `nothing to commit, working tree clean` after Studio lock files were added to `.gitignore`.
 
-## Immediate operational step
-**A02 — Shared/config/type + server/client bootstrap roots.** A01 is ACCEPTED. Do not start A03, A04 or gameplay until A02 acceptance passes.
+### A02 — Shared/config/type + server/client bootstrap roots — ACCEPTED (2026-09-09)
+Evidence:
+- `src/shared/Config` and `src/shared/Types` exist and sync under `ReplicatedStorage/Shared`;
+- `src/server/Bootstrap.server.lua` syncs to `ServerScriptService/Bootstrap`;
+- `src/client/Bootstrap.client.lua` syncs to `StarterPlayer/StarterPlayerScripts/Bootstrap`;
+- automated A02 structure test passed after implementation (`2 passed`);
+- Roblox Studio Play produced `[DrawRacers] server bootstrap ready` and `[DrawRacers] client bootstrap ready`;
+- no project bootstrap error was shown in the acceptance screenshot; the remaining orange `user_RojoManagedPlugin...msgpack` native-code-generation warning originates from the Rojo Studio plugin, not from Draw Racers bootstrap scripts.
 
-After A02 → A03 → A04 are ACCEPTED: **B01 — InputController pointer abstraction**, using the DrawCanvas input rectangle defined in `59`. A04 is mandatory because environment/config/ID placeholders must fail closed before gameplay code begins depending on deployment data.
+## Immediate operational step
+**A03 — M0 test scene.** A01 and A02 are ACCEPTED. Do not start A04 or gameplay until A03 acceptance passes.
+
+After A03 → A04 are ACCEPTED: **B01 — InputController pointer abstraction**, using the DrawCanvas input rectangle defined in `59`. A04 is mandatory because environment/config/ID placeholders must fail closed before gameplay code begins depending on deployment data.
 
 ## ACTIVE gameplay feature
 `M0-01 DrawCanvas input + stroke preview = B01+B02` is the only ACTIVE gameplay feature in `FEATURE_LIST.md`.
 
 ## Full build chain
-A01 ✓ → A02 → A03 → A04 → B01/B02 → stroke math → one physical leg → motor → two legs → stabilization/lane → authoritative shape → atomic redraw → five-obstacle lab → G0 → adaptation + `60` → G1 → 2-player race/UI → G2 → 8-player slice → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical BotRacerController FTUE foundation → confirmed Results → CosmeticService → two-place FTUE/routing → Garage/presentation → G3 → T01–T20 + production Bot Fill → G4/G5 → launch Passes → G6 → LiveOps/G7 → final release checks → `78` PASS → release.
+A01 ✓ → A02 ✓ → A03 → A04 → B01/B02 → stroke math → one physical leg → motor → two legs → stabilization/lane → authoritative shape → atomic redraw → five-obstacle lab → G0 → adaptation + `60` → G1 → 2-player race/UI → G2 → 8-player slice → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical BotRacerController FTUE foundation → confirmed Results → CosmeticService → two-place FTUE/routing → Garage/presentation → G3 → T01–T20 + production Bot Fill → G4/G5 → launch Passes → G6 → LiveOps/G7 → final release checks → `78` PASS → release.
 
 ## Empirical but procedure-complete
 - physics/camera constants: start `16`, tune via `49/55/57`;
