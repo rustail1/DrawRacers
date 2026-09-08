@@ -71,21 +71,30 @@ Evidence:
 - the Luau chained-cast parse bug found during acceptance was fixed and regression-guarded;
 - all launch HUD roots now use `ResetOnSpawn=false`, fixing the observed respawn disappearance of the temporary harness/UI.
 
-## Immediate operational step
-**B02 — DrawingController local stroke preview.** Implementation is in `main` and awaits Studio acceptance. Acceptance owner row `66`: one continuous preview, exact `DrawInputRect`, and cancel must leave the previous completed local shape intact. B03 must not start until B02 is accepted.
+### B02 — DrawingController local stroke preview — ACCEPTED (2026-09-09)
+Evidence:
+- Product Owner explicitly advanced the implementation with `ок дальше` after the B02 Studio acceptance step;
+- `DrawHUD/SafeRoot/DrawCanvas/DrawInputRect` is the active drawing surface, using the canonical `59/68` hierarchy;
+- DrawingController owns one local continuous preview stroke, completed local candidate, thumbnail presentation and cancel-restore behavior only;
+- no server remote, ShapeSpec authority or physical world geometry is introduced by B02;
+- `ResetOnSpawn=false` remains enforced for all launch HUD roots, so drawing UI survives character respawn.
 
-Expected B02 presentation:
-- `DrawHUD/SafeRoot/DrawCanvas/DrawInputRect` follows `59/68` hierarchy and desktop/touch sizing;
-- drawing produces a continuous local cyan stroke only; no server remote/world geometry exists yet;
-- after release, the completed local candidate remains visible and appears in `AcceptedShapeThumbnail`;
-- starting a new stroke hides the old main-canvas candidate but keeps the thumbnail; cancel restores the previous completed candidate;
-- Output prints `[DrawRacers][B02] local draw preview ready`, completion point count, and cancel-preserved count.
+## Immediate operational step
+**B03 — StrokeTypes + StrokeMath Dedupe/Clamp.** Implementation is in `main` and awaits local contract/Studio acceptance. Owners: `03/16` with coordinate semantics from `73`.
+
+B03 implementation scope:
+- `Shared/Types/StrokeTypes.lua` defines the shared stroke math types;
+- `Shared/Config/PhysicsConfig.lua` starts from exact `16` defaults used by this task (`0.010`, `96`, `3`, `0.012`, normalized `[-1,1]`);
+- pure `Shared/Math/StrokeMath.lua` implements deterministic normalized-coordinate clamp and near-point dedupe without Instances/remotes/player state;
+- non-finite points fail with `NON_FINITE_POINT`; raw count above `96` fails with `TOO_MANY_POINTS`; finite out-of-range coordinates clamp to `[-1,1]`;
+- Studio test module `ServerScriptService/Tests/B03StrokeMathSpec` covers out-of-bounds, near-duplicate, ±Inf, NaN, raw cap and deterministic repeat behavior;
+- B04 must not start until B03 Studio test prints `[DrawRacers][B03] StrokeMath tests PASS` and local contract checks are green.
 
 ## ACTIVE gameplay feature
-`M0-01 DrawCanvas input + stroke preview = B01+B02` is the only ACTIVE gameplay feature in `FEATURE_LIST.md`.
+`Stroke cleaning/simplification/resample = B03+B04+B05` is the only ACTIVE gameplay feature in `FEATURE_LIST.md`.
 
 ## Full build chain
-A01 ✓ → A02 ✓ → A03 ✓ → A04 ✓ → B01 ✓ → B02 → B03/B04/B05 stroke math → one physical leg → motor → two legs → stabilization/lane → authoritative shape → atomic redraw → five-obstacle lab → G0 → adaptation + `60` → G1 → 2-player race/UI → G2 → 8-player slice → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical BotRacerController FTUE foundation → confirmed Results → CosmeticService → two-place FTUE/routing → Garage/presentation → G3 → T01–T20 + production Bot Fill → G4/G5 → launch Passes → G6 → LiveOps/G7 → final release checks → `78` PASS → release.
+A01 ✓ → A02 ✓ → A03 ✓ → A04 ✓ → B01 ✓ → B02 ✓ → B03 → B04/B05 stroke math → one physical leg → motor → two legs → stabilization/lane → authoritative shape → atomic redraw → five-obstacle lab → G0 → adaptation + `60` → G1 → 2-player race/UI → G2 → 8-player slice → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical BotRacerController FTUE foundation → confirmed Results → CosmeticService → two-place FTUE/routing → Garage/presentation → G3 → T01–T20 + production Bot Fill → G4/G5 → launch Passes → G6 → LiveOps/G7 → final release checks → `78` PASS → release.
 
 ## Empirical but procedure-complete
 - physics/camera constants: start `16`, tune via `49/55/57`;
