@@ -25,11 +25,17 @@ if RunService:IsStudio() then
 	local B09TwoLegPhaseSpec = require(testsFolder:WaitForChild("B09TwoLegPhaseSpec"))
 	B09TwoLegPhaseSpec.run()
 
+	local B10StabilizationSpec = require(testsFolder:WaitForChild("B10StabilizationSpec"))
+	B10StabilizationSpec.run()
+
 	local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
 	B08OneHingeMotorHarness.start()
 
 	local B09TwoLegPhaseHarness = require(testsFolder:WaitForChild("B09TwoLegPhaseHarness"))
 	B09TwoLegPhaseHarness.start()
+
+	local B10StabilizationHarness = require(testsFolder:WaitForChild("B10StabilizationHarness"))
+	B10StabilizationHarness.start()
 end
 
 print("[DrawRacers] server bootstrap ready")
