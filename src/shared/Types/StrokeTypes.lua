@@ -14,4 +14,31 @@ export type StrokeMathError =
 	| "TOO_MANY_POINTS"
 	| "INVALID_BOUNDS"
 
+export type ShapeBounds = {
+	min: Vector2,
+	max: Vector2,
+}
+
+export type ShapeSegmentPlanEntry = {
+	index: number,
+	a: Vector2,
+	b: Vector2,
+}
+
+export type ShapeSpec = {
+	version: number,
+	normalizedPoints: { Vector2 },
+	bounds: ShapeBounds,
+	extent: number,
+	segmentPlan: { ShapeSegmentPlanEntry },
+	debugId: string,
+}
+
+export type LegShapeResult = {
+	accepted: boolean,
+	shapeVersion: number?,
+	shapeSpec: ShapeSpec?,
+	rejectReasonCode: string?,
+}
+
 return {}
