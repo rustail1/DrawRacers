@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 local LegShapeService = require(script.Parent.Parent.Services:WaitForChild("LegShapeService"))
+local StrokeRemoteTransport = require(script.Parent.Parent.Services:WaitForChild("StrokeRemoteTransport"))
 
 local B12StrokeRemoteSpec = {}
 
@@ -23,6 +24,8 @@ local function validPayload(sequence: number)
 end
 
 function B12StrokeRemoteSpec.run()
+	assert(type(StrokeRemoteTransport.Bind) == "function", "B12 transport helper must expose Bind")
+
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local submitStroke = remotes:WaitForChild("SubmitStroke")
 	local strokeResult = remotes:WaitForChild("StrokeResult")
