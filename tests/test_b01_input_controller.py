@@ -33,6 +33,8 @@ def test_b01_pointer_dependency_is_preserved_after_harness_removal() -> None:
 
     assert 'WaitForChild("InputController")' in bootstrap
     assert "InputController.new()" in bootstrap
-    assert "DrawingController.new(inputController, drawHud)" in bootstrap
+    # B01 owns the InputController dependency, not the final constructor arity.
+    # Later accepted stages may inject remotes/services after drawHud.
+    assert "DrawingController.new(inputController, drawHud" in bootstrap
     assert "inputController:Bind(drawInputRect)" in drawing
     assert "B01InputHarness" not in bootstrap
