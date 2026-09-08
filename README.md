@@ -13,10 +13,10 @@ Before any implementation task, read:
 5. the exact task row in `docs/66_ZERO_TO_RELEASE_TASK_ACCEPTANCE_CATALOG.md`
 6. only the owner specs named by that row
 
-## Current bootstrap work
-**A04 — deployment/config skeleton is implemented and awaiting local acceptance.**
+## Current implementation item
+**B01 — InputController pointer abstraction is implemented and awaiting Studio acceptance.**
 
-A01, A02 and A03 are ACCEPTED. Do not start B01 gameplay until A04 passes its acceptance contract.
+Bootstrap A01–A04 is ACCEPTED. B02 local stroke preview must not start until B01 passes mouse/touch semantic-stream and camera-conflict acceptance.
 
 ## Toolchain
 Rokit manages the project Rojo version. The repository currently pins Rojo in `rokit.toml`.
@@ -33,17 +33,16 @@ python -m pytest -q
 
 Then connect the Rojo plugin in Roblox Studio to the localhost server shown by `rojo serve`.
 
-## A04 deployment skeleton
-Source files:
-- `config/deploy/dev.env.lua`
-- `config/deploy/staging.env.lua`
-- `config/deploy/prod.env.lua`
-- `config/deploy/validate.lua`
-- `assets/asset_registry.lua`
+## Accepted bootstrap state
+- A01: Git/Rojo baseline, build/serve and Studio sync round-trip accepted.
+- A02: canonical minimal shared/server/client bootstrap accepted.
+- A03: reproducible Studio M0 lane + debug spawn + representative anchors accepted.
+- A04: DEV/STAGING/PROD deployment skeleton, no fake IDs, fail-closed validator and exact static Studio roots accepted.
 
-No Roblox Universe/Place/Pass/Product/Asset ID is guessed. Unprovisioned IDs remain `nil`; the deployment validator rejects unresolved required IDs when resolution is required.
+## B01 acceptance harness
+`src/client/Controllers/InputController.lua` normalizes mouse/touch into one semantic event shape: `start | move | end | cancel` with one active primary pointer.
 
-A04 also declares the static Studio roots required by the `65` contract: `ReplicatedStorage/Remotes`, `ReplicatedStorage/Assets`, `ServerStorage/RacerTemplates`, `ServerStorage/TrackPieces`, launch HUD roots, and `Workspace/Runtime/{Tracks,Racers,RacePresentation}`. Filesystem roots `Shared/Math`, `Shared/Net`, `Server/Services`, `Server/Runtime`, `Server/Tests`, and `Client/Controllers` exist without future implementation files.
+In Roblox Studio only, `Bootstrap.client.lua` creates a temporary `B01InputHarness` inside the local player's `DrawHUD`. Drag inside it to verify pointer phases. The harness is not production DrawCanvas UI and will be removed/replaced by B02.
 
 ## Working loop
 `ChatGPT/GitHub change -> git pull --ff-only -> Rojo -> Studio playtest -> PASS/FAIL -> next change`
