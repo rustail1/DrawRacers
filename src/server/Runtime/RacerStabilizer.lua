@@ -40,8 +40,8 @@ function RacerStabilizer.new(params: Params)
 	laneAlign.ApplyAtCenterOfMass = true
 	laneAlign.RigidityEnabled = false
 	laneAlign.ReactionForceEnabled = false
-	laneAlign.ForceLimitsEnabled = true
 	laneAlign.ForceLimitMode = Enum.ForceLimitMode.PerAxis
+	laneAlign.ForceRelativeTo = Enum.ActuatorRelativeTo.World
 	laneAlign.MaxAxesForce = Vector3.new(0, 0, config.LaneMaxForceZ)
 	laneAlign.MaxVelocity = config.LaneMaxVelocity
 	laneAlign.Responsiveness = config.LaneResponsiveness
