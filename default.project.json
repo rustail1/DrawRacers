@@ -31,22 +31,40 @@
     },
     "StarterGui": {
       "RaceHUD": {
-        "$className": "ScreenGui"
+        "$className": "ScreenGui",
+        "$properties": {
+          "ResetOnSpawn": false
+        }
       },
       "DrawHUD": {
-        "$className": "ScreenGui"
+        "$className": "ScreenGui",
+        "$properties": {
+          "ResetOnSpawn": false
+        }
       },
       "ResultsHUD": {
-        "$className": "ScreenGui"
+        "$className": "ScreenGui",
+        "$properties": {
+          "ResetOnSpawn": false
+        }
       },
       "GarageHUD": {
-        "$className": "ScreenGui"
+        "$className": "ScreenGui",
+        "$properties": {
+          "ResetOnSpawn": false
+        }
       },
       "StoreHUD": {
-        "$className": "ScreenGui"
+        "$className": "ScreenGui",
+        "$properties": {
+          "ResetOnSpawn": false
+        }
       },
       "SettingsHUD": {
-        "$className": "ScreenGui"
+        "$className": "ScreenGui",
+        "$properties": {
+          "ResetOnSpawn": false
+        }
       }
     },
     "Workspace": {
