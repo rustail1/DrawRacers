@@ -3,9 +3,10 @@
 Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
-**Current gameplay feature:** Stroke cleaning / simplification / resample = implementation items **B03 + B04 + B05**.  
-**Exact current implementation item:** **B03 — StrokeTypes + StrokeMath Dedupe/Clamp**. Bootstrap A01–A04 and B01–B02 are ACCEPTED; B04 starts only after B03 acceptance.  
-**Rule:** only one gameplay feature may be `ACTIVE` at a time. `SESSION.md` owns the exact current implementation item; `25` owns sequence.
+**Current gameplay feature:** Authoritative draw → physical locomotion → redraw pipeline = implementation items **B03–B14**.  
+**Exact current implementation item:** **B12 — SubmitStroke / StrokeResult** is implemented in `main` and awaits local contract + Studio acceptance. B13 is next only after the B12 gate or an explicit Product Owner override.  
+**Acceptance note:** A01–A04 and B01–B02 are recorded ACCEPTED. Later B03–B12 implementation exists in `main`, but implementation alone is not promoted to ACCEPTED without the required evidence.  
+**Rule:** only one gameplay feature may be `ACTIVE` at a time. `SESSION.md` owns the exact current implementation/evidence cursor; `25` owns sequence.
 
 ## Bootstrap — required before M0
 - ACCEPTED — A01 Git/Rojo baseline
@@ -15,14 +16,10 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 ## M0 — Physics Lab
 - ACCEPTED — DrawCanvas input + stroke preview (`59` layout; B01+B02)
-- ACTIVE — Stroke cleaning/simplification/resample (B03+B04+B05)
-- BACKLOG — Leg collider builder
-- BACKLOG — Two-leg hinge locomotion
-- BACKLOG — Body stabilization + lane constraint
-- BACKLOG — Atomic redraw
-- BACKLOG — Five canonical obstacle lab
-- BACKLOG — Debug physics/tuning panel
-- BACKLOG — G0 record
+- ACTIVE — M0 core locomotion/redraw pipeline (B03–B14): StrokeMath, racer runtime, leg assemblies, motors, two-leg phase, stabilization, server ShapeSpec authority and B12 semantic remotes are implemented; acceptance evidence remains task-specific; B13 atomic redraw and B14 abuse/stress are not yet implemented.
+- BACKLOG — B15 five canonical obstacle lab
+- BACKLOG — B16 debug physics/tuning panel
+- BACKLOG — B17 G0 record
 
 ## M0.5 — Adaptation Acceptance
 - BACKLOG — Mixed adaptation test track using `60` geometry
