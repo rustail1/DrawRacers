@@ -13,10 +13,10 @@ Before any implementation task, read:
 5. the exact task row in `docs/66_ZERO_TO_RELEASE_TASK_ACCEPTANCE_CATALOG.md`
 6. only the owner specs named by that row
 
-## Current task
-**A03 — M0 test scene.**
+## Current bootstrap work
+**A04 — deployment/config skeleton is implemented and awaiting local acceptance.**
 
-A01 and A02 are ACCEPTED. Do not start A04 or gameplay until A03 passes its acceptance contract.
+A01 and A02 are ACCEPTED. A03 local/human acceptance evidence must still be recorded before bootstrap is considered fully closed. Do not start B01 gameplay until both A03 and A04 are accepted.
 
 ## Toolchain
 Rokit manages the project Rojo version. The repository currently pins Rojo in `rokit.toml`.
@@ -28,16 +28,22 @@ rokit install
 rojo --version
 rojo build -o DrawRacersDev.rbxlx
 rojo serve
+python -m pytest -q
 ```
 
 Then connect the Rojo plugin in Roblox Studio to the localhost server shown by `rojo serve`.
 
-## Accepted bootstrap state
-- A01: Git/Rojo baseline, build/serve and Studio sync round-trip accepted.
-- A02: `src/shared/Config`, `src/shared/Types`, `Bootstrap.server.lua`, `Bootstrap.client.lua` accepted in Studio Play.
-- A03 is next: reproducible M0 lane/test scene using the canonical level/Studio contracts.
+## A04 deployment skeleton
+Source files:
+- `config/deploy/dev.env.lua`
+- `config/deploy/staging.env.lua`
+- `config/deploy/prod.env.lua`
+- `config/deploy/validate.lua`
+- `assets/asset_registry.lua`
 
-A02 deliberately does **not** create empty future `Services`, `Runtime`, `Controllers`, `Math`, or `Net` roots. Those appear only when their owning implementation task needs them.
+No Roblox Universe/Place/Pass/Product/Asset ID is guessed. Unprovisioned IDs remain `nil`; the deployment validator rejects unresolved required IDs when resolution is required.
+
+A04 also declares the static Studio roots required by the `65` contract: `ReplicatedStorage/Remotes`, `ReplicatedStorage/Assets`, `ServerStorage/RacerTemplates`, `ServerStorage/TrackPieces`, launch HUD roots, and `Workspace/Runtime/{Tracks,Racers,RacePresentation}`. Filesystem roots `Shared/Math`, `Shared/Net`, `Server/Services`, `Server/Runtime`, `Server/Tests`, and `Client/Controllers` exist without future implementation files.
 
 ## Working loop
 `ChatGPT/GitHub change -> git pull --ff-only -> Rojo -> Studio playtest -> PASS/FAIL -> next change`
