@@ -43,7 +43,6 @@ local function validateRawPointArray(rawPoints: any): ({ Vector2 }?, string?)
 		if type(key) ~= "number" or key < 1 or math.floor(key) ~= key then
 			return nil, "MALFORMED_POINTS"
 		end
-
 		entryCount += 1
 		if entryCount > config.MaxRawPoints or key > config.MaxRawPoints then
 			return nil, "TOO_MANY_POINTS"
@@ -66,7 +65,6 @@ local function validateRawPointArray(rawPoints: any): ({ Vector2 }?, string?)
 		end
 		points[index] = point
 	end
-
 	return points, nil
 end
 
@@ -84,7 +82,6 @@ local function buildSegmentPlan(normalizedPoints: { Vector2 })
 	local geometry = PhysicsConfig.LegGeometry
 	local mappedPoints = table.create(#normalizedPoints)
 	local extent = 0
-
 	for index, point in normalizedPoints do
 		local mapped = mapPointToLegSpace(point)
 		mappedPoints[index] = mapped
@@ -96,7 +93,6 @@ local function buildSegmentPlan(normalizedPoints: { Vector2 })
 		if #segmentPlan >= geometry.MaxColliderSegmentsPerLeg then
 			break
 		end
-
 		local a = mappedPoints[index - 1]
 		local b = mappedPoints[index]
 		if (b - a).Magnitude >= geometry.MinimumMappedSegmentLength then
@@ -107,7 +103,6 @@ local function buildSegmentPlan(normalizedPoints: { Vector2 })
 			})
 		end
 	end
-
 	return segmentPlan, extent
 end
 
@@ -159,8 +154,10 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 		return reject("TOO_SHORT")
 	end
 
-	local resampleTarget = math.min(config.ResampleTargetPoints, config.MaxCleanedPoints)
-	local cleaned = StrokeMath.Resample(simplified, resampleTarget)
+	local cleaned = StrokeMath.Resample(
+		simplified,
+		math.min(config.ResampleTargetPoints, config.MaxCleanedPoints)
+	)
 	if #cleaned > config.MaxCleanedPoints then
 		return reject("TOO_MANY_CLEANED_POINTS")
 	end
@@ -209,7 +206,6 @@ local function extractSequence(payload: any): number?
 	if type(payload) ~= "table" then
 		return nil
 	end
-
 	local sequence = payload.sequence
 	if type(sequence) ~= "number"
 		or not isFiniteNumber(sequence)
@@ -218,7 +214,6 @@ local function extractSequence(payload: any): number?
 	then
 		return nil
 	end
-
 	return sequence
 end
 
@@ -246,7 +241,6 @@ local function validateSemanticPoint(point: any): (number?, number?, string?)
 	if not isFiniteNumber(x) or not isFiniteNumber(y) then
 		return nil, nil, "NON_FINITE_POINT"
 	end
-
 	return x, y, nil
 end
 
@@ -262,7 +256,6 @@ local function validateNetworkPoints(rawPoints: any): ({ Vector2 }?, { any }?, s
 		if type(key) ~= "number" or key < 1 or math.floor(key) ~= key then
 			return nil, nil, "MALFORMED_POINTS"
 		end
-
 		entryCount += 1
 		if entryCount > config.MaxRawPoints or key > config.MaxRawPoints then
 			return nil, nil, "TOO_MANY_POINTS"
@@ -284,11 +277,9 @@ local function validateNetworkPoints(rawPoints: any): ({ Vector2 }?, { any }?, s
 		if pointError ~= nil or x == nil or y == nil then
 			return nil, nil, pointError or "MALFORMED_POINTS"
 		end
-
 		vectors[index] = Vector2.new(x, y)
 		canonicalPoints[index] = { x = x, y = y }
 	end
-
 	return vectors, canonicalPoints, nil
 end
 
@@ -328,7 +319,6 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 		then
 			return networkReject(sequence, "STALE_SEQUENCE")
 		end
-
 		state.pendingSequence = sequence
 
 		local vectors, canonicalPoints, pointsError = validateNetworkPoints(payload.points)
@@ -338,10 +328,7 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 		end
 
 		local encodedOk, encodedPayload = pcall(function()
-			return HttpService:JSONEncode({
-				sequence = sequence,
-				points = canonicalPoints,
-			})
+			return HttpService:JSONEncode({ sequence = sequence, points = canonicalPoints })
 		end)
 		if not encodedOk or type(encodedPayload) ~= "string" then
 			state.pendingSequence = nil
@@ -365,7 +352,6 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 
 		local buildResult = LegShapeService.ValidateAndBuild(racerRuntime, vectors, true)
 		state.pendingSequence = nil
-
 		if buildResult.accepted == true then
 			state.lastAcceptedSequence = sequence
 			return {
@@ -374,31 +360,10 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 				shapeVersion = buildResult.shapeVersion,
 			}
 		end
-
 		return networkReject(sequence, buildResult.rejectReasonCode or "INVALID_STROKE")
 	end
 
 	return processor
-end
-
-function LegShapeService.BindRemotes(deps: any)
-	assert(type(deps) == "table", "BindRemotes requires deps")
-	local submitStroke = deps.submitStroke
-	local strokeResult = deps.strokeResult
-	assert(typeof(submitStroke) == "Instance" and submitStroke:IsA("RemoteEvent"), "submitStroke must be RemoteEvent")
-	assert(typeof(strokeResult) == "Instance" and strokeResult:IsA("RemoteEvent"), "strokeResult must be RemoteEvent")
-
-	local processor = LegShapeService.CreateSubmitProcessor({
-		resolveRacer = deps.resolveRacer,
-		now = deps.now,
-	})
-
-	return submitStroke.OnServerEvent:Connect(function(player, payload)
-		local result = processor:Handle(player, payload)
-		if result ~= nil then
-			strokeResult:FireClient(player, result)
-		end
-	end)
 end
 
 return LegShapeService
