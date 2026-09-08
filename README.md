@@ -14,9 +14,9 @@ Before any implementation task, read:
 6. only the owner specs named by that row
 
 ## Current task
-**A01 — Git repo + Rojo baseline.**
+**A02 — Shared/config/type + server/client bootstrap roots.**
 
-A02 or gameplay work must not start until A01 passes local Rojo build/serve and Roblox Studio sync round-trip.
+A01 is ACCEPTED with local `rojo build`, `rojo serve`, Roblox Studio connection, live filesystem→Studio sync and clean Git verification. Do not start A03 or gameplay until A02 passes its acceptance contract.
 
 ## Toolchain
 Rokit manages the project Rojo version. The repository currently pins Rojo in `rokit.toml`.
