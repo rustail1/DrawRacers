@@ -1,5 +1,6 @@
 --!strict
 
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PhysicsConfig = require(
@@ -11,8 +12,20 @@ local StrokeMath = require(
 
 local LegShapeService = {}
 
+local function isFiniteNumber(value: number): boolean
+	return value == value and value ~= math.huge and value ~= -math.huge
+end
+
 local function reject(reasonCode: string)
 	return {
+		accepted = false,
+		rejectReasonCode = reasonCode,
+	}
+end
+
+local function networkReject(sequence: number, reasonCode: string)
+	return {
+		sequence = sequence,
 		accepted = false,
 		rejectReasonCode = reasonCode,
 	}
@@ -190,6 +203,202 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 		shapeVersion = nextVersion,
 		shapeSpec = shapeSpec,
 	}
+end
+
+local function extractSequence(payload: any): number?
+	if type(payload) ~= "table" then
+		return nil
+	end
+
+	local sequence = payload.sequence
+	if type(sequence) ~= "number"
+		or not isFiniteNumber(sequence)
+		or sequence < 1
+		or math.floor(sequence) ~= sequence
+	then
+		return nil
+	end
+
+	return sequence
+end
+
+local function validateSemanticPoint(point: any): (number?, number?, string?)
+	if type(point) ~= "table" then
+		return nil, nil, "MALFORMED_POINTS"
+	end
+
+	local fieldCount = 0
+	for key, _ in point do
+		fieldCount += 1
+		if fieldCount > 2 or (key ~= "x" and key ~= "y") then
+			return nil, nil, "MALFORMED_POINTS"
+		end
+	end
+	if fieldCount ~= 2 then
+		return nil, nil, "MALFORMED_POINTS"
+	end
+
+	local x = point.x
+	local y = point.y
+	if type(x) ~= "number" or type(y) ~= "number" then
+		return nil, nil, "MALFORMED_POINTS"
+	end
+	if not isFiniteNumber(x) or not isFiniteNumber(y) then
+		return nil, nil, "NON_FINITE_POINT"
+	end
+
+	return x, y, nil
+end
+
+local function validateNetworkPoints(rawPoints: any): ({ Vector2 }?, { any }?, string?)
+	local config = PhysicsConfig.StrokeProcessing
+	if type(rawPoints) ~= "table" then
+		return nil, nil, "MALFORMED_POINTS"
+	end
+
+	local entryCount = 0
+	local maxIndex = 0
+	for key, _ in rawPoints do
+		if type(key) ~= "number" or key < 1 or math.floor(key) ~= key then
+			return nil, nil, "MALFORMED_POINTS"
+		end
+
+		entryCount += 1
+		if entryCount > config.MaxRawPoints or key > config.MaxRawPoints then
+			return nil, nil, "TOO_MANY_POINTS"
+		end
+		maxIndex = math.max(maxIndex, key)
+	end
+
+	if entryCount < config.MinimumRawPoints then
+		return nil, nil, "TOO_FEW_POINTS"
+	end
+	if maxIndex ~= entryCount then
+		return nil, nil, "MALFORMED_POINTS"
+	end
+
+	local vectors = table.create(entryCount)
+	local canonicalPoints = table.create(entryCount)
+	for index = 1, entryCount do
+		local x, y, pointError = validateSemanticPoint(rawPoints[index])
+		if pointError ~= nil or x == nil or y == nil then
+			return nil, nil, pointError or "MALFORMED_POINTS"
+		end
+
+		vectors[index] = Vector2.new(x, y)
+		canonicalPoints[index] = { x = x, y = y }
+	end
+
+	return vectors, canonicalPoints, nil
+end
+
+function LegShapeService.CreateSubmitProcessor(deps: any)
+	assert(type(deps) == "table", "CreateSubmitProcessor requires deps")
+	assert(type(deps.resolveRacer) == "function", "CreateSubmitProcessor requires resolveRacer")
+	local nowFn = deps.now or os.clock
+	assert(type(nowFn) == "function", "CreateSubmitProcessor now must be a function")
+
+	local states = setmetatable({}, { __mode = "k" })
+	local processor = {}
+
+	function processor:Handle(playerKey: any, payload: any)
+		local sequence = extractSequence(payload)
+		if sequence == nil then
+			return nil
+		end
+
+		local racerRuntime = deps.resolveRacer(playerKey)
+		if racerRuntime == nil then
+			return networkReject(sequence, "NO_RACER")
+		end
+
+		local state = states[playerKey]
+		if state == nil then
+			state = {
+				lastAcceptedSequence = 0,
+				pendingSequence = nil,
+				lastRequestAt = -math.huge,
+			}
+			states[playerKey] = state
+		end
+
+		local pendingSequence = state.pendingSequence
+		if sequence <= state.lastAcceptedSequence
+			or (pendingSequence ~= nil and sequence <= pendingSequence)
+		then
+			return networkReject(sequence, "STALE_SEQUENCE")
+		end
+
+		state.pendingSequence = sequence
+
+		local vectors, canonicalPoints, pointsError = validateNetworkPoints(payload.points)
+		if vectors == nil or canonicalPoints == nil then
+			state.pendingSequence = nil
+			return networkReject(sequence, pointsError or "MALFORMED_POINTS")
+		end
+
+		local encodedOk, encodedPayload = pcall(function()
+			return HttpService:JSONEncode({
+				sequence = sequence,
+				points = canonicalPoints,
+			})
+		end)
+		if not encodedOk or type(encodedPayload) ~= "string" then
+			state.pendingSequence = nil
+			return networkReject(sequence, "MALFORMED_POINTS")
+		end
+		if #encodedPayload > PhysicsConfig.StrokeProcessing.MaxStrokePayloadBytes then
+			state.pendingSequence = nil
+			return networkReject(sequence, "PAYLOAD_TOO_LARGE")
+		end
+
+		local now = nowFn()
+		if type(now) ~= "number" or not isFiniteNumber(now) then
+			state.pendingSequence = nil
+			return networkReject(sequence, "SERVER_TIME_INVALID")
+		end
+		if now - state.lastRequestAt < PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown then
+			state.pendingSequence = nil
+			return networkReject(sequence, "RATE_LIMITED")
+		end
+		state.lastRequestAt = now
+
+		local buildResult = LegShapeService.ValidateAndBuild(racerRuntime, vectors, true)
+		state.pendingSequence = nil
+
+		if buildResult.accepted == true then
+			state.lastAcceptedSequence = sequence
+			return {
+				sequence = sequence,
+				accepted = true,
+				shapeVersion = buildResult.shapeVersion,
+			}
+		end
+
+		return networkReject(sequence, buildResult.rejectReasonCode or "INVALID_STROKE")
+	end
+
+	return processor
+end
+
+function LegShapeService.BindRemotes(deps: any)
+	assert(type(deps) == "table", "BindRemotes requires deps")
+	local submitStroke = deps.submitStroke
+	local strokeResult = deps.strokeResult
+	assert(typeof(submitStroke) == "Instance" and submitStroke:IsA("RemoteEvent"), "submitStroke must be RemoteEvent")
+	assert(typeof(strokeResult) == "Instance" and strokeResult:IsA("RemoteEvent"), "strokeResult must be RemoteEvent")
+
+	local processor = LegShapeService.CreateSubmitProcessor({
+		resolveRacer = deps.resolveRacer,
+		now = deps.now,
+	})
+
+	return submitStroke.OnServerEvent:Connect(function(player, payload)
+		local result = processor:Handle(player, payload)
+		if result ~= nil then
+			strokeResult:FireClient(player, result)
+		end
+	end)
 end
 
 return LegShapeService
