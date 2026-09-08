@@ -3,6 +3,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "src/shared/Config/M0SceneConfig.lua"
 BUILDER = ROOT / "src/server/M0TestScene.lua"
+STUDIO_SPEC = ROOT / "src/server/Tests/B15ObstacleLabSpec.lua"
+BOOTSTRAP = ROOT / "src/server/Bootstrap.server.lua"
 
 
 def test_b15_canonical_obstacle_defaults_are_declared():
@@ -52,3 +54,22 @@ def test_b15_builder_uses_exact_collision_recipes_without_hidden_gap_floor():
         assert token in text, f"missing B15 obstacle builder token: {token}"
 
     assert '"FlatLane"' not in text, "B15 must not leave one continuous floor under the canonical gap"
+
+
+def test_b15_studio_geometry_spec_is_wired():
+    assert STUDIO_SPEC.is_file(), "B15 requires a Studio geometry spec"
+    spec = STUDIO_SPEC.read_text(encoding="utf-8")
+    bootstrap = BOOTSTRAP.read_text(encoding="utf-8")
+
+    for token in [
+        'GapApproach',
+        'GapLanding',
+        'TunnelCeiling',
+        'Step5',
+        'Wall',
+        '[DrawRacers][B15] obstacle lab geometry tests PASS',
+    ]:
+        assert token in spec, f"missing B15 Studio assertion token: {token}"
+
+    assert 'B15ObstacleLabSpec' in bootstrap
+    assert 'B15ObstacleLabSpec.run()' in bootstrap
