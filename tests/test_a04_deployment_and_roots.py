@@ -115,7 +115,7 @@ def test_a04_rojo_project_declares_canonical_static_roots() -> None:
         assert starter_gui[gui]["$className"] == "ScreenGui"
 
 
-def test_a04_filesystem_roots_exist_without_future_implementations() -> None:
+def test_a04_filesystem_roots_still_exist() -> None:
     expected_dirs = [
         ROOT / "src" / "shared" / "Math",
         ROOT / "src" / "shared" / "Net",
@@ -126,5 +126,6 @@ def test_a04_filesystem_roots_exist_without_future_implementations() -> None:
     ]
     for path in expected_dirs:
         assert path.is_dir(), f"missing canonical A04 root: {path.relative_to(ROOT)}"
-        files = [entry for entry in path.iterdir() if entry.name != ".gitkeep"]
-        assert files == [], f"A04 root must not contain future implementation: {path.relative_to(ROOT)}"
+
+    # Later accepted tasks may legitimately populate these roots. A04 regression
+    # must preserve ownership/placement, not require them to stay empty forever.
