@@ -1,11 +1,11 @@
 --!strict
 
-local PhysicsService = game:GetService("PhysicsService")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
-local RACER_BODY_GROUP = "RacerBody"
+local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
+
 local BODY_SIZE = Vector3.new(3, 3, 3)
 local LEFT_HUB_OFFSET = Vector3.new(0, -0.75, -1.62)
 local RIGHT_HUB_OFFSET = Vector3.new(0, -0.75, 1.62)
@@ -22,13 +22,6 @@ export type SpawnParams = {
 	spawnCFrame: CFrame,
 }
 
-local function ensureCollisionGroup()
-	pcall(function()
-		PhysicsService:RegisterCollisionGroup(RACER_BODY_GROUP)
-	end)
-	PhysicsService:CollisionGroupSetCollidable(RACER_BODY_GROUP, RACER_BODY_GROUP, false)
-end
-
 local function makeHub(name: string, offset: Vector3, body: Part, parent: Model): Part
 	local hub = Instance.new("Part")
 	hub.Name = name
@@ -40,11 +33,13 @@ local function makeHub(name: string, offset: Vector3, body: Part, parent: Model)
 	hub.CanQuery = false
 	hub.Transparency = 1
 	hub.Massless = true
-	hub.CollisionGroup = RACER_BODY_GROUP
+	hub.CollisionGroup = CollisionGroups.RacerBody
 	hub.Parent = parent
 
 	local motorAttachment = Instance.new("Attachment")
 	motorAttachment.Name = "MotorAttachment"
+	motorAttachment.Axis = Vector3.zAxis
+	motorAttachment.SecondaryAxis = Vector3.yAxis
 	motorAttachment.Parent = hub
 
 	local bodyWeld = Instance.new("WeldConstraint")
@@ -57,7 +52,7 @@ local function makeHub(name: string, offset: Vector3, body: Part, parent: Model)
 end
 
 function RacerRuntime.EnsureTemplate(): Model
-	ensureCollisionGroup()
+	CollisionGroups.ensure()
 
 	local templatesRoot = ServerStorage:WaitForChild("RacerTemplates")
 	local existing = templatesRoot:FindFirstChild("RacerTemplate")
@@ -76,7 +71,7 @@ function RacerRuntime.EnsureTemplate(): Model
 	body.CanTouch = true
 	body.CanQuery = true
 	body.Transparency = 1
-	body.CollisionGroup = RACER_BODY_GROUP
+	body.CollisionGroup = CollisionGroups.RacerBody
 	body.CustomPhysicalProperties = PhysicalProperties.new(1.0, 0.45, 0.05, 100, 100)
 	body.Parent = template
 
@@ -126,7 +121,7 @@ function RacerRuntime.new(params: SpawnParams)
 	local racersRoot = Workspace:WaitForChild("Runtime"):WaitForChild("Racers")
 
 	local model = template:Clone()
-	model.Name = string.format("Racer_%s_%d", params.raceId, params.slotIndex)
+	model.Name = string.format("Racer_%s_%02d", params.raceId, params.slotIndex)
 
 	local body = model:FindFirstChild("BodyCollider")
 	assert(body and body:IsA("Part"), "RacerTemplate missing BodyCollider")
