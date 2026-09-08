@@ -22,19 +22,17 @@ def test_b01_input_controller_contract() -> None:
     assert "WindowFocusReleased" in text
     assert "InputChanged" in text
     assert "InputEnded" in text
-
-    # Roblox Studio rejected chained casts such as `self :: any :: T` in B01.
-    # Keep the regression explicit so the same parse failure cannot return.
     assert ":: any ::" not in text
-
-    # InputController owns pointer normalization only. Camera ownership stays elsewhere.
     assert "workspace.CurrentCamera" not in text
     assert "CameraType" not in text
 
 
-def test_b01_bootstrap_has_studio_acceptance_harness() -> None:
+def test_b01_pointer_dependency_is_preserved_after_harness_removal() -> None:
     bootstrap = (ROOT / "src" / "client" / "Bootstrap.client.lua").read_text(encoding="utf-8")
-    assert "InputController" in bootstrap
-    assert "RunService:IsStudio()" in bootstrap
-    assert "B01InputHarness" in bootstrap
-    assert "[DrawRacers][B01]" in bootstrap
+    drawing = (ROOT / "src" / "client" / "Controllers" / "DrawingController.lua").read_text(encoding="utf-8")
+
+    assert 'WaitForChild("InputController")' in bootstrap
+    assert "InputController.new()" in bootstrap
+    assert "DrawingController.new(inputController, drawHud)" in bootstrap
+    assert "inputController:Bind(drawInputRect)" in drawing
+    assert "B01InputHarness" not in bootstrap
