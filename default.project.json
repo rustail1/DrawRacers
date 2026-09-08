@@ -7,7 +7,13 @@
         "$path": "src/shared"
       },
       "Remotes": {
-        "$className": "Folder"
+        "$className": "Folder",
+        "SubmitStroke": {
+          "$className": "RemoteEvent"
+        },
+        "StrokeResult": {
+          "$className": "RemoteEvent"
+        }
       },
       "Assets": {
         "$className": "Folder"
