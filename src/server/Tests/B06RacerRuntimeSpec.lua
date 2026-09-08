@@ -57,7 +57,7 @@ function B06RacerRuntimeSpec.run()
 
 	local model = racer:GetModel()
 	assert(model.Parent == racersRoot, "runtime racer must spawn under Workspace.Runtime.Racers")
-	assert(model.Name == "Racer_B06_TEST_01")
+	assert(model.Name == "Racer_B06_TEST_1")
 	assert(model:GetAttribute("RaceId") == "B06_TEST")
 	assert(model:GetAttribute("SlotIndex") == 1)
 	assert(model:GetAttribute("LaneIndex") == 1)
@@ -73,7 +73,7 @@ function B06RacerRuntimeSpec.run()
 	racer:Destroy()
 	assert(racer:IsDestroyed(), "RacerRuntime must report destroyed state")
 	assert(model.Parent == nil, "destroy must remove runtime model from Workspace")
-	assert(racersRoot:FindFirstChild("Racer_B06_TEST_01") == nil, "destroy left racer model behind")
+	assert(racersRoot:FindFirstChild("Racer_B06_TEST_1") == nil, "destroy left racer model behind")
 
 	print("[DrawRacers][B06] RacerTemplate/RacerRuntime tests PASS")
 end
