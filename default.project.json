@@ -5,6 +5,20 @@
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
+      },
+      "Remotes": {
+        "$className": "Folder"
+      },
+      "Assets": {
+        "$className": "Folder"
+      }
+    },
+    "ServerStorage": {
+      "RacerTemplates": {
+        "$className": "Folder"
+      },
+      "TrackPieces": {
+        "$className": "Folder"
       }
     },
     "ServerScriptService": {
@@ -13,6 +27,40 @@
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "$path": "src/client"
+      }
+    },
+    "StarterGui": {
+      "RaceHUD": {
+        "$className": "ScreenGui"
+      },
+      "DrawHUD": {
+        "$className": "ScreenGui"
+      },
+      "ResultsHUD": {
+        "$className": "ScreenGui"
+      },
+      "GarageHUD": {
+        "$className": "ScreenGui"
+      },
+      "StoreHUD": {
+        "$className": "ScreenGui"
+      },
+      "SettingsHUD": {
+        "$className": "ScreenGui"
+      }
+    },
+    "Workspace": {
+      "Runtime": {
+        "$className": "Folder",
+        "Tracks": {
+          "$className": "Folder"
+        },
+        "Racers": {
+          "$className": "Folder"
+        },
+        "RacePresentation": {
+          "$className": "Folder"
+        }
       }
     }
   }
