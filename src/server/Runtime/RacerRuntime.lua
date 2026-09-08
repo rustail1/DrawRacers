@@ -10,6 +10,7 @@ local PhysicsConfig = require(
 )
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
 local LegAssembly = require(script.Parent:WaitForChild("LegAssembly"))
+local RacerStabilizer = require(script.Parent:WaitForChild("RacerStabilizer"))
 
 local BODY_SIZE = Vector3.new(3, 3, 3)
 local LEFT_HUB_OFFSET = Vector3.new(0, -0.75, -1.62)
@@ -25,6 +26,7 @@ export type SpawnParams = {
 	isBot: boolean,
 	trackId: string,
 	spawnCFrame: CFrame,
+	laneCenterZ: number?,
 }
 
 local function makeHub(name: string, offset: Vector3, body: Part, parent: Model): Part
@@ -149,11 +151,18 @@ function RacerRuntime.new(params: SpawnParams)
 	model:PivotTo(params.spawnCFrame)
 	model.Parent = racersRoot
 
+	local stabilizer = RacerStabilizer.new({
+		racerModel = model,
+		body = body,
+		laneCenterZ = params.laneCenterZ or params.spawnCFrame.Position.Z,
+	})
+
 	local self = setmetatable({
 		model = model,
 		body = body,
 		leftLeg = nil,
 		rightLeg = nil,
+		stabilizer = stabilizer,
 		destroyed = false,
 	}, RacerRuntime)
 
@@ -168,6 +177,11 @@ end
 function RacerRuntime:GetBody(): Part
 	assert(not self.destroyed and self.body ~= nil, "RacerRuntime is destroyed")
 	return self.body
+end
+
+function RacerRuntime:GetStabilizer()
+	assert(not self.destroyed and self.stabilizer ~= nil, "RacerRuntime is destroyed")
+	return self.stabilizer
 end
 
 function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: boolean?)
@@ -230,6 +244,10 @@ function RacerRuntime:Destroy()
 	if self.rightLeg then
 		self.rightLeg:Destroy()
 		self.rightLeg = nil
+	end
+	if self.stabilizer then
+		self.stabilizer:Destroy()
+		self.stabilizer = nil
 	end
 	if self.model then
 		self.model:Destroy()
