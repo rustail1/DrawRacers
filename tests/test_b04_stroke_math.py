@@ -15,10 +15,15 @@ def test_b04_stroke_math_contract() -> None:
     ]:
         assert token in stroke_math, f"missing B04 function: {token}"
 
-    # Spec 73: normalization is tied to DrawInputRect center and does not use stroke bounds.
-    assert "(point.X / canvasSize.X) * 2 - 1" in stroke_math
-    assert "1 - (point.Y / canvasSize.Y) * 2" in stroke_math
-    assert "ComputeBounds" not in stroke_math
+    # Spec 73: normalization is tied to DrawInputRect center and does not use
+    # the stroke's own bounds. Later phases may legitimately add ComputeBounds
+    # as a separate utility, so keep this historical guard scoped to Normalize.
+    normalize_body = stroke_math.split("function StrokeMath.Normalize", 1)[1].split(
+        "function StrokeMath.MeasureLength", 1
+    )[0]
+    assert "(point.X / canvasSize.X) * 2 - 1" in normalize_body
+    assert "1 - (point.Y / canvasSize.Y) * 2" in normalize_body
+    assert "ComputeBounds" not in normalize_body
 
     for token in [
         "RDPEpsilon = 0.022",
