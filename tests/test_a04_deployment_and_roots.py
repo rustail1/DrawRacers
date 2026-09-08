@@ -113,6 +113,9 @@ def test_a04_rojo_project_declares_canonical_static_roots() -> None:
     starter_gui = tree["StarterGui"]
     for gui in ["RaceHUD", "DrawHUD", "ResultsHUD", "GarageHUD", "StoreHUD", "SettingsHUD"]:
         assert starter_gui[gui]["$className"] == "ScreenGui"
+        assert starter_gui[gui]["$properties"]["ResetOnSpawn"] is False, (
+            f"{gui} must persist across character respawn"
+        )
 
 
 def test_a04_filesystem_roots_still_exist() -> None:
