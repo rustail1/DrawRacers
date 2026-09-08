@@ -62,14 +62,30 @@ Evidence:
 - after terminating the stale Rojo process and reconnecting to the current project, Studio synced the canonical roots, including all six `StarterGui` ScreenGui roots (`RaceHUD`, `DrawHUD`, `ResultsHUD`, `GarageHUD`, `StoreHUD`, `SettingsHUD`);
 - visible project bootstrap output remained clean; the orange native-code warning is Rojo-plugin-local and not a Draw Racers runtime error.
 
+### B01 — InputController pointer abstraction — ACCEPTED (2026-09-09)
+Evidence:
+- Studio harness produced repeated `start → move → end` mouse streams with stable pointer id inside a stroke and incremented id on the next stroke;
+- dragging inside the active input target did not rotate the world camera from the same pointer drag in the acceptance capture;
+- controller code maps both mouse and touch into the same semantic `start/move/end/cancel` event shape and ignores extra primary input while one pointer is active;
+- focus loss/cancel path preserves explicit `cancel` semantics;
+- the Luau chained-cast parse bug found during acceptance was fixed and regression-guarded;
+- all launch HUD roots now use `ResetOnSpawn=false`, fixing the observed respawn disappearance of the temporary harness/UI.
+
 ## Immediate operational step
-**B01 — InputController pointer abstraction.** Bootstrap A01–A04 is ACCEPTED. Implement only mouse/touch pointer normalization and the Studio acceptance harness required to verify start/move/end/cancel semantics and no camera-pointer conflict. Do not start B02 stroke preview until B01 acceptance passes.
+**B02 — DrawingController local stroke preview.** Implementation is in `main` and awaits Studio acceptance. Acceptance owner row `66`: one continuous preview, exact `DrawInputRect`, and cancel must leave the previous completed local shape intact. B03 must not start until B02 is accepted.
+
+Expected B02 presentation:
+- `DrawHUD/SafeRoot/DrawCanvas/DrawInputRect` follows `59/68` hierarchy and desktop/touch sizing;
+- drawing produces a continuous local cyan stroke only; no server remote/world geometry exists yet;
+- after release, the completed local candidate remains visible and appears in `AcceptedShapeThumbnail`;
+- starting a new stroke hides the old main-canvas candidate but keeps the thumbnail; cancel restores the previous completed candidate;
+- Output prints `[DrawRacers][B02] local draw preview ready`, completion point count, and cancel-preserved count.
 
 ## ACTIVE gameplay feature
 `M0-01 DrawCanvas input + stroke preview = B01+B02` is the only ACTIVE gameplay feature in `FEATURE_LIST.md`.
 
 ## Full build chain
-A01 ✓ → A02 ✓ → A03 ✓ → A04 ✓ → B01/B02 → stroke math → one physical leg → motor → two legs → stabilization/lane → authoritative shape → atomic redraw → five-obstacle lab → G0 → adaptation + `60` → G1 → 2-player race/UI → G2 → 8-player slice → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical BotRacerController FTUE foundation → confirmed Results → CosmeticService → two-place FTUE/routing → Garage/presentation → G3 → T01–T20 + production Bot Fill → G4/G5 → launch Passes → G6 → LiveOps/G7 → final release checks → `78` PASS → release.
+A01 ✓ → A02 ✓ → A03 ✓ → A04 ✓ → B01 ✓ → B02 → B03/B04/B05 stroke math → one physical leg → motor → two legs → stabilization/lane → authoritative shape → atomic redraw → five-obstacle lab → G0 → adaptation + `60` → G1 → 2-player race/UI → G2 → 8-player slice → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical BotRacerController FTUE foundation → confirmed Results → CosmeticService → two-place FTUE/routing → Garage/presentation → G3 → T01–T20 + production Bot Fill → G4/G5 → launch Passes → G6 → LiveOps/G7 → final release checks → `78` PASS → release.
 
 ## Empirical but procedure-complete
 - physics/camera constants: start `16`, tune via `49/55/57`;
