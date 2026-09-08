@@ -26,5 +26,6 @@ return {
 		AngularVelocity = -8.0,
 		MotorMaxTorque = 35000,
 		MotorMaxAcceleration = 120,
+		RightPhaseOffsetDegrees = 180,
 	},
 }
