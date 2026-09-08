@@ -4,14 +4,14 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
 **Current gameplay feature:** M0-01 — DrawCanvas input + stroke preview = implementation items **B01 + B02**.  
-**Exact current implementation item:** **A04 — deployment registry + exact Studio root contract**. A01–A03 are ACCEPTED; B01 starts only after A04 is ACCEPTED.  
+**Exact current implementation item:** **B01 — InputController pointer abstraction**. Bootstrap A01–A04 is ACCEPTED; B02 starts only after B01 acceptance.  
 **Rule:** only one gameplay feature may be `ACTIVE` at a time. `SESSION.md` owns the exact current implementation item; `25` owns sequence.
 
 ## Bootstrap — required before M0
 - ACCEPTED — A01 Git/Rojo baseline
 - ACCEPTED — A02 shared/server/client roots
 - ACCEPTED — A03 M0 scene
-- BACKLOG — A04 deployment registry + exact Studio root contract (`64/65/70`)
+- ACCEPTED — A04 deployment registry + exact Studio root contract (`64/65/70`)
 
 ## M0 — Physics Lab
 - ACTIVE — DrawCanvas input + stroke preview (`59` layout)
@@ -60,7 +60,7 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 ## M3 — Alpha Product Loop / PUBLIC-LAUNCH CONTENT
 All items below are **required before public release**, not optional polish.
-- BACKLOG — Complete T01–T20 authored tracks and both launch themes (`60/62`)
+- BACKLOG — Complete T01–T20 authored tracks and both launch themes (`60/62/67/69`)
 - BACKLOG — Mastery Points, access tiers and visible titles (`61`)
 - BACKLOG — Garage/collection final layout (`59`) and catalog (`62`)
 - BACKLOG — First-session ownership pacing using `61`
