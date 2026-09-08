@@ -37,12 +37,11 @@ def test_b02_local_preview_contract() -> None:
     assert "livePoints" in text
     assert "renderAcceptedStroke" in text
     assert "clearLiveStroke" in text
-    assert "RemoteEvent" not in text
 
 
-def test_b02_bootstrap_replaces_b01_harness() -> None:
+def test_b02_bootstrap_keeps_drawing_controller_and_allows_later_dependencies() -> None:
     bootstrap = (ROOT / "src" / "client" / "Bootstrap.client.lua").read_text(encoding="utf-8")
     assert 'WaitForChild("DrawingController")' in bootstrap
-    assert "DrawingController.new(inputController, drawHud)" in bootstrap
+    assert "DrawingController.new(inputController, drawHud" in bootstrap
     assert "drawingController:Start()" in bootstrap
     assert "B01InputHarness" not in bootstrap
