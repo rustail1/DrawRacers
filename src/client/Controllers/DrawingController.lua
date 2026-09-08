@@ -1,5 +1,14 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local PhysicsConfig = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
+)
+local StrokeMath = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("StrokeMath")
+)
+
 local DrawingController = {}
 DrawingController.__index = DrawingController
 
@@ -208,18 +217,24 @@ local function createUi(drawHud: ScreenGui)
 	}
 end
 
-function DrawingController.new(inputController: any, drawHud: ScreenGui)
+function DrawingController.new(inputController: any, drawHud: ScreenGui, submitStroke: any?, strokeResult: any?)
 	local ui = createUi(drawHud)
 
 	local self = setmetatable({
 		_inputController = inputController,
+		_submitStroke = submitStroke,
+		_strokeResult = strokeResult,
 		_ui = ui,
 		_connection = nil,
+		_resultConnection = nil,
 		_livePoints = {} :: { Vector2 },
 		acceptedPoints = {} :: { Vector2 },
 		livePoints = {} :: { Vector2 },
 		_drawing = false,
 		_pointerFamily = "mouse",
+		_nextSequence = 1,
+		_latestSubmittedSequence = 0,
+		_pendingStrokes = {} :: { [number]: { Vector2 } },
 	}, DrawingController)
 
 	-- Alias names are intentionally explicit for the B02 contract/readability.
@@ -253,6 +268,17 @@ function DrawingController:_clearLiveStroke()
 	clearSegments(self._ui.liveLayer)
 end
 
+function DrawingController:_setValidation(message: string?)
+	local toast = self._ui.validationToast
+	if message == nil or message == "" then
+		toast.Text = ""
+		toast.Visible = false
+		return
+	end
+	toast.Text = message
+	toast.Visible = true
+end
+
 local function renderThumbnail(self)
 	local thumbnail = self._ui.acceptedShapeThumbnail
 	clearSegments(thumbnail)
@@ -273,6 +299,121 @@ local function renderThumbnail(self)
 	renderPolyline(thumbnail, mapped, math.max(2, self:_strokeThickness() * 0.45), 0.1)
 end
 
+function DrawingController:_prepareSemanticPoints(pixelPoints: { Vector2 }): ({ any }?, string?)
+	local inputSize = self._ui.drawInputRect.AbsoluteSize
+	if inputSize.X <= 0 or inputSize.Y <= 0 then
+		return nil, "DRAW_SURFACE_NOT_READY"
+	end
+
+	local config = PhysicsConfig.StrokeProcessing
+	local normalized = StrokeMath.Normalize(pixelPoints, inputSize)
+	local clamped, clampError = StrokeMath.Clamp(normalized, {
+		minCoordinate = config.NormalizedMin,
+		maxCoordinate = config.NormalizedMax,
+		maxPoints = config.MaxRawPoints,
+	})
+	if clamped == nil then
+		return nil, clampError or "INVALID_STROKE"
+	end
+
+	local deduped = StrokeMath.Dedupe(clamped, config.DedupeDistance)
+	if #deduped < 2 then
+		return nil, "TOO_SHORT"
+	end
+
+	local simplified = StrokeMath.SimplifyRDP(deduped, config.RDPEpsilon)
+	if #simplified < 2 then
+		return nil, "TOO_SHORT"
+	end
+
+	local targetPoints = math.min(config.ResampleTargetPoints, config.MaxCleanedPoints)
+	local cleaned = StrokeMath.Resample(simplified, targetPoints)
+	if #cleaned < 2 then
+		return nil, "TOO_SHORT"
+	end
+
+	local points = table.create(#cleaned)
+	for index, point in cleaned do
+		points[index] = {
+			x = point.X,
+			y = point.Y,
+		}
+	end
+	return points, nil
+end
+
+function DrawingController:_submitStrokeIntent(pixelPoints: { Vector2 })
+	if self._submitStroke == nil then
+		self:_setValidation("NETWORK_NOT_READY")
+		return
+	end
+
+	local semanticPoints, prepareError = self:_prepareSemanticPoints(pixelPoints)
+	if semanticPoints == nil then
+		self:_setValidation(prepareError or "INVALID_STROKE")
+		return
+	end
+
+	local sequence = self._nextSequence
+	self._nextSequence += 1
+	self._latestSubmittedSequence = sequence
+
+	for oldSequence, _ in self._pendingStrokes do
+		if oldSequence < sequence then
+			self._pendingStrokes[oldSequence] = nil
+		end
+	end
+	self._pendingStrokes[sequence] = copyPoints(pixelPoints)
+	self:_setValidation(nil)
+
+	self._submitStroke:FireServer({
+		sequence = sequence,
+		points = semanticPoints,
+	})
+	print(("[DrawRacers][B12] stroke submitted sequence=%d points=%d"):format(sequence, #semanticPoints))
+end
+
+function DrawingController:_onStrokeResult(result: any)
+	if type(result) ~= "table" then
+		return
+	end
+
+	local sequence = result.sequence
+	if type(sequence) ~= "number" or math.floor(sequence) ~= sequence then
+		return
+	end
+	if sequence ~= self._latestSubmittedSequence then
+		return
+	end
+
+	local pending = self._pendingStrokes[sequence]
+	if pending == nil then
+		return
+	end
+	self._pendingStrokes[sequence] = nil
+
+	if result.accepted == true then
+		self.acceptedPoints = copyPoints(pending)
+		self:_renderAcceptedStroke()
+		renderThumbnail(self)
+		self._ui.emptyGhost.Visible = false
+		self:_setValidation(nil)
+		print(("[DrawRacers][B12] stroke accepted sequence=%d shapeVersion=%s"):format(
+			sequence,
+			tostring(result.shapeVersion)
+		))
+		return
+	end
+
+	self:_renderAcceptedStroke()
+	self._ui.emptyGhost.Visible = #self.acceptedPoints == 0
+	local rejectReasonCode = if type(result.rejectReasonCode) == "string"
+		then result.rejectReasonCode
+		else "STROKE_REJECTED"
+	self:_setValidation(rejectReasonCode)
+	print(("[DrawRacers][B12] stroke rejected sequence=%d reason=%s"):format(sequence, rejectReasonCode))
+end
+
 function DrawingController:_onPointer(event)
 	if event.phase == "start" then
 		self._pointerFamily = event.family
@@ -280,6 +421,7 @@ function DrawingController:_onPointer(event)
 		self._drawing = true
 		self._ui.emptyGhost.Visible = false
 		self._ui.acceptedLayer.Visible = false
+		self:_setValidation(nil)
 		self:_clearLiveStroke()
 
 		local point = self:_toLocal(event.position)
@@ -307,16 +449,20 @@ function DrawingController:_onPointer(event)
 			drawSegment(self._ui.liveLayer, previous, point, self:_strokeThickness(), 0)
 		end
 
-		if #self._livePoints >= 2 then
-			self.acceptedPoints = copyPoints(self._livePoints)
-			self:_renderAcceptedStroke()
-			renderThumbnail(self)
-		end
-
+		local pendingPixels = copyPoints(self._livePoints)
 		self._drawing = false
 		self:_clearLiveStroke()
 		self._ui.acceptedLayer.Visible = true
-		print(("[DrawRacers][B02] local stroke complete points=%d"):format(#self.acceptedPoints))
+		self:_renderAcceptedStroke()
+		self._ui.emptyGhost.Visible = #self.acceptedPoints == 0
+
+		if #pendingPixels >= 2 then
+			self:_submitStrokeIntent(pendingPixels)
+		end
+		print(("[DrawRacers][B02] local stroke complete pending=%d accepted=%d"):format(
+			#pendingPixels,
+			#self.acceptedPoints
+		))
 	elseif event.phase == "cancel" then
 		if not self._drawing then
 			return
@@ -326,6 +472,7 @@ function DrawingController:_onPointer(event)
 		self:_clearLiveStroke()
 		self._ui.acceptedLayer.Visible = true
 		self:_renderAcceptedStroke()
+		self._ui.emptyGhost.Visible = #self.acceptedPoints == 0
 		print(("[DrawRacers][B02] stroke cancelled; accepted preserved=%d"):format(#self.acceptedPoints))
 	end
 end
@@ -342,6 +489,12 @@ function DrawingController:Start()
 		self:_onPointer(event)
 	end)
 
+	if self._strokeResult ~= nil and self._resultConnection == nil then
+		self._resultConnection = self._strokeResult.OnClientEvent:Connect(function(result)
+			self:_onStrokeResult(result)
+		end)
+	end
+
 	print("[DrawRacers][B02] local draw preview ready")
 end
 
@@ -350,6 +503,11 @@ function DrawingController:Destroy()
 		self._connection:Disconnect()
 		self._connection = nil
 	end
+	if self._resultConnection then
+		self._resultConnection:Disconnect()
+		self._resultConnection = nil
+	end
+	table.clear(self._pendingStrokes)
 	self._inputController:Unbind()
 	if self._ui.safeRoot then
 		self._ui.safeRoot:Destroy()
