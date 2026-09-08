@@ -4,12 +4,12 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
 **Current gameplay feature:** M0-01 — DrawCanvas input + stroke preview = implementation items **B01 + B02**.  
-**Exact current implementation item:** **A02 — shared/server/client bootstrap roots**. A01 is ACCEPTED; after A02 → A03 → A04 are ACCEPTED, B01 starts.  
+**Exact current implementation item:** **A03 — M0 test scene**. A01 and A02 are ACCEPTED; after A03 → A04 are ACCEPTED, B01 starts.  
 **Rule:** only one gameplay feature may be `ACTIVE` at a time. `SESSION.md` owns the exact current implementation item; `25` owns sequence.
 
 ## Bootstrap — required before M0
 - ACCEPTED — A01 Git/Rojo baseline
-- BACKLOG — A02 shared/server/client roots
+- ACCEPTED — A02 shared/server/client roots
 - BACKLOG — A03 M0 scene
 - BACKLOG — A04 deployment registry + exact Studio root contract (`64/65/70`)
 
