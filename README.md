@@ -14,9 +14,9 @@ Before any implementation task, read:
 6. only the owner specs named by that row
 
 ## Current implementation item
-**B03 — StrokeTypes + StrokeMath Dedupe/Clamp is implemented and awaiting local acceptance.**
+**B04 — StrokeMath Simplify/Resample/Normalize is implemented and awaiting combined local acceptance with B03.**
 
-Bootstrap A01–A04 and B01–B02 are ACCEPTED. B04 simplify/resample/normalize must not start until B03 contract checks and the Studio StrokeMath spec pass.
+Bootstrap A01–A04 and B01–B02 are ACCEPTED. B03/B04 now have behavior specs in Studio; B05 must not start until both local specs and repository contract checks are green.
 
 ## Toolchain
 Rokit manages the project Rojo version. The repository currently pins Rojo in `rokit.toml`.
@@ -43,16 +43,23 @@ Then connect the Rojo plugin in Roblox Studio to the localhost server shown by `
 - B01: mouse/touch pointer abstraction; semantic start/move/end/cancel stream and camera input ownership accepted.
 - B02: local DrawCanvas continuous preview/candidate/thumbnail stage accepted by Product Owner progression.
 
-## B03 stroke cleanup
-Files introduced by B03:
+## B03/B04 stroke processing
+Current shared files:
 - `src/shared/Types/StrokeTypes.lua`
 - `src/shared/Config/PhysicsConfig.lua`
 - `src/shared/Math/StrokeMath.lua`
 - `src/server/Tests/B03StrokeMathSpec.lua`
+- `src/server/Tests/B04StrokeMathSpec.lua`
 
-B03 starts from the exact `16` defaults used by this layer: raw sample min movement `0.010`, raw cap `96`, minimum raw points `3`, dedupe distance `0.012`, normalized bounds `[-1,1]`.
+B03 starts from the exact `16` defaults used by its layer: raw sample min movement `0.010`, raw cap `96`, minimum raw points `3`, dedupe distance `0.012`, normalized bounds `[-1,1]`.
 
-`StrokeMath` is pure/deterministic. It clamps finite normalized coordinates to `[-1,1]`, rejects non-finite points, enforces the raw point cap, and removes near-duplicates using the configured distance. In Studio, `Bootstrap.server.lua` runs `B03StrokeMathSpec` and prints `[DrawRacers][B03] StrokeMath tests PASS` when its behavior cases succeed.
+B04 adds the next exact defaults: RDP epsilon `0.022`, resample target `12`, max cleaned points `15`, minimum cleaned polyline length `0.18`.
+
+`StrokeMath` remains pure/deterministic. It now supports DrawInputRect-centered normalization (`center=(0,0)`, screen right `+X`, screen up `+Y`), RDP simplification, open-polyline arc-length resampling, and length measurement. It does not recenter or resize shapes by their own bounds.
+
+In Studio, `Bootstrap.server.lua` runs both specs and should print:
+- `[DrawRacers][B03] StrokeMath tests PASS`
+- `[DrawRacers][B04] StrokeMath simplify/resample/normalize tests PASS`
 
 ## Working loop
 `ChatGPT/GitHub change -> git pull --ff-only -> Rojo -> Studio playtest -> PASS/FAIL -> next change`
