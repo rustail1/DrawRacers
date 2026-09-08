@@ -3,9 +3,9 @@
 Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
-**Current gameplay feature:** Authoritative draw → physical locomotion → redraw pipeline = implementation items **B03–B14**.  
-**Exact current implementation item:** **B14 — Invalid/stress redraw suite** is implemented in `main` and awaits local/Studio acceptance. Under the explicit Product Owner night-autopilot override, B15 may be implemented next while B12–B14 Studio evidence remains pending; this override does not promote those tasks to ACCEPTED.  
-**Acceptance note:** A01–A04 and B01–B02 are recorded ACCEPTED. Later B03–B14 implementation/tests exist in `main`, but implementation alone is not promoted to ACCEPTED without required evidence.  
+**Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle-lab pipeline = implementation items **B03–B15**.  
+**Exact current implementation item:** **B15 — Five canonical obstacle lab** is implemented in `main` and awaits local/Studio traversal acceptance. Under the explicit Product Owner night-autopilot override, B16 may be implemented next while B12–B15 Studio evidence remains pending; this override does not promote those tasks to ACCEPTED.  
+**Acceptance note:** A01–A04 and B01–B02 are recorded ACCEPTED. Later B03–B15 implementation/tests exist in `main`, but implementation alone is not promoted to ACCEPTED without required evidence.  
 **Rule:** only one gameplay feature may be `ACTIVE` at a time. `SESSION.md` owns the exact current implementation/evidence cursor; `25` owns sequence. B17/G0 remains the hard human gate before M0.5.
 
 ## Bootstrap — required before M0
@@ -16,8 +16,7 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 ## M0 — Physics Lab
 - ACCEPTED — DrawCanvas input + stroke preview (`59` layout; B01+B02)
-- ACTIVE — M0 core locomotion/redraw pipeline (B03–B14): StrokeMath, racer runtime, leg assemblies, motors, two-leg phase, stabilization, server ShapeSpec authority, B12 semantic remotes, B13 atomic redraw and B14 abuse/stress coverage are implemented; acceptance evidence remains task-specific.
-- BACKLOG — B15 five canonical obstacle lab
+- ACTIVE — M0 core locomotion/redraw/obstacle pipeline (B03–B15): StrokeMath, racer runtime, leg assemblies, motors, two-leg phase, stabilization, server ShapeSpec authority, B12 semantic remotes, B13 atomic redraw, B14 abuse/stress coverage, and B15 canonical obstacle geometry are implemented; acceptance evidence remains task-specific.
 - BACKLOG — B16 debug physics/tuning panel
 - BACKLOG — B17 G0 record
 
