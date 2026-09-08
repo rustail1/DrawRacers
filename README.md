@@ -28,8 +28,10 @@ rokit install
 rojo --version
 rojo build -o DrawRacersDev.rbxlx
 rojo serve
-python -m pytest -q
+python verify.py
 ```
+
+`verify.py` runs the current simple Python contract tests without requiring pytest. If pytest is installed, `python -m pytest -q` remains valid too.
 
 Then connect the Rojo plugin in Roblox Studio to the localhost server shown by `rojo serve`.
 
