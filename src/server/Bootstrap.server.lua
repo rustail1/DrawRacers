@@ -22,8 +22,14 @@ if RunService:IsStudio() then
 	local B07LegAssemblySpec = require(testsFolder:WaitForChild("B07LegAssemblySpec"))
 	B07LegAssemblySpec.run()
 
+	local B09TwoLegPhaseSpec = require(testsFolder:WaitForChild("B09TwoLegPhaseSpec"))
+	B09TwoLegPhaseSpec.run()
+
 	local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
 	B08OneHingeMotorHarness.start()
+
+	local B09TwoLegPhaseHarness = require(testsFolder:WaitForChild("B09TwoLegPhaseHarness"))
+	B09TwoLegPhaseHarness.start()
 end
 
 print("[DrawRacers] server bootstrap ready")
