@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local shared = ReplicatedStorage:WaitForChild("Shared")
 local configFolder = shared:WaitForChild("Config")
 local config = require(configFolder:WaitForChild("M0SceneConfig"))
+local CollisionGroups = require(script.Parent.Runtime:WaitForChild("CollisionGroups"))
 
 type AnchorConfig = {
 	Name: string,
@@ -27,6 +28,8 @@ local function makePart(name: string, size: Vector3, position: Vector3, parent: 
 end
 
 function M0TestScene.build()
+	CollisionGroups.ensure()
+
 	local existing = workspace:FindFirstChild(config.SceneName)
 	if existing then
 		existing:Destroy()
@@ -45,6 +48,7 @@ function M0TestScene.build()
 	lane.CanCollide = true
 	lane.CanTouch = true
 	lane.CanQuery = true
+	lane.CollisionGroup = CollisionGroups.Track
 	lane.Material = Enum.Material.SmoothPlastic
 	lane.Color = Color3.fromRGB(115, 120, 130)
 
