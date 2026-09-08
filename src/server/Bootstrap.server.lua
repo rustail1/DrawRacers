@@ -28,6 +28,9 @@ if RunService:IsStudio() then
 	local B10StabilizationSpec = require(testsFolder:WaitForChild("B10StabilizationSpec"))
 	B10StabilizationSpec.run()
 
+	local B11LegShapeServiceSpec = require(testsFolder:WaitForChild("B11LegShapeServiceSpec"))
+	B11LegShapeServiceSpec.run()
+
 	local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
 	B08OneHingeMotorHarness.start()
 
