@@ -163,6 +163,7 @@ function RacerRuntime.new(params: SpawnParams)
 		leftLeg = nil,
 		rightLeg = nil,
 		stabilizer = stabilizer,
+		currentShapeSpec = nil,
 		destroyed = false,
 	}, RacerRuntime)
 
@@ -184,6 +185,22 @@ function RacerRuntime:GetStabilizer()
 	return self.stabilizer
 end
 
+function RacerRuntime:GetShapeVersion(): number
+	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
+	local version = self.model:GetAttribute("ShapeVersion")
+	if type(version) ~= "number" then
+		return 0
+	end
+	return version
+end
+
+function RacerRuntime:GetCurrentShapeSpec()
+	assert(not self.destroyed, "RacerRuntime is destroyed")
+	return self.currentShapeSpec
+end
+
+-- Server-internal physical builder retained for geometry/harness tests. Remote/client paths
+-- must route through LegShapeService and ApplyValidatedShape so ShapeVersion remains authoritative.
 function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: boolean?)
 	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
 	assert(#normalizedPoints >= 2, "ApplyShape requires at least two normalized points")
@@ -227,6 +244,19 @@ function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: bo
 	return leftLeg, rightLeg
 end
 
+function RacerRuntime:ApplyValidatedShape(shapeSpec: any, motorEnabled: boolean?)
+	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
+	assert(type(shapeSpec) == "table", "ApplyValidatedShape requires ShapeSpec")
+	assert(type(shapeSpec.version) == "number", "ShapeSpec missing numeric version")
+	assert(type(shapeSpec.normalizedPoints) == "table", "ShapeSpec missing normalizedPoints")
+	assert(shapeSpec.version == self:GetShapeVersion() + 1, "ShapeSpec version must increment by exactly one")
+
+	local leftLeg, rightLeg = self:ApplyShape(shapeSpec.normalizedPoints, motorEnabled)
+	self.currentShapeSpec = shapeSpec
+	self.model:SetAttribute("ShapeVersion", shapeSpec.version)
+	return leftLeg, rightLeg
+end
+
 function RacerRuntime:IsDestroyed(): boolean
 	return self.destroyed
 end
@@ -254,6 +284,7 @@ function RacerRuntime:Destroy()
 	end
 	self.model = nil
 	self.body = nil
+	self.currentShapeSpec = nil
 end
 
 return RacerRuntime
