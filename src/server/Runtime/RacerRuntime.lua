@@ -1,10 +1,15 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
+local PhysicsConfig = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
+)
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
+local LegAssembly = require(script.Parent:WaitForChild("LegAssembly"))
 
 local BODY_SIZE = Vector3.new(3, 3, 3)
 local LEFT_HUB_OFFSET = Vector3.new(0, -0.75, -1.62)
@@ -147,6 +152,8 @@ function RacerRuntime.new(params: SpawnParams)
 	local self = setmetatable({
 		model = model,
 		body = body,
+		leftLeg = nil,
+		rightLeg = nil,
 		destroyed = false,
 	}, RacerRuntime)
 
@@ -163,6 +170,49 @@ function RacerRuntime:GetBody(): Part
 	return self.body
 end
 
+function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: boolean?)
+	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
+	assert(#normalizedPoints >= 2, "ApplyShape requires at least two normalized points")
+
+	if self.leftLeg then
+		self.leftLeg:Destroy()
+		self.leftLeg = nil
+	end
+	if self.rightLeg then
+		self.rightLeg:Destroy()
+		self.rightLeg = nil
+	end
+
+	local leftLeg = LegAssembly.new({
+		racerModel = self.model,
+		side = "Left",
+		normalizedPoints = normalizedPoints,
+		motorEnabled = motorEnabled,
+		initialPhaseDegrees = 0,
+	})
+
+	local rightOk, rightResult = pcall(function()
+		return LegAssembly.new({
+			racerModel = self.model,
+			side = "Right",
+			normalizedPoints = normalizedPoints,
+			motorEnabled = motorEnabled,
+			initialPhaseDegrees = PhysicsConfig.Motor.RightPhaseOffsetDegrees,
+		})
+	end)
+
+	if not rightOk then
+		leftLeg:Destroy()
+		error(rightResult)
+	end
+
+	local rightLeg = rightResult
+	self.leftLeg = leftLeg
+	self.rightLeg = rightLeg
+
+	return leftLeg, rightLeg
+end
+
 function RacerRuntime:IsDestroyed(): boolean
 	return self.destroyed
 end
@@ -173,6 +223,14 @@ function RacerRuntime:Destroy()
 	end
 
 	self.destroyed = true
+	if self.leftLeg then
+		self.leftLeg:Destroy()
+		self.leftLeg = nil
+	end
+	if self.rightLeg then
+		self.rightLeg:Destroy()
+		self.rightLeg = nil
+	end
 	if self.model then
 		self.model:Destroy()
 	end
