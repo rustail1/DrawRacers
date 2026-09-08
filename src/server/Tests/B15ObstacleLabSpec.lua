@@ -48,6 +48,7 @@ function B15ObstacleLabSpec.run()
 		assertPartX(lab, name, interval[1], interval[2], 1.5)
 		approx(requirePart(lab, name).Size.Y, 1.5, name .. ".Size.Y")
 	end
+	assert(requirePart(lab, "Step5") ~= nil, "SmallSteps must contain all five canonical blocks")
 
 	-- SingleWallLow: wall interval X=85..87 and top=2.6.
 	assertPartX(lab, "WallFloor", 76, 96, 0)
