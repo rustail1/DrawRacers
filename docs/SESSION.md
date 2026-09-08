@@ -1,6 +1,6 @@
 # SESSION.md — CURRENT STATE
 
-Date: 2026-09-03  
+Date: 2026-09-09  
 Documentation version: **v1.3.4 EXECUTION CONSISTENCY FREEZE**
 
 ## Product state
@@ -26,16 +26,27 @@ This does **not** pre-prove PTR, retention, social value, cosmetic desire, conve
 - current final audit → `78`;
 - `_HISTORY/` is excluded from normal implementation context.
 
-## Immediate operational step
-If repository/Rojo bootstrap does not exist: **A01 — Repository + Rojo baseline**. Then A02 → A03 → A04.
+## Accepted implementation evidence
+### A01 — Git repo + Rojo baseline — ACCEPTED (2026-09-09)
+Evidence:
+- repository `rustail1/DrawRacers`, branch `main`;
+- Rokit installs pinned Rojo 7.7.0;
+- local `rojo build -o DrawRacersDev.rbxlx` succeeded;
+- `rojo serve` listened on `localhost:34872`;
+- Roblox Studio connected through Rojo 7.7.0;
+- live filesystem → Studio sync verified by creating `src/shared/A01SyncProbe.lua`, observing `ReplicatedStorage/Shared/A01SyncProbe`, then deleting the probe;
+- final local `git status` reported `nothing to commit, working tree clean` after Studio lock files were added to `.gitignore`.
 
-After A01–A04 are ACCEPTED: **B01 — InputController pointer abstraction**, using the DrawCanvas input rectangle defined in `59`. A04 is mandatory because environment/config/ID placeholders must fail closed before gameplay code begins depending on deployment data.
+## Immediate operational step
+**A02 — Shared/config/type + server/client bootstrap roots.** A01 is ACCEPTED. Do not start A03, A04 or gameplay until A02 acceptance passes.
+
+After A02 → A03 → A04 are ACCEPTED: **B01 — InputController pointer abstraction**, using the DrawCanvas input rectangle defined in `59`. A04 is mandatory because environment/config/ID placeholders must fail closed before gameplay code begins depending on deployment data.
 
 ## ACTIVE gameplay feature
 `M0-01 DrawCanvas input + stroke preview = B01+B02` is the only ACTIVE gameplay feature in `FEATURE_LIST.md`.
 
 ## Full build chain
-A01 → A02 → A03 → A04 → B01/B02 → stroke math → one physical leg → motor → two legs → stabilization/lane → authoritative shape → atomic redraw → five-obstacle lab → G0 → adaptation + `60` → G1 → 2-player race/UI → G2 → 8-player slice → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical BotRacerController FTUE foundation → confirmed Results → CosmeticService → two-place FTUE/routing → Garage/presentation → G3 → T01–T20 + production Bot Fill → G4/G5 → launch Passes → G6 → LiveOps/G7 → final release checks → `78` PASS → release.
+A01 ✓ → A02 → A03 → A04 → B01/B02 → stroke math → one physical leg → motor → two legs → stabilization/lane → authoritative shape → atomic redraw → five-obstacle lab → G0 → adaptation + `60` → G1 → 2-player race/UI → G2 → 8-player slice → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical BotRacerController FTUE foundation → confirmed Results → CosmeticService → two-place FTUE/routing → Garage/presentation → G3 → T01–T20 + production Bot Fill → G4/G5 → launch Passes → G6 → LiveOps/G7 → final release checks → `78` PASS → release.
 
 ## Empirical but procedure-complete
 - physics/camera constants: start `16`, tune via `49/55/57`;
@@ -47,7 +58,6 @@ A01 → A02 → A03 → A04 → B01/B02 → stroke math → one physical leg →
 
 ## Scope discipline
 No Shop, season, party, procedural generator, paid random item or new mechanic may be pulled forward because a gate is weak. Fix the owner layer first. Any WHAT/WHY/scope/fairness change requires Product Owner approval + Decision Log + owner doc + Feature List update.
-
 
 ## v1.3.4 execution freeze additions
 Current design/implementation owners now also include `64` platform provisioning, `65` Studio Instance contract, `66` per-task acceptance, `67` level assembly, `68` UI hierarchy, `69` content workflow, `70` deployment IDs, `71` catalog/Pass transactions, `73` exact shape/pivot/collider mapping, `74` heat lifecycle/requeue defaults, `75` bot shape policy, `76` first-30-day LiveOps buffer, and final audit `78`. These are not new gameplay scope.
