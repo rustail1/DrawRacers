@@ -40,6 +40,9 @@ if RunService:IsStudio() then
 	local B14RedrawStressSpec = require(testsFolder:WaitForChild("B14RedrawStressSpec"))
 	B14RedrawStressSpec.run()
 
+	local B15ObstacleLabSpec = require(testsFolder:WaitForChild("B15ObstacleLabSpec"))
+	B15ObstacleLabSpec.run()
+
 	local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
 	B08OneHingeMotorHarness.start()
 
