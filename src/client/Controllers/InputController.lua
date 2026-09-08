@@ -102,17 +102,17 @@ function InputController.new(): InputController
 end
 
 function InputController:Connect(callback: (event: PointerEvent) -> ()): RBXScriptConnection
-	local selfPrivate = self :: any :: PrivateInputController
+	local selfPrivate: PrivateInputController = self :: any
 	return selfPrivate._event.Event:Connect(callback)
 end
 
 function InputController:IsPointerActive(): boolean
-	local selfPrivate = self :: any :: PrivateInputController
+	local selfPrivate: PrivateInputController = self :: any
 	return selfPrivate._activeFamily ~= nil
 end
 
 function InputController:Bind(target: GuiObject)
-	local selfPrivate = self :: any :: PrivateInputController
+	local selfPrivate: PrivateInputController = self :: any
 	selfPrivate:Unbind()
 
 	selfPrivate._target = target
@@ -140,7 +140,7 @@ function InputController:Bind(target: GuiObject)
 		if family == "touch" then
 			if input ~= selfPrivate._activeInput then
 				return
-		end
+			end
 			if input.UserInputState == Enum.UserInputState.Cancel then
 				finishPointer(selfPrivate, "cancel", screenPosition(input))
 			else
@@ -178,7 +178,7 @@ function InputController:Bind(target: GuiObject)
 end
 
 function InputController:Unbind()
-	local selfPrivate = self :: any :: PrivateInputController
+	local selfPrivate: PrivateInputController = self :: any
 	finishPointer(selfPrivate, "cancel", nil)
 
 	for _, connection in selfPrivate._connections do
@@ -195,7 +195,7 @@ function InputController:Unbind()
 end
 
 function InputController:Destroy()
-	local selfPrivate = self :: any :: PrivateInputController
+	local selfPrivate: PrivateInputController = self :: any
 	selfPrivate:Unbind()
 	selfPrivate._event:Destroy()
 end
