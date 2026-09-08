@@ -8,6 +8,11 @@ export type ClampOptions = {
 	maxPoints: number?,
 }
 
+export type Bounds = {
+	min: Vector2,
+	max: Vector2,
+}
+
 local function isFiniteNumber(value: number): boolean
 	return value == value and value ~= math.huge and value ~= -math.huge
 end
@@ -106,6 +111,33 @@ function StrokeMath.MeasureLength(points: { Vector2 }): number
 		total += (b - a).Magnitude
 	end
 	return total
+end
+
+function StrokeMath.ComputeBounds(points: { Vector2 }): Bounds?
+	if #points == 0 then
+		return nil
+	end
+
+	local first = points[1]
+	assert(StrokeMath.IsFinitePoint(first), "ComputeBounds received a non-finite point")
+	local minX = first.X
+	local minY = first.Y
+	local maxX = first.X
+	local maxY = first.Y
+
+	for index = 2, #points do
+		local point = points[index]
+		assert(StrokeMath.IsFinitePoint(point), "ComputeBounds received a non-finite point")
+		minX = math.min(minX, point.X)
+		minY = math.min(minY, point.Y)
+		maxX = math.max(maxX, point.X)
+		maxY = math.max(maxY, point.Y)
+	end
+
+	return {
+		min = Vector2.new(minX, minY),
+		max = Vector2.new(maxX, maxY),
+	}
 end
 
 local function pointToSegmentDistance(point: Vector2, a: Vector2, b: Vector2): number
