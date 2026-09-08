@@ -23,6 +23,10 @@ def test_b01_input_controller_contract() -> None:
     assert "InputChanged" in text
     assert "InputEnded" in text
 
+    # Roblox Studio rejected chained casts such as `self :: any :: T` in B01.
+    # Keep the regression explicit so the same parse failure cannot return.
+    assert ":: any ::" not in text
+
     # InputController owns pointer normalization only. Camera ownership stays elsewhere.
     assert "workspace.CurrentCamera" not in text
     assert "CameraType" not in text
