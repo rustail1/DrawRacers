@@ -4,7 +4,7 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
 **Current gameplay feature:** M0-01 — DrawCanvas input + stroke preview = implementation items **B01 + B02**.  
-**Exact current implementation item:** **B01 — InputController pointer abstraction**. Bootstrap A01–A04 is ACCEPTED; B02 starts only after B01 acceptance.  
+**Exact current implementation item:** **B02 — DrawingController local stroke preview**. Bootstrap A01–A04 and B01 are ACCEPTED; B03 starts only after B02 acceptance.  
 **Rule:** only one gameplay feature may be `ACTIVE` at a time. `SESSION.md` owns the exact current implementation item; `25` owns sequence.
 
 ## Bootstrap — required before M0
