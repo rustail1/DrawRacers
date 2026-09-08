@@ -53,16 +53,23 @@ Evidence:
 - debug player spawn landed on the lane and the scene booted together with server/client bootstrap without Draw Racers errors;
 - A03 config owns the reproducible lane, spawn and representative anchor layout; full obstacle collision geometry remains correctly deferred to B15.
 
-## Immediate operational step
-**A04 — deployment/config skeleton + exact Studio root contract.** Implementation is already in `main`; local acceptance is still required. Do not start B01 until A04 passes `pytest + rojo build + Studio sync`.
+### A04 — deployment/config skeleton + exact Studio roots — ACCEPTED (2026-09-09)
+Evidence:
+- DEV/STAGING/PROD deployment configs exist with distinct namespaces and all unresolved Roblox Universe/Place/Pass/Product IDs left `nil`, never guessed;
+- fail-closed deployment validator and empty asset-registry schema exist in the repository;
+- current A04 contract assertions were re-run against the fetched `main` contents and passed `5/5`;
+- local `rojo build -o DrawRacersDev.rbxlx` succeeded after A04 changes;
+- after terminating the stale Rojo process and reconnecting to the current project, Studio synced the canonical roots, including all six `StarterGui` ScreenGui roots (`RaceHUD`, `DrawHUD`, `ResultsHUD`, `GarageHUD`, `StoreHUD`, `SettingsHUD`);
+- visible project bootstrap output remained clean; the orange native-code warning is Rojo-plugin-local and not a Draw Racers runtime error.
 
-After A04 is ACCEPTED: **B01 — InputController pointer abstraction**, using the DrawCanvas input rectangle defined in `59`.
+## Immediate operational step
+**B01 — InputController pointer abstraction.** Bootstrap A01–A04 is ACCEPTED. Implement only mouse/touch pointer normalization and the Studio acceptance harness required to verify start/move/end/cancel semantics and no camera-pointer conflict. Do not start B02 stroke preview until B01 acceptance passes.
 
 ## ACTIVE gameplay feature
 `M0-01 DrawCanvas input + stroke preview = B01+B02` is the only ACTIVE gameplay feature in `FEATURE_LIST.md`.
 
 ## Full build chain
-A01 ✓ → A02 ✓ → A03 ✓ → A04 → B01/B02 → stroke math → one physical leg → motor → two legs → stabilization/lane → authoritative shape → atomic redraw → five-obstacle lab → G0 → adaptation + `60` → G1 → 2-player race/UI → G2 → 8-player slice → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical BotRacerController FTUE foundation → confirmed Results → CosmeticService → two-place FTUE/routing → Garage/presentation → G3 → T01–T20 + production Bot Fill → G4/G5 → launch Passes → G6 → LiveOps/G7 → final release checks → `78` PASS → release.
+A01 ✓ → A02 ✓ → A03 ✓ → A04 ✓ → B01/B02 → stroke math → one physical leg → motor → two legs → stabilization/lane → authoritative shape → atomic redraw → five-obstacle lab → G0 → adaptation + `60` → G1 → 2-player race/UI → G2 → 8-player slice → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical BotRacerController FTUE foundation → confirmed Results → CosmeticService → two-place FTUE/routing → Garage/presentation → G3 → T01–T20 + production Bot Fill → G4/G5 → launch Passes → G6 → LiveOps/G7 → final release checks → `78` PASS → release.
 
 ## Empirical but procedure-complete
 - physics/camera constants: start `16`, tune via `49/55/57`;
