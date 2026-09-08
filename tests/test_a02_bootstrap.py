@@ -22,15 +22,10 @@ def test_a02_minimal_bootstrap_structure() -> None:
     for path in expected_files:
         assert path.is_file(), f"missing A02 bootstrap file: {path.relative_to(ROOT)}"
 
-    # A02 is deliberately minimal. Future orchestration roots arrive only when
-    # their owning task needs them; empty placeholder systems are forbidden.
-    forbidden_early_directories = [
-        ROOT / "src" / "server" / "Services",
-        ROOT / "src" / "server" / "Runtime",
-        ROOT / "src" / "client" / "Controllers",
-    ]
-    for path in forbidden_early_directories:
-        assert not path.exists(), f"future root created too early: {path.relative_to(ROOT)}"
+    # Historical A02 acceptance was deliberately minimal, but later accepted
+    # milestones are allowed to add their owned roots. This regression test now
+    # preserves the A02 contract instead of requiring the repository to remain
+    # frozen forever at the A02 point in time.
 
 
 def test_a02_rojo_mapping_still_targets_canonical_roots() -> None:
