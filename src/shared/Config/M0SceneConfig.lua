@@ -1,9 +1,8 @@
 --!strict
 
--- A03 Studio-only M0 physics-lab scene contract.
+-- M0 physics-lab scene contract.
 -- Coordinates follow the production convention: +X travel, Y up, Z lane center.
--- The five anchor X positions are derived from canonical default piece lengths in doc 60
--- with the default 10-stud recovery spacing between representative pieces.
+-- The five canonical B15 pieces use doc 60 defaults with 10-stud recovery spacing.
 
 return {
 	SceneName = "M0TestScene",
@@ -18,11 +17,46 @@ return {
 		Y = 3,
 		Z = 0,
 	},
-	Anchors = {
-		{ Name = "FlatAnchor", PieceId = "FlatShort", X = 10 },
-		{ Name = "StepsAnchor", PieceId = "SmallSteps", X = 38 },
-		{ Name = "WallAnchor", PieceId = "SingleWallLow", X = 76 },
-		{ Name = "GapAnchor", PieceId = "GapSmall", X = 106 },
-		{ Name = "TunnelAnchor", PieceId = "LowTunnelWide", X = 140 },
+	Pieces = {
+		{
+			AnchorName = "FlatAnchor",
+			PieceId = "FlatShort",
+			StartX = 10,
+			Length = 18,
+		},
+		{
+			AnchorName = "StepsAnchor",
+			PieceId = "SmallSteps",
+			StartX = 38,
+			Length = 28,
+			Height = 1.5,
+			Depth = 4.0,
+			Gap = 1.0,
+			Count = 5,
+		},
+		{
+			AnchorName = "WallAnchor",
+			PieceId = "SingleWallLow",
+			StartX = 76,
+			Length = 20,
+			Height = 2.6,
+			Thickness = 2.0,
+		},
+		{
+			AnchorName = "GapAnchor",
+			PieceId = "GapSmall",
+			StartX = 106,
+			Length = 24,
+			GapWidth = 3.2,
+		},
+		{
+			AnchorName = "TunnelAnchor",
+			PieceId = "LowTunnelWide",
+			StartX = 140,
+			Length = 28,
+			Clearance = 4.25,
+			TunnelLength = 16,
+			CeilingThickness = 2,
+		},
 	},
 }
