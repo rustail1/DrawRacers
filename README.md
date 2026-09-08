@@ -16,7 +16,7 @@ Before any implementation task, read:
 ## Current bootstrap work
 **A04 — deployment/config skeleton is implemented and awaiting local acceptance.**
 
-A01 and A02 are ACCEPTED. A03 local/human acceptance evidence must still be recorded before bootstrap is considered fully closed. Do not start B01 gameplay until both A03 and A04 are accepted.
+A01, A02 and A03 are ACCEPTED. Do not start B01 gameplay until A04 passes its acceptance contract.
 
 ## Toolchain
 Rokit manages the project Rojo version. The repository currently pins Rojo in `rokit.toml`.
