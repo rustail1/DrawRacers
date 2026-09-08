@@ -126,7 +126,7 @@ function RacerRuntime.new(params: SpawnParams)
 	local racersRoot = Workspace:WaitForChild("Runtime"):WaitForChild("Racers")
 
 	local model = template:Clone()
-	model.Name = string.format("Racer_%s_%02d", params.raceId, params.slotIndex)
+	model.Name = string.format("Racer_%s_%d", params.raceId, params.slotIndex)
 
 	local body = model:FindFirstChild("BodyCollider")
 	assert(body and body:IsA("Part"), "RacerTemplate missing BodyCollider")
