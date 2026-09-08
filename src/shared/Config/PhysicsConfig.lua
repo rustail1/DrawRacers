@@ -28,4 +28,15 @@ return {
 		MotorMaxAcceleration = 120,
 		RightPhaseOffsetDegrees = 180,
 	},
+	Stabilization = {
+		LaneCorrectionDeadzone = 0.15,
+		LaneNormalError = 0.35,
+		LaneHardBound = 0.75,
+		LaneMaxForceZ = 12000,
+		LaneResponsiveness = 6,
+		LaneMaxVelocity = 8,
+		OrientationResponsiveness = 8,
+		OrientationMaxTorque = 18000,
+		OrientationMaxAngularVelocity = 8,
+	},
 }
