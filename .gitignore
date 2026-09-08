@@ -4,6 +4,12 @@
 *.rbxm
 *.rbxmx
 
+# Roblox Studio lock files for local place/model builds
+*.rbxl.lock
+*.rbxlx.lock
+*.rbxm.lock
+*.rbxmx.lock
+
 # Local environment
 .env
 .env.*
