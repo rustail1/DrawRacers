@@ -18,6 +18,12 @@ if RunService:IsStudio() then
 
 	local B06RacerRuntimeSpec = require(testsFolder:WaitForChild("B06RacerRuntimeSpec"))
 	B06RacerRuntimeSpec.run()
+
+	local B07LegAssemblySpec = require(testsFolder:WaitForChild("B07LegAssemblySpec"))
+	B07LegAssemblySpec.run()
+
+	local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
+	B08OneHingeMotorHarness.start()
 end
 
 print("[DrawRacers] server bootstrap ready")
