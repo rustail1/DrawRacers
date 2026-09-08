@@ -18,6 +18,7 @@ export type BuildParams = {
 	side: string,
 	normalizedPoints: { Vector2 },
 	motorEnabled: boolean?,
+	initialPhaseDegrees: number?,
 }
 
 local function mapPoint(point: Vector2): Vector2
@@ -54,7 +55,7 @@ local function makeSegmentCFrame(rootCFrame: CFrame, a: Vector2, b: Vector2): CF
 end
 
 function LegAssembly.new(params: BuildParams)
-	assert(params.side == "Left", "B07 supports Left side only; RightLeg belongs to B09")
+	assert(params.side == "Left" or params.side == "Right", "LegAssembly side must be Left or Right")
 	assert(#params.normalizedPoints >= 2, "LegAssembly requires at least two normalized points")
 
 	CollisionGroups.ensure()
@@ -65,26 +66,33 @@ function LegAssembly.new(params: BuildParams)
 	local legsFolder = racerModel:FindFirstChild("Legs")
 	assert(legsFolder and legsFolder:IsA("Folder"), "racerModel missing Legs folder")
 
-	local hub = racerModel:FindFirstChild("LeftHub")
-	assert(hub and hub:IsA("Part"), "racerModel missing LeftHub")
+	local side = params.side
+	local hubName = if side == "Left" then "LeftHub" else "RightHub"
+	local legName = if side == "Left" then "LeftLeg" else "RightLeg"
+	local initialPhaseDegrees = params.initialPhaseDegrees or 0
+
+	local hub = racerModel:FindFirstChild(hubName)
+	assert(hub and hub:IsA("Part"), string.format("racerModel missing %s", hubName))
 	local hubAttachment = hub:FindFirstChild("MotorAttachment")
-	assert(hubAttachment and hubAttachment:IsA("Attachment"), "LeftHub missing MotorAttachment")
+	assert(hubAttachment and hubAttachment:IsA("Attachment"), string.format("%s missing MotorAttachment", hubName))
 	hubAttachment.Axis = Vector3.zAxis
 	hubAttachment.SecondaryAxis = Vector3.yAxis
 
-	local existing = legsFolder:FindFirstChild("LeftLeg")
+	local existing = legsFolder:FindFirstChild(legName)
 	if existing then
 		existing:Destroy()
 	end
 
 	local model = Instance.new("Model")
-	model.Name = "LeftLeg"
+	model.Name = legName
+	model:SetAttribute("Side", side)
+	model:SetAttribute("InitialPhaseDegrees", initialPhaseDegrees)
 	model.Parent = legsFolder
 
 	local root = Instance.new("Part")
 	root.Name = "LegRoot"
 	root.Size = Vector3.new(0.2, 0.2, 0.2)
-	root.CFrame = hub.CFrame
+	root.CFrame = hub.CFrame * CFrame.Angles(0, 0, math.rad(initialPhaseDegrees))
 	root.Anchored = false
 	root.CanCollide = false
 	root.CanTouch = false
@@ -154,7 +162,7 @@ function LegAssembly.new(params: BuildParams)
 			segment.CustomPhysicalProperties = PhysicalProperties.new(1.0, 1.0, 0.02, 100, 100)
 			if RunService:IsStudio() then
 				segment.Transparency = 0.08
-				segment.Color = Color3.fromRGB(60, 205, 255)
+				segment.Color = if side == "Left" then Color3.fromRGB(60, 205, 255) else Color3.fromRGB(110, 235, 255)
 				segment.Material = Enum.Material.Neon
 			else
 				segment.Transparency = 1
@@ -179,6 +187,7 @@ function LegAssembly.new(params: BuildParams)
 		joint = joint,
 		segments = segments,
 		mappedPoints = mappedPoints,
+		initialPhaseDegrees = initialPhaseDegrees,
 		destroyed = false,
 	}, LegAssembly)
 
@@ -208,6 +217,11 @@ end
 function LegAssembly:GetMappedPoints(): { Vector2 }
 	assert(not self.destroyed, "LegAssembly is destroyed")
 	return self.mappedPoints
+end
+
+function LegAssembly:GetInitialPhaseDegrees(): number
+	assert(not self.destroyed, "LegAssembly is destroyed")
+	return self.initialPhaseDegrees
 end
 
 function LegAssembly:SetEnabled(enabled: boolean)
