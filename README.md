@@ -14,9 +14,9 @@ Before any implementation task, read:
 6. only the owner specs named by that row
 
 ## Current implementation item
-**B01 — InputController pointer abstraction is implemented and awaiting Studio acceptance.**
+**B02 — DrawingController local stroke preview is implemented and awaiting Studio acceptance.**
 
-Bootstrap A01–A04 is ACCEPTED. B02 local stroke preview must not start until B01 passes mouse/touch semantic-stream and camera-conflict acceptance.
+Bootstrap A01–A04 and B01 are ACCEPTED. B03 stroke dedupe/clamp must not start until B02 passes one-continuous-preview, exact-hit-rect and cancel-preserves-accepted-shape acceptance.
 
 ## Toolchain
 Rokit manages the project Rojo version. The repository currently pins Rojo in `rokit.toml`.
@@ -35,16 +35,21 @@ python verify.py
 
 Then connect the Rojo plugin in Roblox Studio to the localhost server shown by `rojo serve`.
 
-## Accepted bootstrap state
+## Accepted state
 - A01: Git/Rojo baseline, build/serve and Studio sync round-trip accepted.
 - A02: canonical minimal shared/server/client bootstrap accepted.
 - A03: reproducible Studio M0 lane + debug spawn + representative anchors accepted.
 - A04: DEV/STAGING/PROD deployment skeleton, no fake IDs, fail-closed validator and exact static Studio roots accepted.
+- B01: mouse/touch pointer abstraction; semantic start/move/end/cancel stream and camera input ownership accepted.
 
-## B01 acceptance harness
-`src/client/Controllers/InputController.lua` normalizes mouse/touch into one semantic event shape: `start | move | end | cancel` with one active primary pointer.
+## B02 local preview
+`src/client/Controllers/DrawingController.lua` now owns the `DrawHUD/SafeRoot/DrawCanvas` hierarchy and binds B01 input only to the exact `DrawInputRect`.
 
-In Roblox Studio only, `Bootstrap.client.lua` creates a temporary `B01InputHarness` inside the local player's `DrawHUD`. Drag inside it to verify pointer phases. The harness is not production DrawCanvas UI and will be removed/replaced by B02.
+During Play:
+- drag inside DrawCanvas to see the cyan continuous local stroke;
+- release to keep the completed local candidate and its thumbnail;
+- begin another stroke, then force a cancel (for example focus loss) to verify the previous candidate is restored;
+- this task is client-preview only: no RemoteEvent, server ShapeSpec, physical leg, or world geometry exists yet.
 
 ## Working loop
 `ChatGPT/GitHub change -> git pull --ff-only -> Rojo -> Studio playtest -> PASS/FAIL -> next change`
