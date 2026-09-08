@@ -12,6 +12,9 @@ if RunService:IsStudio() then
 
 	local B04StrokeMathSpec = require(testsFolder:WaitForChild("B04StrokeMathSpec"))
 	B04StrokeMathSpec.run()
+
+	local B05StrokeMathMatrixSpec = require(testsFolder:WaitForChild("B05StrokeMathMatrixSpec"))
+	B05StrokeMathMatrixSpec.run()
 end
 
 print("[DrawRacers] server bootstrap ready")
