@@ -14,9 +14,9 @@ Before any implementation task, read:
 6. only the owner specs named by that row
 
 ## Current implementation item
-**B02 — DrawingController local stroke preview is implemented and awaiting Studio acceptance.**
+**B03 — StrokeTypes + StrokeMath Dedupe/Clamp is implemented and awaiting local acceptance.**
 
-Bootstrap A01–A04 and B01 are ACCEPTED. B03 stroke dedupe/clamp must not start until B02 passes one-continuous-preview, exact-hit-rect and cancel-preserves-accepted-shape acceptance.
+Bootstrap A01–A04 and B01–B02 are ACCEPTED. B04 simplify/resample/normalize must not start until B03 contract checks and the Studio StrokeMath spec pass.
 
 ## Toolchain
 Rokit manages the project Rojo version. The repository currently pins Rojo in `rokit.toml`.
@@ -41,15 +41,18 @@ Then connect the Rojo plugin in Roblox Studio to the localhost server shown by `
 - A03: reproducible Studio M0 lane + debug spawn + representative anchors accepted.
 - A04: DEV/STAGING/PROD deployment skeleton, no fake IDs, fail-closed validator and exact static Studio roots accepted.
 - B01: mouse/touch pointer abstraction; semantic start/move/end/cancel stream and camera input ownership accepted.
+- B02: local DrawCanvas continuous preview/candidate/thumbnail stage accepted by Product Owner progression.
 
-## B02 local preview
-`src/client/Controllers/DrawingController.lua` now owns the `DrawHUD/SafeRoot/DrawCanvas` hierarchy and binds B01 input only to the exact `DrawInputRect`.
+## B03 stroke cleanup
+Files introduced by B03:
+- `src/shared/Types/StrokeTypes.lua`
+- `src/shared/Config/PhysicsConfig.lua`
+- `src/shared/Math/StrokeMath.lua`
+- `src/server/Tests/B03StrokeMathSpec.lua`
 
-During Play:
-- drag inside DrawCanvas to see the cyan continuous local stroke;
-- release to keep the completed local candidate and its thumbnail;
-- begin another stroke, then force a cancel (for example focus loss) to verify the previous candidate is restored;
-- this task is client-preview only: no RemoteEvent, server ShapeSpec, physical leg, or world geometry exists yet.
+B03 starts from the exact `16` defaults used by this layer: raw sample min movement `0.010`, raw cap `96`, minimum raw points `3`, dedupe distance `0.012`, normalized bounds `[-1,1]`.
+
+`StrokeMath` is pure/deterministic. It clamps finite normalized coordinates to `[-1,1]`, rejects non-finite points, enforces the raw point cap, and removes near-duplicates using the configured distance. In Studio, `Bootstrap.server.lua` runs `B03StrokeMathSpec` and prints `[DrawRacers][B03] StrokeMath tests PASS` when its behavior cases succeed.
 
 ## Working loop
 `ChatGPT/GitHub change -> git pull --ff-only -> Rojo -> Studio playtest -> PASS/FAIL -> next change`
