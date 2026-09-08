@@ -52,18 +52,28 @@ def test_b12_authoritative_submit_processor_contract() -> None:
     for forbidden in [
         'Instance.new("Part")',
         "CFrame.new(",
+        "RemoteEvent",
+        "OnServerEvent",
+        "FireClient",
         "RemoteFunction",
         "segmentPlan = payload",
         "shapeVersion = payload",
     ]:
-        assert forbidden not in service, f"B12 transport must not accept/create client world authority: {forbidden}"
+        assert forbidden not in service, f"B11/B12 authority module must remain transport-independent: {forbidden}"
 
 
 def test_b12_remote_binding_and_studio_spec_are_wired() -> None:
-    service = (ROOT / "src" / "server" / "Services" / "LegShapeService.lua").read_text(encoding="utf-8")
-    assert "BindRemotes" in service
-    assert "OnServerEvent:Connect" in service
-    assert "FireClient" in service
+    transport_path = ROOT / "src" / "server" / "Services" / "StrokeRemoteTransport.lua"
+    assert transport_path.is_file(), "missing B12 StrokeRemoteTransport.lua"
+    transport = transport_path.read_text(encoding="utf-8")
+    for token in [
+        "LegShapeService.CreateSubmitProcessor",
+        "OnServerEvent:Connect",
+        "FireClient",
+        'IsA("RemoteEvent")',
+    ]:
+        assert token in transport, f"missing B12 transport token: {token}"
+    assert "RemoteFunction" not in transport
 
     spec_path = ROOT / "src" / "server" / "Tests" / "B12StrokeRemoteSpec.lua"
     assert spec_path.is_file(), "missing B12 Studio behavior spec"
