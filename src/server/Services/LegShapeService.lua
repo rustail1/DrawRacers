@@ -114,7 +114,7 @@ local function buildDebugId(version: number, points: { Vector2 }, length: number
 end
 
 function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, motorEnabled: boolean?)
-	if racerRuntime == nil
+	if type(racerRuntime) ~= "table"
 		or type(racerRuntime.GetShapeVersion) ~= "function"
 		or type(racerRuntime.ApplyValidatedShape) ~= "function"
 	then
