@@ -17,43 +17,46 @@ The repository-recorded human/Studio acceptance remains unchanged:
 - B01 — pointer abstraction — ACCEPTED.
 - B02 — local stroke preview — ACCEPTED.
 
-Later B03–B13 implementation exists in `main`, but implementation/CI alone does **not** promote those tasks to ACCEPTED where their task DoD requires local/Studio evidence.
+Later B03–B14 implementation/tests exist in `main`, but implementation/CI alone does **not** promote those tasks to ACCEPTED where their task DoD requires local/Studio evidence.
 
 ## Current implementation/evidence cursor
-**B13 — Atomic redraw — IMPLEMENTED / STUDIO PASS PENDING.**
+**B14 — Invalid/stress redraw suite — IMPLEMENTED / STUDIO PASS PENDING.**
 
-Sequence authority: `25_IMPLEMENTATION_SEQUENCE.md` places B13 after B12 and before B14. Acceptance authority: `66_ZERO_TO_RELEASE_TASK_ACCEPTANCE_CATALOG.md` requires old legs to remain while a replacement is drawing/building, then a valid pair swap with no body teleport or velocity reset. Owners: `03/28`.
+Sequence authority: `25_IMPLEMENTATION_SEQUENCE.md` places B14 after B13 and before B15. Acceptance authority: `66_ZERO_TO_RELEASE_TASK_ACCEPTANCE_CATALOG.md` requires spam/malformed/stale/large payloads to fail safely without leaked parts, server crash, or removal of the current valid shape. Owners: `24/32`.
 
-### B12 pending evidence carried forward
-B12 SubmitStroke/StrokeResult is implemented. GitHub static regression was green before B13, but B12 still requires its Roblox Studio acceptance line and no DrawRacers runtime errors before it may be recorded ACCEPTED.
+### Pending evidence carried forward
+B12 SubmitStroke/StrokeResult and B13 Atomic redraw remain Studio-pending. The night-autopilot override allows bounded CORE implementation to continue before the hard G0 gate, but it does not mark any pending task ACCEPTED.
 
-### B13 implementation evidence
-Code commit: `f8ba153f9216de22f026b3b80be191d71d725353` (`feat: implement B13 atomic redraw`).
+### B14 implementation evidence
+Commits:
+- `00ea23d0b87e24bcb44dd16cc1429b90f43e85e3` — B14 Studio abuse/stress behavior spec;
+- `9f79fc2c5a34f94e7ff40565c56ffd4c463d9766` — Studio bootstrap wiring;
+- `c330918bc80f5c667310d2240bfb36cdce92cee4` — static B14 contract guards.
 
-Implementation:
-- `LegAssembly` supports detached staged construction; staged assemblies do not replace or enter Workspace until `Commit()`.
-- `RacerRuntime:ApplyShape` captures current left/right rotation phase, builds both replacement legs off-Workspace, and leaves the working pair untouched if either staged build fails.
-- after both replacements are ready, the old pair is renamed to retiring names, both new legs are committed in one no-yield server section, requested motor state is restored, then the retired pair is destroyed;
-- redraw code does not write BodyCollider `CFrame`, `PivotTo`, `AssemblyLinearVelocity`, or `AssemblyAngularVelocity`;
-- a forced second-leg build failure is covered by the B13 Studio spec and must preserve old legs, ShapeVersion, body transform and velocities;
-- successful redraw is covered for exactly two surviving leg models, old-pair cleanup and non-default rotation-phase preservation.
+Coverage added:
+- valid accepted shape is seeded before abuse cases;
+- valid cooldown spam must return `RATE_LIMITED` and preserve the accepted shape;
+- stale duplicate sequence must return `STALE_SEQUENCE` and preserve the accepted shape;
+- malformed point structure, non-finite points, `MaxRawPoints+1`, and canonical bounded payload larger than `MaxStrokePayloadBytes` are rejected without geometry mutation;
+- 40 repeated legal redraws assert exactly two surviving leg models, bounded physical part count, monotonic `ShapeVersion`, and no retiring-model leaks;
+- 50-request burst spam asserts no extra models/parts and no version mutation;
+- static contract guard verifies validation/payload/rate gates occur before `ValidateAndBuild`.
 
-Fresh automated evidence on the code commit:
-- GitHub Actions `Contract Verify` run `34283480699`: SUCCESS;
-- `python verify.py`: **42 passed, 0 failed**;
-- B13 static contract tests: PASS.
+Fresh automated evidence on B14 head `c330918bc80f5c667310d2240bfb36cdce92cee4`:
+- GitHub Actions `Contract Verify` run `34284052971`: SUCCESS;
+- `python verify.py`: **44 passed, 0 failed**.
 
-### B13 evidence still required before ACCEPTED
-Roblox Studio/Rojo evidence is not available to the automation and must not be fabricated. Required human gate remains:
-- sync/build current `main` in the normal local Rojo workflow;
-- Studio Play prints `[DrawRacers][B13] atomic redraw tests PASS`;
+### B14 evidence still required before ACCEPTED
+Roblox Studio/Rojo evidence is not available to the automation and must not be fabricated. Required local evidence remains:
+- sync/build current `main` in the normal Rojo workflow;
+- Studio Play prints `[DrawRacers][B14] redraw abuse/stress tests PASS`;
 - no DrawRacers red runtime error;
-- visual/physics confirmation that the working legs remain while a redraw is pending and that a successful redraw does not visibly teleport or zero racer motion.
+- no visible orphan/retiring leg geometry after the stress suite.
 
 ## Night-autopilot override
-The Product Owner explicitly authorized bounded CORE implementation to continue while earlier Studio evidence is pending, provided no documentation hard human gate is crossed. Therefore the next implementation task may proceed to **B14 — invalid/stress redraw suite** even though B12/B13 remain Studio-pending. This override does not mark either task ACCEPTED.
+The Product Owner explicitly authorized bounded CORE implementation to continue while earlier Studio evidence is pending, provided no documentation hard human gate is crossed. Therefore the next implementation task may proceed to **B15 — Five obstacle lab final geometry** while B12–B14 Studio evidence remains pending. This override does not mark those tasks ACCEPTED.
 
 ## Next permitted task
-**B14 — Invalid/stress redraw suite.** Required owners: `24_TESTING_QA_MATRIX.md` and `32_SECURITY_THREAT_MODEL.md`. Scope is abuse/stress of the existing redraw/network path only. It must not pull B15 geometry, B16 tuning UI, multiplayer/meta/economy/shop, or any post-G0 work forward.
+**B15 — Five obstacle lab final geometry.** Required owners: `60_LEVEL_CONTENT_PRODUCTION_SPEC.md` and `67_LEVEL_ASSEMBLY_AND_VALIDATION.md`. Scope is only the canonical Flat/Steps/Wall/Gap/Tunnel M0 lab geometry/defaults and their intended legal-shape traversal acceptance. Do not pull B16 tuning UI, multiplayer/meta/economy/shop, or any post-G0 work forward.
 
-After B14, ordered M0 work remains B15 → B16 → **B17/G0 HUMAN GATE**. B17 is a hard stop: no C01 or later phase may start until recorded G0 PASS or an explicit Product Owner scope decision after allowed rework.
+After B15, ordered M0 work remains B16 → **B17/G0 HUMAN GATE**. B17 is a hard stop: no C01 or later phase may start until recorded G0 PASS or an explicit Product Owner scope decision after allowed rework.
