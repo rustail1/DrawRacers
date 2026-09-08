@@ -16,7 +16,7 @@ Before any implementation task, read:
 ## Current task
 **A02 — Shared/config/type + server/client bootstrap roots.**
 
-A01 is ACCEPTED with local `rojo build`, `rojo serve`, Roblox Studio connection, live filesystem→Studio sync and clean Git verification. Do not start A03 or gameplay until A02 passes its acceptance contract.
+A01 is ACCEPTED with local `rojo build`, `rojo serve`, Roblox Studio connection, live filesystem→Studio sync and clean Git verification. Do not start A03/A04/gameplay until A02 passes its acceptance contract.
 
 ## Toolchain
 Rokit manages the project Rojo version. The repository currently pins Rojo in `rokit.toml`.
@@ -32,12 +32,13 @@ rojo serve
 
 Then connect the Rojo plugin in Roblox Studio to the localhost server shown by `rojo serve`.
 
-## A01 Rojo mapping
-- `src/shared` -> `ReplicatedStorage/Shared`
-- `src/server` -> `ServerScriptService`
-- `src/client` -> `StarterPlayer/StarterPlayerScripts`
+## A02 minimal structure
+- `src/shared/Config` -> `ReplicatedStorage/Shared/Config`
+- `src/shared/Types` -> `ReplicatedStorage/Shared/Types`
+- `src/server/Bootstrap.server.lua` -> `ServerScriptService/Bootstrap`
+- `src/client/Bootstrap.client.lua` -> `StarterPlayer/StarterPlayerScripts/Bootstrap`
 
-Detailed DataModel roots and real bootstrap modules are introduced by later tasks according to the production docs. Do not create future services/controllers early.
+A02 deliberately does **not** create empty future `Services`, `Runtime`, `Controllers`, `Math`, or `Net` roots. Those appear only when their owning implementation task needs them.
 
 ## Working loop
 `ChatGPT/GitHub change -> git pull --ff-only -> Rojo -> Studio playtest -> PASS/FAIL -> next change`
