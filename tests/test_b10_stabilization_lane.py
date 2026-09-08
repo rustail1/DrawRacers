@@ -23,6 +23,7 @@ def test_b10_stabilizer_is_z_only_and_has_no_forward_propulsion() -> None:
         'Instance.new("AlignPosition")',
         'Instance.new("AlignOrientation")',
         "Enum.ForceLimitMode.PerAxis",
+        "Enum.ActuatorRelativeTo.World",
         "Vector3.new(0, 0,",
         "LaneCorrectionDeadzone",
         "LaneHardBound",
@@ -59,6 +60,7 @@ def test_b10_studio_spec_is_wired() -> None:
         "LaneHardBoundExceeded",
         "LaneCorrectionDeadzone",
         "OrientationResponsiveness",
+        "Enum.ActuatorRelativeTo.World",
         "stabilization/lane tests PASS",
     ]:
         assert token in text, f"missing B10 Studio acceptance token: {token}"
