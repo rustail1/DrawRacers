@@ -1,0 +1,19 @@
+# Rojo build outputs
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+
+# Local environment
+.env
+.env.*
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary / logs
+*.log
+*.tmp
