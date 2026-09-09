@@ -58,6 +58,7 @@ function RacerStabilizer.new(params: Params)
 	local laneAttachment = takeAttachment(runtimeAttachments, body, "LaneAlignAttachment")
 	local orientationAttachment = takeAttachment(runtimeAttachments, body, "OrientationAttachment")
 	orientationAttachment.Axis = Vector3.zAxis
+	orientationAttachment.SecondaryAxis = Vector3.yAxis
 	-- RuntimeAttachments is a template staging container only. Once the attachments
 	-- are owned by BodyCollider, remove the empty helper so spawned racers match doc 65.
 	runtimeAttachments:Destroy()
@@ -74,8 +75,8 @@ function RacerStabilizer.new(params: Params)
 	orientationAlign.Name = "OrientationAlign"
 	orientationAlign.Mode = Enum.OrientationAlignmentMode.OneAttachment
 	orientationAlign.Attachment0 = orientationAttachment
-	orientationAlign.AlignType = Enum.AlignType.PrimaryAxisParallel
-	orientationAlign.PrimaryAxis = Vector3.zAxis
+	orientationAlign.AlignType = Enum.AlignType.AllAxes
+	orientationAlign.CFrame = CFrame.identity
 	orientationAlign.RigidityEnabled = false
 	orientationAlign.ReactionTorqueEnabled = false
 	orientationAlign.Responsiveness = config.OrientationResponsiveness
