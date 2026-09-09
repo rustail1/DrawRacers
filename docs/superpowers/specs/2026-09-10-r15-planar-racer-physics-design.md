@@ -42,10 +42,10 @@ Implementation approach:
 - keep the existing `AlignPosition` ownership in `RacerStabilizer`;
 - configure it as an always-enabled world-space Z-only servo (`MaxAxesForce.X = 0`, `MaxAxesForce.Y = 0`);
 - remove the lane correction deadzone from enable/disable behavior;
-- tune responsiveness/force for a near-rigid lane plane without adding X/Y propulsion;
+- use the exact initial planar defaults in R15.3;
 - retain a small hard safety bound only as diagnostic/failsafe protection against solver explosions, not as normal allowed lateral travel.
 
-A hard safety projection/snap is permitted only if Studio evidence shows that the Roblox solver can exceed the small hard bound under extreme impulses despite the continuous constraint. It must operate on the whole racer assembly, preserve X/Y position, preserve in-plane Z-axis rotation, preserve the current ShapeSpec/ShapeVersion, zero only lateral velocity as needed, and must not run every frame during normal motion.
+A hard safety projection/snap is permitted only if Studio evidence shows that the Roblox solver can exceed the hard bound under an injected extreme lateral impulse despite the continuous constraint. It must operate on the whole racer assembly, preserve X/Y position, preserve in-plane Z-axis rotation, preserve the current ShapeSpec/ShapeVersion, zero only lateral velocity as needed, and must not run every frame during normal motion.
 
 ## R15.2 — Planar orientation lock
 The current full-orientation correction is replaced with an orientation constraint whose target is only the plane normal.
@@ -62,22 +62,28 @@ Implementation approach:
 - explicitly orient its primary axis to represent the racer's plane normal;
 - configure `AlignOrientation` for primary-axis-only alignment to canonical world Z;
 - remove the current all-Euler `OrientationFreeTiltDegrees` gating because out-of-plane freedom is no longer a gameplay feature;
+- keep the planar orientation constraint continuously enabled;
 - preserve free rotation around the aligned normal.
 
 Exact Roblox attachment/CFrame axis semantics must be covered by the Studio B10 regression before the change is accepted.
 
-## R15.3 — Physics configuration contract
-`PhysicsConfig.Stabilization` is updated from soft-lane gameplay values to planar-lock values.
+## R15.3 — Exact initial physics defaults
+`PhysicsConfig.Stabilization` moves from soft-lane values to these exact R15 starting defaults:
 
-The implementation plan will select exact starting numbers, but the design semantics are fixed:
-- no gameplay lane deadzone;
-- normal lateral deviation target: approximately <= 0.03 stud in ordinary G0 play;
-- hard diagnostic/failsafe bound: approximately 0.05-0.08 stud, subject to Studio solver evidence;
-- Z servo force/responsiveness must be high enough that wheel/obstacle contacts cannot create visible lane drift;
-- orientation target constrains only out-of-plane axes;
-- no stabilizer component may generate forward X propulsion.
+- `LaneCorrectionDeadzone = 0.0` (kept only if compatibility requires the key; it must not disable the constraint);
+- `LaneNormalError = 0.03` stud;
+- `LaneHardBound = 0.08` stud;
+- `LaneMaxForceZ = 60000`;
+- `LaneResponsiveness = 40`;
+- `LaneMaxVelocity = 30`;
+- `OrientationResponsiveness = 40`;
+- `OrientationMaxTorque = 60000`;
+- `OrientationMaxAngularVelocity = 30`;
+- `OrientationFreeTiltDegrees` is removed from runtime semantics; remove the key if no compatibility test requires it.
 
-Numeric values are tuning defaults, not player-facing mechanics. If Studio evidence requires different values, the same planar invariant remains mandatory.
+These are starting defaults, not hidden target values. They may be tuned only if Studio evidence shows solver instability or visible drift. Any tuning must preserve the product invariants: Z is not gameplay movement, rotation around world Z remains free, and the stabilizer adds no intentional X propulsion.
+
+Acceptance target in ordinary G0 play is `laneDeviation <= 0.03` stud. Any deviation above `0.08` stud is a hard FAIL unless it occurs only in the explicit artificial stress injection and immediately recovers without side escape.
 
 ## R15.4 — B10 and regression coverage
 B10 becomes the executable owner of the planar stabilization contract.
@@ -86,17 +92,18 @@ Required automated/static checks:
 - lane constraint is continuously enabled;
 - position actuator has zero X/Y authority and Z-only authority;
 - target Z remains exactly `laneCenterZ`;
-- orientation alignment is primary-axis-only / plane-normal-only;
-- in-plane Z-axis rotation is not intentionally corrected;
+- orientation constraint is continuously enabled and primary-axis-only / plane-normal-only;
+- in-plane world-Z rotation is not intentionally corrected;
 - no code path adds intentional +X movement;
-- `LaneNormalBoundExceeded` / `LaneHardBoundExceeded`, if retained, describe diagnostic solver deviation rather than permitted player motion.
+- `LaneNormalBoundExceeded` / `LaneHardBoundExceeded`, if retained, describe diagnostic solver deviation rather than permitted player motion;
+- config matches the exact R15 initial defaults unless a later evidence-backed tuning record changes them.
 
 Required Studio checks:
 1. spawn an unanchored racer on the canonical flat surface;
 2. apply a strong artificial lateral Z impulse/velocity;
 3. verify the racer remains/recenters within the planar tolerance and does not leave the lane plane;
 4. apply/induce out-of-plane angular disturbance and verify it is suppressed;
-5. induce normal in-plane tumble around Z and verify it remains physical/free;
+5. induce normal in-plane tumble around world Z and verify it remains physical/free;
 6. verify the motor/legs still produce forward movement through Track collision and the stabilizer itself adds no forward propulsion.
 
 ## R15.5 — G0 human acceptance
@@ -108,7 +115,8 @@ Human Studio acceptance:
 - racer moves forward/backward from real leg/Track contacts;
 - racer jumps/falls vertically and can tumble in the side-view plane;
 - racer never visibly drives or falls off the track through the left/right Z edges;
-- debug `laneDeviation` stays near zero during normal play (target <= 0.03 stud; any excursion above the hard diagnostic bound is FAIL until explained/fixed);
+- debug `laneDeviation` stays <= 0.03 stud during ordinary play;
+- any `laneDeviation > 0.08` stud is FAIL unless it belongs to the explicit injected lateral stress and immediately recovers;
 - deliberate gap/fall still triggers R14.6 recovery because Y fell below the recovery threshold, not because the racer escaped sideways;
 - accepted ShapeSpec/ShapeVersion survives recovery as already required by R14.6.
 
@@ -117,7 +125,7 @@ This G0 check is a human gate. CI cannot mark it PASS.
 ## Documentation reconciliation
 The following product/technical docs are updated in the implementation only after the new contract is tested:
 - `docs/03_CORE_MECHANICS_SPEC.md`: state explicitly that locomotion is planar and lateral steering/drift is not gameplay;
-- `docs/16_BALANCE_TUNING.md`: replace `Z stays near lane center` / soft-lane allowances with hard planar-lock semantics and the new tuning values;
+- `docs/16_BALANCE_TUNING.md`: replace `Z stays near lane center` / soft-lane allowances with hard planar-lock semantics and the exact R15 defaults;
 - status/decision evidence docs: record R15 and keep B17/G0 PENDING until human acceptance is complete.
 
 If another architecture document repeats the old soft-lane semantics, the implementation plan must include that file in the reconciliation rather than leaving a contradiction.
