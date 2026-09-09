@@ -58,3 +58,15 @@ def test_r16_3_one_shape_builds_two_same_xy_legs_about_fixed_pivot() -> None:
         "function RacerRuntime:ApplyShape", 1
     )[0]
     assert "shapeSpec.normalizedPoints" not in apply_shape_spec
+
+
+def test_r16_4_phase_is_180_and_redraw_retains_each_side() -> None:
+    config = read("src/shared/Config/PhysicsConfig.lua")
+    b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
+    b13 = read("src/server/Tests/B13AtomicRedrawSpec.lua")
+
+    assert "RightPhaseOffsetDegrees = 180" in config
+    assert "angularDistanceDegrees" in b09
+    assert "phase difference" in b09
+    assert "angularDistanceDegrees(leftPhaseAfter, leftPhaseBefore)" in b13
+    assert "angularDistanceDegrees(rightPhaseAfter, rightPhaseBefore)" in b13
