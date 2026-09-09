@@ -26,6 +26,9 @@ return {
 		InnerHubNoCollisionRadius = 0.65,
 		MinimumMappedSegmentLength = 0.08,
 		SegmentOverlapAllowance = 0.06,
+		HubOffsetX = 0.0,
+		HubOffsetY = -0.35,
+		HubOffsetZAbs = 1.62,
 	},
 	Motor = {
 		AngularVelocity = -8.0,
