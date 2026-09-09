@@ -135,3 +135,42 @@ def test_r14_5_transport_contains_processor_exception_and_returns_generic_error(
     assert '"SERVER_ERROR"' in transport
     assert "ExtractSafeSequence" in transport
     assert "function LegShapeService.ExtractSafeSequence" in service
+
+
+def test_r14_6_g0_fall_recovery_respawns_only_the_racer() -> None:
+    config = read("src/shared/Config/M0SceneConfig.lua")
+    harness = read("src/server/Tests/M0HumanHarness.lua")
+    assert "RecoveryKillY = -12" in config
+    assert "recoveryConnection" in harness
+    assert "RunService.Heartbeat" in harness
+    assert "M0SceneConfig.RecoveryKillY" in harness
+    assert "respawnActiveRacer" in harness
+    recovery_body = harness.split("local function respawnActiveRacer", 1)[1].split("end", 1)[0]
+    assert "restoreCharacter" not in recovery_body
+    assert "activeRacer:Destroy()" in harness
+
+
+def test_r14_7_atomic_redraw_rolls_back_partial_commit_failure() -> None:
+    runtime = read("src/server/Runtime/RacerRuntime.lua")
+    studio_spec = read("src/server/Tests/B13AtomicRedrawSpec.lua")
+    assert "commitOk" in runtime
+    assert "commitError" in runtime
+    assert 'oldLeftModel.Name = "LeftLeg"' in runtime
+    assert 'oldRightModel.Name = "RightLeg"' in runtime
+    assert "stagedLeftLeg:Destroy()" in runtime
+    assert "stagedRightLeg:Destroy()" in runtime
+    assert "local originalCommit = LegAssembly.Commit" in studio_spec
+    assert "B13 injected right-leg commit failure" in studio_spec
+    assert 'FindFirstChild("LeftLeg_Retiring") == nil' in studio_spec
+    assert 'FindFirstChild("RightLeg_Retiring") == nil' in studio_spec
+
+
+def test_r14_8_player_toast_maps_internal_reason_codes_to_copy() -> None:
+    drawing = read("src/client/Controllers/DrawingController.lua")
+    assert "validationMessageForReason" in drawing
+    assert '"DRAW A DIFFERENT SHAPE"' in drawing
+    assert '"TRY AGAIN"' in drawing
+    assert "_setValidationReason" in drawing
+    assert 'self:_setValidation(rejectReasonCode)' not in drawing
+    assert 'self:_setValidation("TOO_FEW_POINTS")' not in drawing
+    assert 'self:_setValidation("NETWORK_NOT_READY")' not in drawing
