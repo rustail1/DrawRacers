@@ -8,8 +8,14 @@ local Workspace = game:GetService("Workspace")
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
 )
+local StrokeMath = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("StrokeMath")
+)
 local GeometryMath = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("GeometryMath")
+)
+local StrokeTypes = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
 )
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
 local LegAssembly = require(script.Parent:WaitForChild("LegAssembly"))
@@ -22,6 +28,8 @@ local RIGHT_HUB_OFFSET = Vector3.new(0, -0.75, 1.62)
 
 local RacerRuntime = {}
 RacerRuntime.__index = RacerRuntime
+
+type ShapeSpec = StrokeTypes.ShapeSpec
 
 export type SpawnParams = {
 	raceId: string,
@@ -141,17 +149,21 @@ local function captureLegPhaseDegrees(leg: any, hub: Part, fallbackDegrees: numb
 	return math.deg(z)
 end
 
-local function makeInternalShapeSpec(normalizedPoints: { Vector2 })
+local function makeInternalShapeSpec(normalizedPoints: { Vector2 }): ShapeSpec
 	local plan = GeometryMath.BuildSegmentPlan(normalizedPoints, PhysicsConfig.LegGeometry)
 	assert(#plan.segmentPlan > 0, "internal shape produced no legal physical segments")
+	local bounds = StrokeMath.ComputeBounds(normalizedPoints)
+	assert(bounds ~= nil, "internal shape requires bounds")
 	return {
 		version = 0,
 		normalizedPoints = normalizedPoints,
 		mappedPoints = plan.mappedPoints,
+		bounds = bounds,
 		segmentPlan = plan.segmentPlan,
 		extent = plan.extent,
 		debugRawPointCount = #normalizedPoints,
 		debugPhysicsPointCount = #plan.mappedPoints,
+		debugId = string.format("internal-shape-p%d", #normalizedPoints),
 	}
 end
 
@@ -209,7 +221,7 @@ function RacerRuntime.new(params: SpawnParams)
 		rightLeg = nil,
 		stabilizer = stabilizer,
 		antiStall = antiStall,
-		currentShapeSpec = nil,
+		currentShapeSpec = nil :: ShapeSpec?,
 		destroyed = false,
 	}, RacerRuntime)
 
@@ -245,12 +257,12 @@ function RacerRuntime:GetShapeVersion(): number
 	return version
 end
 
-function RacerRuntime:GetCurrentShapeSpec()
+function RacerRuntime:GetCurrentShapeSpec(): ShapeSpec?
 	assert(not self.destroyed, "RacerRuntime is destroyed")
 	return self.currentShapeSpec
 end
 
-function RacerRuntime:_ApplyShapeSpec(shapeSpec: any, motorEnabled: boolean?)
+function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolean?)
 	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
 	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table", "shapeSpec missing segmentPlan")
 	assert(#shapeSpec.segmentPlan > 0, "shapeSpec requires physical segments")
@@ -355,7 +367,7 @@ function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: bo
 	return self:_ApplyShapeSpec(makeInternalShapeSpec(normalizedPoints), motorEnabled)
 end
 
-function RacerRuntime:ApplyValidatedShape(shapeSpec: any, motorEnabled: boolean?)
+function RacerRuntime:ApplyValidatedShape(shapeSpec: ShapeSpec, motorEnabled: boolean?)
 	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
 	assert(type(shapeSpec) == "table", "ApplyValidatedShape requires ShapeSpec")
 	assert(type(shapeSpec.version) == "number", "ShapeSpec missing numeric version")
