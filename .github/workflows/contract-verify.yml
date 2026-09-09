@@ -23,6 +23,6 @@ jobs:
         with:
           version: 1.1.0
       - name: Install Roblox toolchain
-        run: rokit install
+        run: rokit install --no-trust-check
       - name: Build Rojo project
         run: rojo build default.project.json -o /tmp/DrawRacersDev.rbxlx
