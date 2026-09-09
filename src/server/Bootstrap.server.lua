@@ -46,6 +46,9 @@ if RunService:IsStudio() then
 	local B15ObstacleLabSpec = require(testsFolder:WaitForChild("B15ObstacleLabSpec"))
 	B15ObstacleLabSpec.run()
 
+	local B16DebugTuningSpec = require(testsFolder:WaitForChild("B16DebugTuningSpec"))
+	B16DebugTuningSpec.run()
+
 	local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
 	B08OneHingeMotorHarness.start()
 
