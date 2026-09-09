@@ -12,7 +12,7 @@ def test_b10_config_defaults() -> None:
         "OrientationMaxTorque = 60000",
         "OrientationMaxAngularVelocity = 30",
     ]:
-        assert token in config, f"missing R15.1 planar config default: {token}"
+        assert token in config, f"missing R16 planar/upright config default: {token}"
 
     for obsolete in [
         "LaneCorrectionDeadzone",
@@ -21,7 +21,7 @@ def test_b10_config_defaults() -> None:
         "LaneResponsiveness",
         "LaneMaxVelocity",
     ]:
-        assert obsolete not in config, f"R15.1 must not retain obsolete soft-lane tuning: {obsolete}"
+        assert obsolete not in config, f"R16 must not retain obsolete soft-lane tuning: {obsolete}"
 
 
 def test_b10_stabilizer_uses_mechanical_plane_and_has_no_forward_propulsion() -> None:
@@ -39,8 +39,8 @@ def test_b10_stabilizer_uses_mechanical_plane_and_has_no_forward_propulsion() ->
         "laneReferenceAttachment.Axis = Vector3.zAxis",
         "lanePlane.Enabled = true",
         'Instance.new("AlignOrientation")',
-        "Enum.AlignType.PrimaryAxisParallel",
-        "orientationAlign.PrimaryAxis = Vector3.zAxis",
+        "Enum.AlignType.AllAxes",
+        "orientationAlign.CFrame = CFrame.identity",
         "orientationAttachment.Axis = Vector3.zAxis",
         "orientationAlign.Enabled = true",
         "LaneHardBound",
@@ -48,10 +48,11 @@ def test_b10_stabilizer_uses_mechanical_plane_and_has_no_forward_propulsion() ->
         'SetAttribute("LaneHardBoundExceeded"',
         "RunService.Heartbeat:Connect",
     ]:
-        assert token in text, f"missing R15.1 planar stabilizer token: {token}"
+        assert token in text, f"missing R16 planar/upright stabilizer token: {token}"
 
     for forbidden in [
         'Instance.new("AlignPosition")',
+        "Enum.AlignType.PrimaryAxisParallel",
         "MaxAxesForce",
         "ApplyImpulse(",
         "AssemblyLinearVelocity =",
@@ -62,7 +63,7 @@ def test_b10_stabilizer_uses_mechanical_plane_and_has_no_forward_propulsion() ->
         "LaneCorrectionDeadzone",
         "OrientationFreeTiltDegrees",
     ]:
-        assert forbidden not in text, f"R15.1 stabilizer must not use soft-lane/forward/teleport behavior: {forbidden}"
+        assert forbidden not in text, f"R16 stabilizer must not use soft-lane/forward/teleport behavior: {forbidden}"
 
 
 def test_b10_racer_runtime_owns_stabilizer_lifetime() -> None:
@@ -79,20 +80,19 @@ def test_b10_studio_spec_is_wired() -> None:
     text = spec.read_text(encoding="utf-8")
     for token in [
         "LaneHardBoundExceeded",
-        "PrimaryAxisParallel",
-        "orientationAlign.PrimaryAxis == Vector3.zAxis",
+        "Enum.AlignType.AllAxes",
+        "orientationAlign.CFrame == CFrame.identity",
         "GetLaneConstraint",
         'lanePlane:IsA("PlaneConstraint")',
         "body:ApplyImpulse",
         "maxObservedLaneDeviation",
         "RunService.Heartbeat:Wait()",
         "lateral impulse escaped the hard gameplay plane",
-        "planar orientation constraint must remain continuously enabled",
-        "in-plane rotation around Z must remain unconstrained",
-        "out-of-plane disturbance must keep planar correction active",
+        "upright body angular deviation",
+        "x/y translation must remain physically free",
         "stabilization/lane tests PASS",
     ]:
-        assert token in text, f"missing R15.1 B10 Studio acceptance token: {token}"
+        assert token in text, f"missing R16 B10 Studio acceptance token: {token}"
 
     bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
     assert "B10StabilizationSpec" in bootstrap
