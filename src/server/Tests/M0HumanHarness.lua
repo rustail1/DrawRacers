@@ -124,14 +124,33 @@ end
 
 local function respawnActiveRacer()
 	local player = activePlayer
+	local racer = activeRacer
 	if player == nil then
 		return
 	end
-	if activeRacer ~= nil then
-		activeRacer:Destroy()
-		activeRacer = nil
+	if racer == nil then
+		createActiveRacer(player)
+		print("[DrawRacers][R14.6] G0 racer recovered at canonical spawn")
+		return
 	end
-	createActiveRacer(player)
+
+	local shapeSpecBefore = racer:GetCurrentShapeSpec()
+	local shapeVersionBefore = racer:GetShapeVersion()
+	local model = racer:GetModel()
+	local spawn = M0SceneConfig.Spawn
+
+	model:PivotTo(CFrame.new(spawn.X, spawn.Y, spawn.Z))
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.AssemblyLinearVelocity = Vector3.zero
+			descendant.AssemblyAngularVelocity = Vector3.zero
+		end
+	end
+
+	local shapeSpecAfter = racer:GetCurrentShapeSpec()
+	local shapeVersionAfter = racer:GetShapeVersion()
+	assert(shapeSpecAfter == shapeSpecBefore, "G0 recovery must preserve current ShapeSpec")
+	assert(shapeVersionAfter == shapeVersionBefore, "G0 recovery must preserve ShapeVersion")
 	print("[DrawRacers][R14.6] G0 racer recovered at canonical spawn")
 end
 
