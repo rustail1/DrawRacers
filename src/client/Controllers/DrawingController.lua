@@ -35,8 +35,26 @@ type SemanticPoint = {
 	y: number,
 }
 
+type PendingStroke = {
+	points: { SemanticPoint },
+	generation: number,
+}
+
 local function isFiniteNumber(value: any): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+end
+
+local function validationMessageForReason(reasonCode: string): string
+	if reasonCode == "TOO_FEW_POINTS"
+		or reasonCode == "TOO_SHORT"
+		or reasonCode == "INVALID_STROKE"
+		or reasonCode == "TOO_MANY_POINTS"
+		or reasonCode == "TOO_MANY_CLEANED_POINTS"
+		or reasonCode == "PAYLOAD_TOO_LARGE"
+	then
+		return "DRAW A DIFFERENT SHAPE"
+	end
+	return "TRY AGAIN"
 end
 
 local function inputTypeFamily(inputType: Enum.UserInputType): string?
@@ -360,10 +378,11 @@ function DrawingController.new(inputController: any, drawHud: ScreenGui, submitS
 		_layoutFamily = layoutFamily,
 		_pendingLayoutFamily = nil,
 		_validationGeneration = 0,
+		_pendingGeneration = 0,
 		_nextSequence = 1,
 		_latestSubmittedSequence = 0,
 		_lastAcceptedSequence = 0,
-		_pendingStrokes = {} :: { [number]: { SemanticPoint } },
+		_pendingStrokes = {} :: { [number]: PendingStroke },
 	}, DrawingController)
 
 	self.livePoints = self._livePoints
@@ -472,6 +491,11 @@ function DrawingController:_setValidation(message: string?)
 			toast.Visible = false
 		end
 	end)
+end
+
+function DrawingController:_setValidationReason(reasonCode: string)
+	print(("[DrawRacers][Validation] reason=%s"):format(reasonCode))
+	self:_setValidation(validationMessageForReason(reasonCode))
 end
 
 function DrawingController:_normalizedPixelDistance(a: Vector2, b: Vector2): number
@@ -625,23 +649,56 @@ function DrawingController:_prepareSemanticPoints(pixelPoints: { Vector2 }): ({ 
 	return points, nil
 end
 
+function DrawingController:_pendingStrokeCount(): number
+	local count = 0
+	for _, _ in self._pendingStrokes do
+		count += 1
+	end
+	return count
+end
+
 function DrawingController:_submitStrokeIntent(semanticPixelPoints: { Vector2 })
 	if self._submitStroke == nil then
-		self:_setValidation("NETWORK_NOT_READY")
+		self:_setValidationReason("NETWORK_NOT_READY")
 		return
 	end
 
 	local semanticPoints, prepareError = self:_prepareSemanticPoints(semanticPixelPoints)
 	if semanticPoints == nil then
-		self:_setValidation(prepareError or "INVALID_STROKE")
+		self:_setValidationReason(prepareError or "INVALID_STROKE")
+		return
+	end
+
+	local config = PhysicsConfig.StrokeProcessing
+	if self:_pendingStrokeCount() >= config.MaxPendingStrokes then
+		self:_setValidationReason("CLIENT_PENDING_LIMIT")
 		return
 	end
 
 	local sequence = self._nextSequence
 	self._nextSequence += 1
 	self._latestSubmittedSequence = sequence
-	self._pendingStrokes[sequence] = copySemanticPoints(semanticPoints)
+	self._pendingGeneration += 1
+	local generation = self._pendingGeneration
+	self._pendingStrokes[sequence] = {
+		points = copySemanticPoints(semanticPoints),
+		generation = generation,
+	}
 	self:_setValidation(nil)
+
+	task.delay(config.StrokeResultTimeout, function()
+		if self._ui.safeRoot.Parent == nil then
+			return
+		end
+		local pending = self._pendingStrokes[sequence]
+		if pending ~= nil and pending.generation == generation then
+			self._pendingStrokes[sequence] = nil
+			print(("[DrawRacers][R14.5] stroke result timeout sequence=%d"):format(sequence))
+			if sequence == self._latestSubmittedSequence then
+				self:_setValidationReason("NETWORK_TIMEOUT")
+			end
+		end
+	end)
 
 	self._submitStroke:FireServer({
 		sequence = sequence,
@@ -660,17 +717,13 @@ function DrawingController:_onStrokeResult(result: any)
 		return
 	end
 
-	local pending = self._pendingStrokes[sequence]
-	if pending == nil then
-		return
-	end
 	self._pendingStrokes[sequence] = nil
 
 	if result.accepted == true then
 		if not validServerSemanticPoints(result.acceptedPoints) then
 			warn(("[DrawRacers][R14.1] malformed authoritative acceptedPoints sequence=%d"):format(sequence))
 			if sequence == self._latestSubmittedSequence then
-				self:_setValidation("INVALID_SERVER_RESULT")
+				self:_setValidationReason("INVALID_SERVER_RESULT")
 			end
 			return
 		end
@@ -702,7 +755,7 @@ function DrawingController:_onStrokeResult(result: any)
 		local rejectReasonCode = if type(result.rejectReasonCode) == "string"
 			then result.rejectReasonCode
 			else "STROKE_REJECTED"
-		self:_setValidation(rejectReasonCode)
+		self:_setValidationReason(rejectReasonCode)
 		print(("[DrawRacers][B12] stroke rejected sequence=%d reason=%s"):format(sequence, rejectReasonCode))
 	end
 end
@@ -751,7 +804,7 @@ function DrawingController:_onPointer(event)
 		if #semanticPixels >= PhysicsConfig.StrokeProcessing.MinimumRawPoints then
 			self:_submitStrokeIntent(semanticPixels)
 		else
-			self:_setValidation("TOO_FEW_POINTS")
+			self:_setValidationReason("TOO_FEW_POINTS")
 		end
 		print(("[DrawRacers][B02] local stroke complete pending=%d semantic=%d accepted=%d"):format(
 			#pendingPixels,
@@ -822,6 +875,7 @@ function DrawingController:Destroy()
 		self._layoutConnection = nil
 	end
 	self._validationGeneration += 1
+	self._pendingGeneration += 1
 	table.clear(self._pendingStrokes)
 	table.clear(self._acceptedSemanticPoints)
 	self._inputController:Unbind()
