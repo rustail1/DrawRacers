@@ -38,7 +38,11 @@ def test_r08_g0_isolates_roblox_character_from_racer_physics() -> None:
 
     attach_block = harness[harness.index("local function attachPlayer"):harness.index("local function attachNextAvailablePlayer")]
     assert "isolateCharacter(player.Character)" in attach_block
-    assert attach_block.index("isolateCharacter(player.Character)") < attach_block.index("RacerRuntime.new")
+    assert "createActiveRacer(player)" in attach_block
+    assert attach_block.index("isolateCharacter(player.Character)") < attach_block.index("createActiveRacer(player)")
+
+    spawn_block = harness[harness.index("local function createActiveRacer"):harness.index("local function respawnActiveRacer")]
+    assert "RacerRuntime.new" in spawn_block
 
 
 def test_r08_minimum_useful_leg_extent_is_configured_and_server_enforced() -> None:
