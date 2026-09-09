@@ -38,7 +38,15 @@ local function makePart(name: string, size: Vector3, position: Vector3, parent: 
 	return part
 end
 
-local function makeTrackPart(name: string, x0: number, x1: number, topY: number, height: number, parent: Instance): Part
+local function makeTrackPart(
+	name: string,
+	x0: number,
+	x1: number,
+	topY: number,
+	height: number,
+	parent: Instance,
+	antiStallSurface: boolean?
+): Part
 	assert(x1 > x0, string.format("%s must have positive X length", name))
 	assert(height > 0, string.format("%s must have positive height", name))
 
@@ -54,6 +62,7 @@ local function makeTrackPart(name: string, x0: number, x1: number, topY: number,
 	part.CollisionGroup = CollisionGroups.Track
 	part.Material = Enum.Material.SmoothPlastic
 	part.Color = Color3.fromRGB(115, 120, 130)
+	part:SetAttribute("AntiStallSurface", antiStallSurface == true)
 	return part
 end
 
@@ -64,7 +73,7 @@ local function makeRaisedBlock(name: string, x0: number, x1: number, topY: numbe
 end
 
 local function buildFlatShort(piece: PieceConfig, parent: Instance)
-	makeTrackPart("FlatFloor", piece.StartX, piece.StartX + piece.Length, config.Lane.TopY, config.Lane.Thickness, parent)
+	makeTrackPart("FlatFloor", piece.StartX, piece.StartX + piece.Length, config.Lane.TopY, config.Lane.Thickness, parent, true)
 end
 
 local function buildSmallSteps(piece: PieceConfig, parent: Instance)
@@ -163,7 +172,7 @@ function M0TestScene.build()
 	obstacleLab.Name = "ObstacleLab"
 	obstacleLab.Parent = scene
 
-	makeTrackPart("EntryFloor", 0, config.Pieces[1].StartX, config.Lane.TopY, config.Lane.Thickness, obstacleLab)
+	makeTrackPart("EntryFloor", 0, config.Pieces[1].StartX, config.Lane.TopY, config.Lane.Thickness, obstacleLab, true)
 
 	for index, rawPiece in ipairs(config.Pieces) do
 		local piece = rawPiece :: PieceConfig
@@ -181,7 +190,8 @@ function M0TestScene.build()
 				recoveryEnd,
 				config.Lane.TopY,
 				config.Lane.Thickness,
-				obstacleLab
+				obstacleLab,
+				true
 			)
 		end
 	end
