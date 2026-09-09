@@ -46,7 +46,7 @@ Exact hinge axis, hub offsets, starting motor sign and phase construction are `7
 - Motor должен иметь достаточно torque, чтобы geometry имела значение, но не бесконечно пробивать стены.
 
 ## F. Body behavior
-Racer locomotion is 2.5D. X/Y are the physical gameplay plane. Z translation is locked to the racer's lane center and is not player steering/gameplay. Rotation around world Z remains physical and free; out-of-plane X/Y rotation is constrained.
+Racer locomotion is 2.5D. X/Y are the physical gameplay plane. Z translation is locked to the racer's lane center and is not player steering/gameplay; rotation around world Z remains physical and free; out-of-plane X/Y rotation is constrained.
 
 Cube остаётся настоящим physical body внутри этой плоскости: collisions ног с Track могут заставлять его подпрыгивать, падать, наклоняться и кувыркаться вокруг world Z. Planar stabilizer не имеет права добавлять intentional +X race speed.
 
