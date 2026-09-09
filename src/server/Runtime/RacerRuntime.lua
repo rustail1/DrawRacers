@@ -157,13 +157,14 @@ local function captureLegPhaseDegrees(leg: any, hub: Part, fallbackDegrees: numb
 end
 
 local function makeInternalShapeSpec(normalizedPoints: { Vector2 }): ShapeSpec
-	local plan = GeometryMath.BuildSegmentPlan(normalizedPoints, PhysicsConfig.LegGeometry)
+	local centeredPoints = StrokeMath.CenterOnBounds(normalizedPoints)
+	local plan = GeometryMath.BuildSegmentPlan(centeredPoints, PhysicsConfig.LegGeometry)
 	assert(#plan.segmentPlan > 0, "internal shape produced no legal physical segments")
-	local bounds = StrokeMath.ComputeBounds(normalizedPoints)
+	local bounds = StrokeMath.ComputeBounds(centeredPoints)
 	assert(bounds ~= nil, "internal shape requires bounds")
 	return {
 		version = 0,
-		normalizedPoints = normalizedPoints,
+		normalizedPoints = centeredPoints,
 		mappedPoints = plan.mappedPoints,
 		bounds = bounds,
 		segmentPlan = plan.segmentPlan,
