@@ -445,6 +445,28 @@ function DrawingController:_normalizedPixelDistance(a: Vector2, b: Vector2): num
 	return Vector2.new((delta.X / inputSize.X) * 2, (delta.Y / inputSize.Y) * 2).Magnitude
 end
 
+function DrawingController:_compactSemanticPixelPoints()
+	local samples = self._semanticPixelPoints
+	if #samples <= 2 then
+		return
+	end
+
+	local compacted = table.create(math.ceil(#samples / 2) + 1)
+	table.insert(compacted, samples[1])
+	for index = 3, #samples - 1, 2 do
+		table.insert(compacted, samples[index])
+	end
+	local finalPoint = samples[#samples]
+	if compacted[#compacted] ~= finalPoint then
+		table.insert(compacted, finalPoint)
+	end
+
+	table.clear(self._semanticPixelPoints)
+	for _, point in compacted do
+		table.insert(self._semanticPixelPoints, point)
+	end
+end
+
 function DrawingController:_tryAppendSemanticPoint(point: Vector2, forceFinal: boolean)
 	local samples = self._semanticPixelPoints
 	local config = PhysicsConfig.StrokeProcessing
@@ -457,18 +479,16 @@ function DrawingController:_tryAppendSemanticPoint(point: Vector2, forceFinal: b
 		return
 	end
 
+	if #samples >= config.MaxRawPoints then
+		self:_compactSemanticPixelPoints()
+		last = samples[#samples]
+	end
+
 	if forceFinal then
-		if #samples >= config.MaxRawPoints then
-			samples[#samples] = point
-		else
-			table.insert(samples, point)
-		end
+		table.insert(samples, point)
 		return
 	end
 
-	if #samples >= config.MaxRawPoints then
-		return
-	end
 	if self:_normalizedPixelDistance(point, last) >= config.RawSampleMinMovementNormalized then
 		table.insert(samples, point)
 	end
