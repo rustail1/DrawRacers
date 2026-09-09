@@ -91,12 +91,12 @@ def test_r14_3_server_bootstrap_gates_harness_on_ready() -> None:
     assert "M0HumanHarness.start()" in ready_branch
 
 
-def test_r14_3_client_blocks_drawing_until_studio_gate_ready() -> None:
+def test_r14_3_client_does_not_start_studio_drawing_before_ready() -> None:
     bootstrap = read("src/client/Bootstrap.client.lua")
-    drawing = read("src/client/Controllers/DrawingController.lua")
     assert 'GetAttribute("DrawRacersStudioGateState")' in bootstrap
     assert 'GetAttributeChangedSignal("DrawRacersStudioGateState")' in bootstrap
-    assert "SetStudioGateState" in bootstrap
-    assert "function DrawingController:SetStudioGateState" in drawing
-    assert 'self._studioGateState ~= "READY"' in drawing
-    assert 'G0 BLOCKED — SERVER TEST FAILED' in drawing
+    assert 'if state == "READY" then' in bootstrap
+    ready_branch = bootstrap.split('if state == "READY" then', 1)[1].split('elseif state == "BLOCKED" then', 1)[0]
+    assert "drawingController:Start()" in ready_branch
+    assert 'G0 BLOCKED — SERVER TEST FAILED' in bootstrap
+    assert 'G0 TESTS RUNNING' in bootstrap
