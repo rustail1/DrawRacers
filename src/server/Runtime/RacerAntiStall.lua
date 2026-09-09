@@ -43,16 +43,14 @@ local function getRequirementTag(instance: Instance): string?
 end
 
 local function classifyContactSurface(surface: BasePart): string
-	if hasRecoverySurfaceTag(surface) then
-		return "ELIGIBLE"
-	end
-
 	local requirementTag = getRequirementTag(surface)
-	if requirementTag == "FAST_ROLL" then
-		return "ELIGIBLE"
-	end
-	if requirementTag ~= nil then
+	-- An explicit obstacle RequirementTag always wins. RecoverySurface is an assist
+	-- affordance, never permission to override geometry authored to test adaptation.
+	if requirementTag ~= nil and requirementTag ~= "FAST_ROLL" then
 		return "OBSTACLE"
+	end
+	if requirementTag == "FAST_ROLL" or hasRecoverySurfaceTag(surface) then
+		return "ELIGIBLE"
 	end
 
 	if surface.CanCollide then

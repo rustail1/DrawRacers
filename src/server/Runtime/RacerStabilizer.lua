@@ -32,6 +32,9 @@ function RacerStabilizer.new(params: Params)
 
 	local laneAttachment = takeAttachment(runtimeAttachments, body, "LaneAlignAttachment")
 	local orientationAttachment = takeAttachment(runtimeAttachments, body, "OrientationAttachment")
+	-- RuntimeAttachments is a template staging container only. Once the attachments
+	-- are owned by BodyCollider, remove the empty helper so spawned racers match doc 65.
+	runtimeAttachments:Destroy()
 
 	local laneAlign = Instance.new("AlignPosition")
 	laneAlign.Name = "LaneAlign"
