@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local controllers = script.Parent:WaitForChild("Controllers")
 local InputController = require(controllers:WaitForChild("InputController"))
 local DrawingController = require(controllers:WaitForChild("DrawingController"))
+local DebugTuningPanel = require(controllers:WaitForChild("DebugTuningPanel"))
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -18,5 +19,8 @@ local strokeResult = remotes:WaitForChild("StrokeResult")
 local inputController = InputController.new()
 local drawingController = DrawingController.new(inputController, drawHud, submitStroke, strokeResult)
 drawingController:Start()
+
+local debugTuningPanel = DebugTuningPanel.new(playerGui)
+debugTuningPanel:Start()
 
 print("[DrawRacers] client bootstrap ready")
