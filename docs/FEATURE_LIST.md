@@ -3,10 +3,11 @@
 Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
-**Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle-lab → debug/tuning pipeline = implementation items **B03–B16**.  
-**Exact current implementation item:** **B16 — Debug physics/tuning panel** is implemented in `main` and awaits local/Studio acceptance. B12–B16 Studio evidence remains pending; implementation/CI does not promote those tasks to ACCEPTED.  
-**Acceptance note:** A01–A04 and B01–B02 are recorded ACCEPTED. Later B03–B16 implementation/tests exist in `main`, but implementation alone is not promoted to ACCEPTED without required evidence.  
-**Rule:** only one gameplay feature may be `ACTIVE` at a time. `SESSION.md` owns the exact current implementation/evidence cursor; `25` owns sequence. **B17/G0 is now the next item and is a hard HUMAN_GATE; no C01 or later work may start without recorded G0 PASS or explicit Product Owner rework/scope decision.**
+**Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle lab → debug/tuning pipeline, implementation items **B03–B16**.  
+**Current implementation integrity:** bounded CORE audit repair **R01–R05** is implemented in `main`; fresh pre-R06 automated baseline is **66 passed, 0 failed**.  
+**Current gate:** **B17/G0 HUMAN_GATE**. Studio/human evidence is pending; implementation/CI alone does not promote B03–B16 to ACCEPTED.  
+**Acceptance note:** A01–A04 and B01–B02 remain recorded ACCEPTED.  
+**Rule:** only one gameplay feature may be ACTIVE at a time. `SESSION.md` owns the evidence cursor; `25` owns implementation order. No C01 or later work may start without recorded G0 PASS or an explicit Product Owner gate decision.
 
 ## Bootstrap — required before M0
 - ACCEPTED — A01 Git/Rojo baseline
@@ -16,8 +17,16 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 ## M0 — Physics Lab
 - ACCEPTED — DrawCanvas input + stroke preview (`59` layout; B01+B02)
-- ACTIVE — M0 core locomotion/redraw/obstacle/debug pipeline (B03–B16): StrokeMath, racer runtime, leg assemblies, motors, two-leg phase, stabilization, server ShapeSpec authority, B12 semantic remotes, B13 atomic redraw, B14 abuse/stress coverage, B15 canonical obstacle geometry, and B16 DEV/STAGING debug/tuning surface are implemented; acceptance evidence remains task-specific.
-- BACKLOG / HUMAN_GATE — B17 G0 record; **hard stop before M0.5**
+- ACTIVE / IMPLEMENTED — B03–B16 core locomotion/redraw/obstacle/debug pipeline.
+- ACTIVE / REPAIR COMPLETE, STUDIO EVIDENCE PENDING — R01 Geometry Authority, R02 Drawing/Network Correctness, R03 Physics Contract, R04 Debug Correctness, R05 Studio/G0 Integration.
+- BACKLOG / HUMAN_GATE — B17 G0 record; **hard stop before M0.5**.
+
+### R01–R05 implementation-integrity record
+- **R01** — one `GeometryMath` plan owner + authoritative ShapeSpec→LegAssembly path; square semantic drawing surface prevents aspect-ratio physics distortion.
+- **R02** — bounded semantic sampling independent of input event rate; local minimum validation; server-truth accepted-result ordering.
+- **R03** — full collision matrix, soft/free-tilt stabilization contract, canonical runtime track root, TopY-relative tunnel geometry.
+- **R04** — real collider/simplified-point telemetry, progress-window stuck semantics, deterministic debug target selection.
+- **R05** — one selectable Studio interactive harness; default `G0`; Studio-only injected Player→RacerRuntime mapping uses existing stroke transport and does not implement D05 RacerService.
 
 ## M0.5 — Adaptation Acceptance
 - BACKLOG — Mixed adaptation test track using `60` geometry
@@ -54,7 +63,7 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - BACKLOG — Mobile performance/network pass + G3
 
 ## M3 — Alpha Product Loop / PUBLIC-LAUNCH CONTENT
-All items below are **required before public release**, not optional polish.
+All items below remain required before public release, not optional polish.
 - BACKLOG — Complete T01–T20 authored tracks and both launch themes (`60/62/67/69`)
 - BACKLOG — Mastery Points, access tiers and visible titles (`61`)
 - BACKLOG — Garage/collection final layout (`59`) and catalog (`62`)
@@ -69,7 +78,6 @@ All items below are **required before public release**, not optional polish.
 - BACKLOG — G5 free cosmetic/status desire record
 
 ## M4 — Monetization / Soft Launch
-Required for monetized soft launch and intended commercial public release:
 - BACKLOG — Three launch Pass SKUs from `61/62`
 - BACKLOG — Contextual Starter Style offer
 - BACKLOG — Post-purchase theatre
@@ -81,7 +89,6 @@ Required for monetized soft launch and intended commercial public release:
 - LATER — Coin Developer Products activation (predefined but disabled until G5 + explicit enable decision)
 
 ## M5 — Release / LiveOps Foundation
-Required before full public release:
 - BACKLOG — Config-driven public course rotation
 - BACKLOG — Cosmetic collection configs
 - BACKLOG — Standard LiveOps event constructor/config path

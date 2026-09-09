@@ -3,9 +3,9 @@
 Roblox production repository for **Draw Racers**.
 
 ## Source of truth
-The current production specification is in `docs/` (v1.3.4 ZERO-QUESTION PRODUCTION HANDOFF). Do not mix older history packages into this repository.
+The current production specification is in `docs/` (v1.3.4 ZERO-QUESTION PRODUCTION HANDOFF). Do not mix older history packages into implementation context.
 
-Before any implementation task, read:
+Before implementation, read:
 1. `docs/AGENTS.md`
 2. `docs/FEATURE_LIST.md`
 3. `docs/SESSION.md`
@@ -13,15 +13,26 @@ Before any implementation task, read:
 5. the exact task row in `docs/66_ZERO_TO_RELEASE_TASK_ACCEPTANCE_CATALOG.md`
 6. only the owner specs named by that row
 
-## Current implementation item
-**B14 — Invalid/stress redraw suite is implemented in `main` and awaits local/Studio acceptance.**
+## Current state
+**R01–R05 CORE audit repair is implemented in `main`; the next permitted item is B17/G0 HUMAN_GATE.**
 
-B03–B14 code/specs remain wired as regression checks in Studio Play. Under the explicit Product Owner night-autopilot override, B15 may be implemented next while B12–B14 Studio evidence remains pending; that does not mark them ACCEPTED. B17/G0 remains the hard human gate.
+The pre-R06 full automated baseline on GitHub Actions run `34336175789` is **66 passed, 0 failed**. This proves the repository contract suite only; it does not substitute for Roblox Studio/physics/human evidence.
+
+A01–A04 and B01–B02 remain recorded ACCEPTED. B03–B16 implementation and regression specs exist in `main`, but required Studio evidence remains pending. **B17/G0 is a hard stop before C01/M0.5.**
+
+## CORE audit repair
+The bounded repair did not add a new product feature or pull later race/meta systems forward:
+
+- **R01 — Geometry Authority:** one pure `GeometryMath` owner builds mapped points and the physical segment plan. Server ShapeSpec carries that authoritative plan into `LegAssembly`. The wide player-facing DrawCanvas contains a square semantic DrawInputRect so screen aspect ratio cannot stretch physical X/Y shape semantics.
+- **R02 — Drawing/Network Correctness:** visual preview is independent from bounded semantic sampling; obvious too-short strokes are rejected before remote submission; accepted-result ordering tracks server truth even when a newer request is pending/rejected.
+- **R03 — Physics Contract:** complete collision matrix, soft/free-tilt stabilization with no hidden +X propulsion, M0 lab under `Workspace.Runtime.Tracks`, and TopY-relative tunnel geometry.
+- **R04 — Debug Correctness:** real collider and cleaned-point telemetry, documented +X progress-window stuck state, and explicit/human debug target selection.
+- **R05 — Studio/G0 Integration:** exactly one selectable Studio interactive harness. `StudioHarnessConfig.Mode` defaults to `G0`. `M0HumanHarness` binds the existing `SubmitStroke`/`StrokeResult` path to one Studio test racer through an injected resolver; D05 `RacerService` is intentionally not implemented early.
+
+Decision record: `docs/DECISION_LOG_CORE_AUDIT_REPAIR_2026-09-09.md`.
 
 ## Toolchain
-Rokit manages the project Rojo version. The repository currently pins Rojo in `rokit.toml`.
-
-From the repository root:
+Rokit manages Rojo. From the repository root:
 
 ```powershell
 rokit install
@@ -31,67 +42,39 @@ rojo serve
 python verify.py
 ```
 
-`verify.py` runs the current simple Python contract tests without requiring pytest. If pytest is installed, `python -m pytest -q` remains valid too.
+Then connect the Rojo Studio plugin to the local server shown by `rojo serve`.
 
-Then connect the Rojo plugin in Roblox Studio to the localhost server shown by `rojo serve`.
+## M0 implementation layers
+### B03–B05 — Stroke processing
+Deterministic clamp/dedupe, DrawInputRect-centered normalization, RDP simplification, open-polyline resampling, length/bounds validation and malformed/non-finite coverage.
 
-## Accepted bootstrap/input state
-- A01: Git/Rojo baseline, build/serve and Studio sync round-trip accepted.
-- A02: canonical minimal shared/server/client bootstrap accepted.
-- A03: reproducible Studio M0 lane + debug spawn + representative anchors accepted.
-- A04: DEV/STAGING/PROD deployment skeleton, no fake IDs, fail-closed validator and exact static Studio roots accepted.
-- B01: mouse/touch pointer abstraction; semantic start/move/end/cancel stream and camera input ownership accepted.
-- B02: local DrawCanvas continuous preview/candidate/thumbnail stage accepted by Product Owner progression.
+### B06–B10 — Physical locomotion foundation
+Canonical 3×3×3 racer body, physical leg assemblies at canonical hubs, hinge motors, two-leg phase, collision policy and lane/orientation stabilization. No hidden forward race power.
 
-Later B03–B14 implementation/tests exist in `main`, but this README does not promote those tasks to ACCEPTED without the required local/Studio evidence.
+### B11–B12 — Server authority/network boundary
+`LegShapeService` validates semantic stroke intent and owns ShapeSpec/version progression. Exact semantic remotes are `SubmitStroke` and `StrokeResult`; client data cannot author world geometry, CFrame, segment plans, ShapeVersion or rewards.
 
-## B03–B05 StrokeMath regression layer
-Shared processing owns normalized clamp/dedupe, DrawInputRect-centered normalization, RDP simplification, open-polyline arc-length resampling, length measurement and bounds calculation. Studio specs cover malformed/non-finite input, duplicate-heavy strokes, tiny strokes, self-cross, max raw points and canonical preset shapes.
+### B13–B14 — Atomic redraw/security stress
+Replacement legs stage before commit; invalid/failed redraw preserves the previous accepted physical shape; repeated malformed/stale/rate/size abuse is covered by regressions.
 
-Expected Studio lines include:
-- `[DrawRacers][B03] StrokeMath tests PASS`
-- `[DrawRacers][B04] StrokeMath simplify/resample/normalize tests PASS`
-- `[DrawRacers][B05] canonical/tiny/duplicate/self-cross/max-point/malformed StrokeMath matrix PASS`
+### B15–B16 — Canonical lab/debug
+The M0 lab contains the canonical flat/steps/wall/gap/tunnel representatives. DEV/STAGING/Studio debug telemetry exposes shape/segment/speed/motor/stuck/lane/checkpoint/progress information.
 
-## B06–B10 physical locomotion foundation
-The current runtime contains the canonical 3×3×3 racer body, two same-XY leg assemblies at canonical hubs, hinge motors with the documented direction/phase, and lane/body stabilization with no hidden forward race power.
+## B17/G0 local Studio gate
+Default Studio mode is `G0`. After current `main` is synced, a Play session should run the synchronous B03–B16 specs and then leave one interactive human G0 racer.
 
-These stages remain subject to their Studio acceptance evidence; later tasks do not redefine their physics contracts.
+Expected evidence includes:
+- no red DrawRacers runtime error;
+- `[DrawRacers][B16] debug tuning panel tests PASS`;
+- `[DrawRacers][G0] human harness ready`;
+- drawing in DrawInputRect produces server-accepted physical legs and locomotion;
+- redraw while moving swaps the accepted shape without body teleport/velocity reset;
+- debug cleaned-point/collider values update from the actual accepted shape;
+- M0 lab is under `Workspace.Runtime.Tracks`.
 
-## B11 authoritative shape authority
-`src/server/Services/LegShapeService.lua` owns server-side stroke validation and `ShapeSpec` construction. Invalid shapes do not advance `ShapeVersion`; accepted shapes increment it exactly once. Client data never supplies world geometry, Instances, CFrame, segment plans or ShapeVersion authority.
-
-## B12 stroke network boundary
-B12 adds exact `SubmitStroke` / `StrokeResult` RemoteEvents, bounded semantic stroke payload validation, per-player sequence/rate guards, and client request/result semantics. Rejected results preserve the previous accepted preview. B12 intentionally does not implement D05 player→racer mapping.
-
-Required B12 Studio line:
-- `[DrawRacers][B12] SubmitStroke/StrokeResult tests PASS`
-
-## B13 atomic redraw
-B13 changes physical replacement semantics without changing ShapeSpec authority:
-- both replacement leg assemblies are built detached from Workspace;
-- the old working pair remains alive if either staged build fails;
-- after both replacements are ready, both are committed in one no-yield server section and only then are retired legs destroyed;
-- BodyCollider CFrame, linear velocity and angular velocity are not rewritten by redraw;
-- current left/right rotation phase is carried into the replacement pair as closely as the implementation allows;
-- the B13 Studio spec covers forced second-leg build failure, no leaked staged models, successful pair replacement, body-state preservation and phase preservation.
-
-Required B13 Studio line:
-- `[DrawRacers][B13] atomic redraw tests PASS`
-
-## B14 redraw abuse/stress
-B14 adds an executable Studio abuse/stress matrix around the existing authoritative redraw/network path:
-- cooldown spam, stale sequence, malformed points, NaN/Inf, too many points and oversized bounded payloads must fail closed without removing the current valid shape;
-- 40 legal redraws must keep exactly one left/right pair with bounded physical part count and no retiring-model leak;
-- a 50-request burst must remain rate-limited without shape-version or Instance growth;
-- static tests guard that type/size/rate gates remain before server geometry build.
-
-Fresh static CI on the B14 test head reported `Contract checks: 44 passed, 0 failed`.
-
-Required B14 Studio line:
-- `[DrawRacers][B14] redraw abuse/stress tests PASS`
+Do not mark B17/G0 PASS from CI alone. No C01, multiplayer slice, meta, economy, shop or later phase begins before recorded human-gate evidence.
 
 ## Working loop
-`ChatGPT/GitHub change -> git pull --ff-only -> Rojo -> Studio playtest -> PASS/FAIL -> next change`
+`ChatGPT/GitHub change → git pull --ff-only → Rojo → Studio playtest → PASS/FAIL evidence → next allowed item`
 
 Before pulling remote changes, run `git status` and do not overwrite uncommitted local work.
