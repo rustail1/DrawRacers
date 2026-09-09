@@ -55,6 +55,8 @@ def test_r08_antistall_is_bounded_and_only_eligible_on_explicit_flat_recovery_su
     runtime = read("src/server/Runtime/RacerRuntime.lua")
     anti_stall = read("src/server/Runtime/RacerAntiStall.lua")
     scene = read("src/server/M0TestScene.lua")
+    telemetry = read("src/server/Runtime/DebugTelemetry.lua")
+    panel = read("src/client/Controllers/DebugTuningPanel.lua")
 
     for token in [
         "ActivationForwardSpeed = 0.35",
@@ -65,13 +67,18 @@ def test_r08_antistall_is_bounded_and_only_eligible_on_explicit_flat_recovery_su
     ]:
         assert token in config, f"missing anti-stall config default: {token}"
 
+    assert "GroundProbeDistance" not in config
     assert 'require(script.Parent:WaitForChild("RacerAntiStall"))' in runtime
     assert "RacerAntiStall.new" in runtime
     assert "antiStall:Destroy()" in runtime
 
     for token in [
+        'game:GetService("CollectionService")',
         'Instance.new("VectorForce")',
-        'GetAttribute("AntiStallSurface") == true',
+        'HasTag(cursor, "RecoverySurface")',
+        'GetAttribute("RequirementTag")',
+        'requirementTag == "FAST_ROLL"',
+        "GetTouchingParts()",
         "AssemblyMass * config.MaxAccelerationX",
         'SetAttribute("AntiStallActive"',
         "MaxAssistDuration",
@@ -79,7 +86,12 @@ def test_r08_antistall_is_bounded_and_only_eligible_on_explicit_flat_recovery_su
     ]:
         assert token in anti_stall, f"missing bounded anti-stall token: {token}"
 
-    assert 'SetAttribute("AntiStallSurface", antiStallSurface == true)' in scene
-    assert 'makeTrackPart("EntryFloor", 0, config.Pieces[1].StartX, config.Lane.TopY, config.Lane.Thickness, obstacleLab, true)' in scene
-    assert 'makeTrackPart("FlatFloor", piece.StartX, piece.StartX + piece.Length, config.Lane.TopY, config.Lane.Thickness, parent, true)' in scene
-    assert "RecoveryAfter" in scene and "true" in scene
+    assert "Workspace:Raycast" not in anti_stall
+    assert "AntiStallSurface" not in anti_stall
+    assert 'game:GetService("CollectionService")' in scene
+    assert 'CollectionService:AddTag(part, "RecoverySurface")' in scene
+    assert 'SetAttribute("RequirementTag", "FAST_ROLL")' in scene
+    assert "AntiStallSurface" not in scene
+
+    assert 'SetAttribute("DebugAntiStallActive"' in telemetry
+    assert '{ key = "antiStallActive", attribute = "DebugAntiStallActive" }' in panel
