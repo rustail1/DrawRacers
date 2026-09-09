@@ -43,11 +43,15 @@ local function isolatePart(part: BasePart)
 	part.CanQuery = false
 end
 
-local function restoreCharacter()
+local function disconnectCharacterDescendantWatcher()
 	if characterDescendantConnection then
 		characterDescendantConnection:Disconnect()
 		characterDescendantConnection = nil
 	end
+end
+
+local function restoreCharacter()
+	disconnectCharacterDescendantWatcher()
 	for part, state in isolatedPartState do
 		if part.Parent ~= nil then
 			part.CanCollide = state.canCollide
@@ -60,7 +64,10 @@ local function restoreCharacter()
 end
 
 local function isolateCharacter(character: Model)
-	restoreCharacter()
+	-- A newly spawned Character must not re-enable the retired Character while the
+	-- G0 racer is still alive. Keep every still-parented Character part isolated
+	-- until the harness/player is torn down; only move the descendant watcher.
+	disconnectCharacterDescendantWatcher()
 
 	for _, descendant in character:GetDescendants() do
 		if descendant:IsA("BasePart") then
