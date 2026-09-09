@@ -34,8 +34,8 @@ def test_r03_stabilizer_has_planar_lock_without_forward_force():
     assert "LaneCorrectionDeadzone" not in stabilizer
     assert 'Instance.new("PlaneConstraint")' in stabilizer
     assert 'Instance.new("AlignPosition")' not in stabilizer
-    assert "orientationAlign.AlignType = Enum.AlignType.PrimaryAxisParallel" in stabilizer
-    assert "orientationAlign.PrimaryAxis = Vector3.zAxis" in stabilizer
+    assert "orientationAlign.AlignType = Enum.AlignType.AllAxes" in stabilizer
+    assert "orientationAlign.CFrame = CFrame.identity" in stabilizer
     assert "orientationAlign.Enabled = true" in stabilizer
     assert "lanePlane.Enabled = true" in stabilizer
 
