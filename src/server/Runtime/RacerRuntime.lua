@@ -13,6 +13,7 @@ local GeometryMath = require(
 )
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
 local LegAssembly = require(script.Parent:WaitForChild("LegAssembly"))
+local RacerAntiStall = require(script.Parent:WaitForChild("RacerAntiStall"))
 local RacerStabilizer = require(script.Parent:WaitForChild("RacerStabilizer"))
 
 local BODY_SIZE = Vector3.new(3, 3, 3)
@@ -196,6 +197,10 @@ function RacerRuntime.new(params: SpawnParams)
 		body = body,
 		laneCenterZ = params.laneCenterZ or params.spawnCFrame.Position.Z,
 	})
+	local antiStall = RacerAntiStall.new({
+		racerModel = model,
+		body = body,
+	})
 
 	local self = setmetatable({
 		model = model,
@@ -203,6 +208,7 @@ function RacerRuntime.new(params: SpawnParams)
 		leftLeg = nil,
 		rightLeg = nil,
 		stabilizer = stabilizer,
+		antiStall = antiStall,
 		currentShapeSpec = nil,
 		destroyed = false,
 	}, RacerRuntime)
@@ -223,6 +229,11 @@ end
 function RacerRuntime:GetStabilizer()
 	assert(not self.destroyed and self.stabilizer ~= nil, "RacerRuntime is destroyed")
 	return self.stabilizer
+end
+
+function RacerRuntime:GetAntiStall()
+	assert(not self.destroyed and self.antiStall ~= nil, "RacerRuntime is destroyed")
+	return self.antiStall
 end
 
 function RacerRuntime:GetShapeVersion(): number
@@ -365,6 +376,10 @@ function RacerRuntime:Destroy()
 	if self.rightLeg then
 		self.rightLeg:Destroy()
 		self.rightLeg = nil
+	end
+	if self.antiStall then
+		self.antiStall:Destroy()
+		self.antiStall = nil
 	end
 	if self.stabilizer then
 		self.stabilizer:Destroy()
