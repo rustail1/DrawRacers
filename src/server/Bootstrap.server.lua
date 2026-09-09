@@ -39,25 +39,6 @@ if RunService:IsStudio() then
 	local testsFolder = script.Parent:WaitForChild("Tests")
 	local StudioSpecRunner = require(testsFolder:WaitForChild("StudioSpecRunner"))
 
-	local function startSelectedHarness()
-		local harnessMode = StudioHarnessConfig.Mode
-		if harnessMode == "G0" then
-			local M0HumanHarness = require(testsFolder:WaitForChild("M0HumanHarness"))
-			M0HumanHarness.start()
-		elseif harnessMode == "B08" then
-			local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
-			B08OneHingeMotorHarness.start()
-		elseif harnessMode == "B09" then
-			local B09TwoLegPhaseHarness = require(testsFolder:WaitForChild("B09TwoLegPhaseHarness"))
-			B09TwoLegPhaseHarness.start()
-		elseif harnessMode == "B10" then
-			local B10StabilizationHarness = require(testsFolder:WaitForChild("B10StabilizationHarness"))
-			B10StabilizationHarness.start()
-		elseif harnessMode ~= "NONE" then
-			error(string.format("unknown StudioHarnessConfig.Mode %s", tostring(harnessMode)))
-		end
-	end
-
 	ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "TESTING")
 
 	local sceneOk, sceneError = xpcall(function()
@@ -74,8 +55,27 @@ if RunService:IsStudio() then
 	end
 
 	if specsPassed then
+		local function startSelectedHarness()
+			local harnessMode = StudioHarnessConfig.Mode
+			if harnessMode == "G0" then
+				local M0HumanHarness = require(testsFolder:WaitForChild("M0HumanHarness"))
+				M0HumanHarness.start()
+			elseif harnessMode == "B08" then
+				local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
+				B08OneHingeMotorHarness.start()
+			elseif harnessMode == "B09" then
+				local B09TwoLegPhaseHarness = require(testsFolder:WaitForChild("B09TwoLegPhaseHarness"))
+				B09TwoLegPhaseHarness.start()
+			elseif harnessMode == "B10" then
+				local B10StabilizationHarness = require(testsFolder:WaitForChild("B10StabilizationHarness"))
+				B10StabilizationHarness.start()
+			elseif harnessMode ~= "NONE" then
+				error(string.format("unknown StudioHarnessConfig.Mode %s", tostring(harnessMode)))
+			end
+		end
+
 		local harnessOk, harnessError = xpcall(startSelectedHarness, debug.traceback)
-		if harnessOk then
+		if specsPassed and harnessOk then
 			ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "READY")
 			print("[DrawRacers][StudioGate] READY")
 		else
