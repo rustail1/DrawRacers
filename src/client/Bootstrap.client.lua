@@ -9,6 +9,9 @@ local InputController = require(controllers:WaitForChild("InputController"))
 local DrawingController = require(controllers:WaitForChild("DrawingController"))
 local DebugTuningPanel = require(controllers:WaitForChild("DebugTuningPanel"))
 
+local shared = ReplicatedStorage:WaitForChild("Shared")
+local RemoteNames = require(shared:WaitForChild("Net"):WaitForChild("RemoteNames"))
+
 local STUDIO_GATE_ATTRIBUTE = "DrawRacersStudioGateState"
 
 local player = Players.LocalPlayer
@@ -16,8 +19,8 @@ local playerGui = player:WaitForChild("PlayerGui")
 local drawHud = playerGui:WaitForChild("DrawHUD") :: ScreenGui
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
-local submitStroke = remotes:WaitForChild("SubmitStroke")
-local strokeResult = remotes:WaitForChild("StrokeResult")
+local submitStroke = remotes:WaitForChild(RemoteNames.SubmitStroke)
+local strokeResult = remotes:WaitForChild(RemoteNames.StrokeResult)
 
 local inputController = InputController.new()
 local drawingController = DrawingController.new(inputController, drawHud, submitStroke, strokeResult)
@@ -50,7 +53,7 @@ end
 
 if RunService:IsStudio() then
 	local StudioHarnessConfig = require(
-		ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("StudioHarnessConfig")
+		shared:WaitForChild("Config"):WaitForChild("StudioHarnessConfig")
 	)
 	local devFolder = script.Parent:WaitForChild("Dev")
 	local M0G0PresentationHarness = require(devFolder:WaitForChild("M0G0PresentationHarness"))
