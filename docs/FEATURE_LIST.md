@@ -3,10 +3,10 @@
 Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
-**Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle-lab pipeline = implementation items **B03–B15**.  
-**Exact current implementation item:** **B15 — Five canonical obstacle lab** is implemented in `main` and awaits local/Studio traversal acceptance. Under the explicit Product Owner night-autopilot override, B16 may be implemented next while B12–B15 Studio evidence remains pending; this override does not promote those tasks to ACCEPTED.  
-**Acceptance note:** A01–A04 and B01–B02 are recorded ACCEPTED. Later B03–B15 implementation/tests exist in `main`, but implementation alone is not promoted to ACCEPTED without required evidence.  
-**Rule:** only one gameplay feature may be `ACTIVE` at a time. `SESSION.md` owns the exact current implementation/evidence cursor; `25` owns sequence. B17/G0 remains the hard human gate before M0.5.
+**Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle-lab → debug/tuning pipeline = implementation items **B03–B16**.  
+**Exact current implementation item:** **B16 — Debug physics/tuning panel** is implemented in `main` and awaits local/Studio acceptance. B12–B16 Studio evidence remains pending; implementation/CI does not promote those tasks to ACCEPTED.  
+**Acceptance note:** A01–A04 and B01–B02 are recorded ACCEPTED. Later B03–B16 implementation/tests exist in `main`, but implementation alone is not promoted to ACCEPTED without required evidence.  
+**Rule:** only one gameplay feature may be `ACTIVE` at a time. `SESSION.md` owns the exact current implementation/evidence cursor; `25` owns sequence. **B17/G0 is now the next item and is a hard HUMAN_GATE; no C01 or later work may start without recorded G0 PASS or explicit Product Owner rework/scope decision.**
 
 ## Bootstrap — required before M0
 - ACCEPTED — A01 Git/Rojo baseline
@@ -16,9 +16,8 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 ## M0 — Physics Lab
 - ACCEPTED — DrawCanvas input + stroke preview (`59` layout; B01+B02)
-- ACTIVE — M0 core locomotion/redraw/obstacle pipeline (B03–B15): StrokeMath, racer runtime, leg assemblies, motors, two-leg phase, stabilization, server ShapeSpec authority, B12 semantic remotes, B13 atomic redraw, B14 abuse/stress coverage, and B15 canonical obstacle geometry are implemented; acceptance evidence remains task-specific.
-- BACKLOG — B16 debug physics/tuning panel
-- BACKLOG — B17 G0 record
+- ACTIVE — M0 core locomotion/redraw/obstacle/debug pipeline (B03–B16): StrokeMath, racer runtime, leg assemblies, motors, two-leg phase, stabilization, server ShapeSpec authority, B12 semantic remotes, B13 atomic redraw, B14 abuse/stress coverage, B15 canonical obstacle geometry, and B16 DEV/STAGING debug/tuning surface are implemented; acceptance evidence remains task-specific.
+- BACKLOG / HUMAN_GATE — B17 G0 record; **hard stop before M0.5**
 
 ## M0.5 — Adaptation Acceptance
 - BACKLOG — Mixed adaptation test track using `60` geometry
