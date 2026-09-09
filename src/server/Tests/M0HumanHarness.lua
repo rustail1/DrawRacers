@@ -109,6 +109,14 @@ local function attachPlayer(player: Player)
 		return
 	end
 
+	activePlayer = player
+	characterAddedConnection = player.CharacterAdded:Connect(function(character)
+		isolateCharacter(character)
+	end)
+	if player.Character then
+		isolateCharacter(player.Character)
+	end
+
 	local spawn = M0SceneConfig.Spawn
 	local racer = RacerRuntime.new({
 		raceId = "G0_HUMAN",
@@ -123,14 +131,7 @@ local function attachPlayer(player: Player)
 	model:SetAttribute("DebugTarget", true)
 	model:SetAttribute("OwnerUserId", player.UserId)
 
-	activePlayer = player
 	activeRacer = racer
-	characterAddedConnection = player.CharacterAdded:Connect(function(character)
-		isolateCharacter(character)
-	end)
-	if player.Character then
-		task.defer(isolateCharacter, player.Character)
-	end
 	print("[DrawRacers][G0] human harness ready")
 end
 
