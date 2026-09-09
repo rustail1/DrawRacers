@@ -20,7 +20,10 @@ def test_r13_status_docs_record_r10_r12_without_passing_g0() -> None:
         assert "e2bedd34696bb99da43878c19d7984c9134c8bef" in text
         assert "34363706915" in text
         assert "B17" in text and "G0" in text and "HUMAN_GATE" in text
-        assert "G0 PASS" not in text
+
+    assert "B17 — G0 HUMAN_GATE — Studio PASS PENDING" in session
+    assert "BACKLOG / HUMAN_GATE — B17 G0" in features
+    assert "ACCEPTED — B17" not in features
 
 
 def test_r13_decision_record_keeps_bug_sweep_inside_existing_core_scope() -> None:
@@ -39,4 +42,4 @@ def test_r13_decision_record_keeps_bug_sweep_inside_existing_core_scope() -> Non
     ]:
         assert token in decision, f"missing R13 decision evidence: {token}"
 
-    assert "G0 PASS" not in decision
+    assert "B17/G0 remains pending" in decision
