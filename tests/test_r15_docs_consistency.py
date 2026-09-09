@@ -19,25 +19,47 @@ def test_r15_owner_docs_define_planar_locomotion_without_passing_g0() -> None:
     assert "rotation around world Z remains physical and free" in core
 
     for token in [
+        "PlaneConstraint",
         "LaneNormalError = 0.03",
         "LaneHardBound = 0.08",
-        "LaneMaxForceZ = 60000",
-        "LaneResponsiveness = 40",
-        "LaneMaxVelocity = 30",
         "OrientationResponsiveness = 40",
         "OrientationMaxTorque = 60000",
         "OrientationMaxAngularVelocity = 30",
     ]:
         assert token in balance
 
+    for obsolete in [
+        "LaneMaxForceZ = 60000",
+        "LaneResponsiveness = 40",
+        "LaneMaxVelocity = 30",
+        "Z-only `AlignPosition`",
+    ]:
+        assert obsolete not in balance
+
     assert "soft correction begins at `|Z error| > 0.15 stud`" not in balance
     assert "normal allowed error <=`0.35 stud`; hard safety bound `0.75 stud`" not in balance
-    assert "R15" in session and "HUMAN STUDIO PENDING" in session
-    assert "B17/G0" in session and "PENDING" in session
-    assert "R15" in features and "HUMAN STUDIO PENDING" in features
-    assert decision_path.is_file(), "missing R15 planar physics decision record"
 
+    evidence_sha = "be44304bf00391e05c7d7750609730a7368ebc87"
+    evidence_run = "34394991926"
+    for text in (session, features):
+        assert "R15.1" in text
+        assert "laneDeviation 5.199" in text
+        assert evidence_sha in text
+        assert evidence_run in text
+        assert "125 passed, 0 failed" in text
+        assert "HUMAN STUDIO PENDING" in text
+        assert "B17/G0" in text and "PENDING" in text
+
+    assert decision_path.is_file(), "missing R15 planar physics decision record"
     decision = decision_path.read_text(encoding="utf-8")
-    assert "laneDeviation 0.418" in decision
-    assert "R15 IMPLEMENTED/AUTOMATED GREEN; HUMAN STUDIO PENDING" in decision
+    assert "R15.1" in decision
+    assert "laneDeviation 5.199" in decision
+    assert "PlaneConstraint" in decision
+    assert "8574b918988b8e26551140f2e0d3005caded8fe8" in decision
+    assert "34394769781" in decision
+    assert "123 passed, 2 failed" in decision
+    assert evidence_sha in decision
+    assert evidence_run in decision
+    assert "125 passed, 0 failed" in decision
+    assert "R15.1 IMPLEMENTED/AUTOMATED GREEN; HUMAN STUDIO PENDING" in decision
     assert "B17/G0: PENDING" in decision
