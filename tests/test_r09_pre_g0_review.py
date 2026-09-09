@@ -25,7 +25,8 @@ def test_r09_accepted_preview_is_semantic_and_touch_layout_uses_exact_doc59_toke
         assert token in drawing, f"missing R09 responsive/semantic preview token: {token}"
 
     assert "self._pendingStrokes[sequence] = copyPoints(previewPixels)" not in drawing
-    assert "self._pendingStrokes[sequence] = copySemanticPoints(semanticPoints)" in drawing
+    assert "points = copySemanticPoints(semanticPoints)" in drawing
+    assert "copySemanticPoints(result.acceptedPoints)" in drawing
 
     apply_layout = drawing[
         drawing.index("function DrawingController:_applyLayout"):
