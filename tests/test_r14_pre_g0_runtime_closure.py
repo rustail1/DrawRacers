@@ -35,3 +35,33 @@ def test_r14_1_studio_b12_compares_result_points_to_current_shape_spec() -> None
     assert "accepted.acceptedPoints" in studio_spec
     assert "GetCurrentShapeSpec" in studio_spec
     assert "normalizedPoints" in studio_spec
+
+
+def test_r14_2_g0_presentation_harness_is_studio_only_and_non_physical() -> None:
+    harness_path = ROOT / "src/client/Dev/M0G0PresentationHarness.lua"
+    assert harness_path.is_file(), "R14.2 requires a Studio-only G0 presentation harness"
+    harness = harness_path.read_text(encoding="utf-8")
+    for token in [
+        'RunService:IsStudio()',
+        'StudioHarnessConfig.Mode ~= "G0"',
+        'GetAttribute("DebugTarget") == true',
+        'FindFirstChild("BodyCollider")',
+        'CameraType = Enum.CameraType.Scriptable',
+        'CFrame.lookAt',
+        'G0DebugBodyProxy',
+        'CanCollide = false',
+        'CanTouch = false',
+        'CanQuery = false',
+        'RenderStepped',
+    ]:
+        assert token in harness, f"missing R14.2 presentation contract token: {token}"
+    assert "RaceCameraController" not in harness
+    assert "CosmeticService" not in harness
+
+
+def test_r14_2_client_bootstrap_wires_g0_presentation_without_future_camera_owner() -> None:
+    bootstrap = read("src/client/Bootstrap.client.lua")
+    assert 'WaitForChild("Dev")' in bootstrap
+    assert 'WaitForChild("M0G0PresentationHarness")' in bootstrap
+    assert "M0G0PresentationHarness.start()" in bootstrap
+    assert "RaceCameraController" not in bootstrap
