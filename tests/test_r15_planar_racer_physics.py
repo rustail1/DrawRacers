@@ -24,11 +24,12 @@ def test_r15_1_stabilizer_uses_mechanical_plane_not_force_follower() -> None:
     assert "LaneResponsiveness" not in config
     assert "LaneMaxVelocity" not in config
 
-    # Out-of-plane orientation remains constrained while rotation around world Z is free.
-    assert "Enum.AlignType.PrimaryAxisParallel" in stabilizer
-    assert "orientationAlign.PrimaryAxis = Vector3.zAxis" in stabilizer
+    # R16 keeps the mechanical plane but upgrades body orientation to full upright lock.
+    assert "Enum.AlignType.AllAxes" in stabilizer
+    assert "orientationAlign.CFrame = CFrame.identity" in stabilizer
     assert "orientationAttachment.Axis = Vector3.zAxis" in stabilizer
     assert "orientationAlign.Enabled = true" in stabilizer
+    assert "Enum.AlignType.PrimaryAxisParallel" not in stabilizer
 
     for token in [
         "LaneNormalError = 0.03",
@@ -52,8 +53,8 @@ def test_r15_1_b10_exercises_real_lateral_impulse() -> None:
         "maxObservedLaneDeviation",
         "RunService.Heartbeat:Wait()",
         "lateral impulse escaped the hard gameplay plane",
-        "PrimaryAxisParallel",
-        "in-plane rotation around Z must remain unconstrained",
-        "out-of-plane disturbance must keep planar correction active",
+        "Enum.AlignType.AllAxes",
+        "upright body angular deviation",
+        "x/y translation must remain physically free",
     ]:
         assert token in spec
