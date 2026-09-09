@@ -315,13 +315,26 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: any, motorEnabled: boolean?)
 		oldRightModel.Name = "RightLeg_Retiring"
 	end
 
-	-- No yield occurs between staging completion and the commit below. Roblox physics cannot
-	-- step between these statements, so both ready assemblies replace the previous pair as one
-	-- server transaction without writing BodyCollider CFrame or assembly velocities.
-	stagedLeftLeg:Commit()
-	stagedRightLeg:Commit()
-	stagedLeftLeg:SetEnabled(motorEnabled == true)
-	stagedRightLeg:SetEnabled(motorEnabled == true)
+	-- Commit and motor-enable are one protected transaction. Old legs stay alive and keep
+	-- their phase/physics state until both staged assemblies have committed successfully.
+	local commitOk, commitError = pcall(function()
+		stagedLeftLeg:Commit()
+		stagedRightLeg:Commit()
+		stagedLeftLeg:SetEnabled(motorEnabled == true)
+		stagedRightLeg:SetEnabled(motorEnabled == true)
+	end)
+	if not commitOk then
+		stagedLeftLeg:Destroy()
+		stagedRightLeg:Destroy()
+		if oldLeftModel ~= nil and oldLeftModel.Parent ~= nil then
+			oldLeftModel.Name = "LeftLeg"
+		end
+		if oldRightModel ~= nil and oldRightModel.Parent ~= nil then
+			oldRightModel.Name = "RightLeg"
+		end
+		error(commitError)
+	end
+
 	self.leftLeg = stagedLeftLeg
 	self.rightLeg = stagedRightLeg
 
