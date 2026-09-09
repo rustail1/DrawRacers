@@ -141,6 +141,9 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 	if #geometryPlan.segmentPlan == 0 then
 		return reject("TOO_SHORT")
 	end
+	if geometryPlan.extent < PhysicsConfig.LegGeometry.MinUsefulLegExtent then
+		return reject("TOO_SHORT")
+	end
 
 	local nextVersion = racerRuntime:GetShapeVersion() + 1
 	local shapeSpec = {
