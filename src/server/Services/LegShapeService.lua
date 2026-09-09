@@ -12,21 +12,29 @@ local StrokeMath = require(
 local GeometryMath = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("GeometryMath")
 )
+local StrokeTypes = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
+)
 
 local LegShapeService = {}
+
+type SemanticPoints = StrokeTypes.SemanticPoints
+type ShapeSpec = StrokeTypes.ShapeSpec
+type LegShapeResult = StrokeTypes.LegShapeResult
+type StrokeResultPayload = StrokeTypes.StrokeResultPayload
 
 local function isFiniteNumber(value: number): boolean
 	return value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function reject(reasonCode: string)
+local function reject(reasonCode: string): LegShapeResult
 	return {
 		accepted = false,
 		rejectReasonCode = reasonCode,
 	}
 end
 
-local function networkReject(sequence: number, reasonCode: string)
+local function networkReject(sequence: number, reasonCode: string): StrokeResultPayload
 	return {
 		sequence = sequence,
 		accepted = false,
@@ -34,7 +42,7 @@ local function networkReject(sequence: number, reasonCode: string)
 	}
 end
 
-local function serializeSemanticPoints(points: { Vector2 }): { any }
+local function serializeSemanticPoints(points: { Vector2 }): SemanticPoints
 	local result = table.create(#points)
 	for index, point in points do
 		result[index] = {
@@ -97,7 +105,7 @@ local function buildDebugId(version: number, points: { Vector2 }, length: number
 	)
 end
 
-function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, motorEnabled: boolean?)
+function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, motorEnabled: boolean?): LegShapeResult
 	if type(racerRuntime) ~= "table"
 		or type(racerRuntime.GetShapeVersion) ~= "function"
 		or type(racerRuntime.ApplyValidatedShape) ~= "function"
@@ -157,7 +165,7 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 	end
 
 	local nextVersion = racerRuntime:GetShapeVersion() + 1
-	local shapeSpec = {
+	local shapeSpec: ShapeSpec = {
 		version = nextVersion,
 		normalizedPoints = cleaned,
 		mappedPoints = geometryPlan.mappedPoints,
@@ -248,7 +256,7 @@ local function validateSemanticPoint(point: any): (number?, number?, string?)
 	return x, y, nil
 end
 
-local function validateNetworkPoints(rawPoints: any): ({ Vector2 }?, { any }?, string?)
+local function validateNetworkPoints(rawPoints: any): ({ Vector2 }?, SemanticPoints?, string?)
 	local config = PhysicsConfig.StrokeProcessing
 	if type(rawPoints) ~= "table" then
 		return nil, nil, "MALFORMED_POINTS"
@@ -275,7 +283,7 @@ local function validateNetworkPoints(rawPoints: any): ({ Vector2 }?, { any }?, s
 	end
 
 	local vectors = table.create(entryCount)
-	local canonicalPoints = table.create(entryCount)
+	local canonicalPoints: SemanticPoints = table.create(entryCount)
 	for index = 1, entryCount do
 		local x, y, pointError = validateSemanticPoint(rawPoints[index])
 		if pointError ~= nil or x == nil or y == nil then
@@ -296,7 +304,7 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 	local states = setmetatable({}, { __mode = "k" })
 	local processor = {}
 
-	function processor:Handle(playerKey: any, payload: any)
+	function processor:Handle(playerKey: any, payload: any): StrokeResultPayload?
 		local sequence = extractSequence(payload)
 		if sequence == nil then
 			return nil
@@ -364,7 +372,7 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 		if buildResult.accepted == true then
 			state.lastAcceptedSequence = sequence
 			local shapeSpec = buildResult.shapeSpec
-			assert(type(shapeSpec) == "table" and type(shapeSpec.normalizedPoints) == "table", "accepted build missing ShapeSpec")
+			assert(shapeSpec ~= nil, "accepted build missing ShapeSpec")
 			return {
 				sequence = sequence,
 				accepted = true,
