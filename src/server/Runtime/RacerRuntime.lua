@@ -23,8 +23,6 @@ local RacerAntiStall = require(script.Parent:WaitForChild("RacerAntiStall"))
 local RacerStabilizer = require(script.Parent:WaitForChild("RacerStabilizer"))
 
 local BODY_SIZE = Vector3.new(3, 3, 3)
-local LEFT_HUB_OFFSET = Vector3.new(0, -0.75, -1.62)
-local RIGHT_HUB_OFFSET = Vector3.new(0, -0.75, 1.62)
 
 local RacerRuntime = {}
 RacerRuntime.__index = RacerRuntime
@@ -47,6 +45,15 @@ local function debugEnvironmentAllowed(): boolean
 	end
 	local environment = game:GetAttribute("DrawRacersEnvironment")
 	return environment == "DEV" or environment == "STAGING"
+end
+
+local function hubOffset(sideSign: number): Vector3
+	local geometry = PhysicsConfig.LegGeometry
+	return Vector3.new(
+		geometry.HubOffsetX,
+		geometry.HubOffsetY,
+		geometry.HubOffsetZAbs * sideSign
+	)
 end
 
 local function makeHub(name: string, offset: Vector3, body: Part, parent: Model): Part
@@ -106,8 +113,8 @@ function RacerRuntime.EnsureTemplate(): Model
 	visualRoot.Name = "VisualRoot"
 	visualRoot.Parent = template
 
-	makeHub("LeftHub", LEFT_HUB_OFFSET, body, template)
-	makeHub("RightHub", RIGHT_HUB_OFFSET, body, template)
+	makeHub("LeftHub", hubOffset(-1), body, template)
+	makeHub("RightHub", hubOffset(1), body, template)
 
 	local runtimeAttachments = Instance.new("Folder")
 	runtimeAttachments.Name = "RuntimeAttachments"
@@ -327,8 +334,6 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 		oldRightModel.Name = "RightLeg_Retiring"
 	end
 
-	-- Commit and motor-enable are one protected transaction. Old legs stay alive and keep
-	-- their phase/physics state until both staged assemblies have committed successfully.
 	local commitOk, commitError = pcall(function()
 		stagedLeftLeg:Commit()
 		stagedRightLeg:Commit()
@@ -360,8 +365,6 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 	return stagedLeftLeg, stagedRightLeg
 end
 
--- Server-internal convenience path retained for geometry/harness tests. It still routes through
--- the one shared GeometryMath owner; client/remote paths must use ApplyValidatedShape.
 function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: boolean?)
 	assert(#normalizedPoints >= 2, "ApplyShape requires at least two normalized points")
 	return self:_ApplyShapeSpec(makeInternalShapeSpec(normalizedPoints), motorEnabled)
