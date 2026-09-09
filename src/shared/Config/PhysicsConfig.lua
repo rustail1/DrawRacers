@@ -36,9 +36,6 @@ return {
 	Stabilization = {
 		LaneNormalError = 0.03,
 		LaneHardBound = 0.08,
-		LaneMaxForceZ = 60000,
-		LaneResponsiveness = 40,
-		LaneMaxVelocity = 30,
 		OrientationResponsiveness = 40,
 		OrientationMaxTorque = 60000,
 		OrientationMaxAngularVelocity = 30,
