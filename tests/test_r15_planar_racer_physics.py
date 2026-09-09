@@ -7,14 +7,24 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_r15_stabilizer_is_continuous_z_only_planar_lock() -> None:
+def test_r15_1_stabilizer_uses_mechanical_plane_not_force_follower() -> None:
     stabilizer = read("src/server/Runtime/RacerStabilizer.lua")
     config = read("src/shared/Config/PhysicsConfig.lua")
 
-    assert "LaneCorrectionDeadzone" not in stabilizer
-    assert "OrientationFreeTiltDegrees" not in stabilizer
-    assert "self.laneAlign.Enabled = true" in stabilizer
-    assert "Vector3.new(0, 0, config.LaneMaxForceZ)" in stabilizer
+    # R15.1: a hard 2.5D gameplay plane must not depend on a finite corrective force.
+    assert 'Instance.new("PlaneConstraint")' in stabilizer
+    assert 'lanePlane.Name = "LanePlane"' in stabilizer
+    assert "lanePlane.Attachment0 = laneReferenceAttachment" in stabilizer
+    assert "lanePlane.Attachment1 = laneAttachment" in stabilizer
+    assert "laneReferenceAttachment.Axis = Vector3.zAxis" in stabilizer
+    assert "lanePlane.Enabled = true" in stabilizer
+    assert 'Instance.new("AlignPosition")' not in stabilizer
+    assert "MaxAxesForce" not in stabilizer
+    assert "LaneMaxForceZ" not in config
+    assert "LaneResponsiveness" not in config
+    assert "LaneMaxVelocity" not in config
+
+    # Out-of-plane orientation remains constrained while rotation around world Z is free.
     assert "Enum.AlignType.PrimaryAxisParallel" in stabilizer
     assert "orientationAlign.PrimaryAxis = Vector3.zAxis" in stabilizer
     assert "orientationAttachment.Axis = Vector3.zAxis" in stabilizer
@@ -23,9 +33,6 @@ def test_r15_stabilizer_is_continuous_z_only_planar_lock() -> None:
     for token in [
         "LaneNormalError = 0.03",
         "LaneHardBound = 0.08",
-        "LaneMaxForceZ = 60000",
-        "LaneResponsiveness = 40",
-        "LaneMaxVelocity = 30",
         "OrientationResponsiveness = 40",
         "OrientationMaxTorque = 60000",
         "OrientationMaxAngularVelocity = 30",
@@ -36,13 +43,16 @@ def test_r15_stabilizer_is_continuous_z_only_planar_lock() -> None:
     assert "OrientationFreeTiltDegrees" not in config
 
 
-def test_r15_b10_checks_planar_constraint_shape() -> None:
+def test_r15_1_b10_exercises_real_lateral_impulse() -> None:
     spec = read("src/server/Tests/B10StabilizationSpec.lua")
     for token in [
+        "GetLaneConstraint",
+        'lanePlane:IsA("PlaneConstraint")',
+        "body:ApplyImpulse",
+        "maxObservedLaneDeviation",
+        "RunService.Heartbeat:Wait()",
+        "lateral impulse escaped the hard gameplay plane",
         "PrimaryAxisParallel",
-        "orientationAlign.PrimaryAxis == Vector3.zAxis",
-        "lane constraint must remain continuously enabled",
-        "planar orientation constraint must remain continuously enabled",
         "in-plane rotation around Z must remain unconstrained",
         "out-of-plane disturbance must keep planar correction active",
     ]:
