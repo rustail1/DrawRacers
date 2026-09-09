@@ -11,6 +11,11 @@ local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRun
 
 local B10StabilizationSpec = {}
 
+local function bodyAngularDeviationDegrees(body: BasePart): number
+	local x, y, z = body.CFrame:ToOrientation()
+	return math.max(math.abs(math.deg(x)), math.abs(math.deg(y)), math.abs(math.deg(z)))
+end
+
 function B10StabilizationSpec.run()
 	local config = PhysicsConfig.Stabilization
 	local laneCenterZ = 2.5
@@ -46,23 +51,13 @@ function B10StabilizationSpec.run()
 	assert(math.abs(lanePlane.Attachment0.WorldPosition.Z - laneCenterZ) <= 1e-6, "lane plane reference must stay on canonical lane center Z")
 
 	assert(orientationAlign.Mode == Enum.OrientationAlignmentMode.OneAttachment)
-	assert(orientationAlign.AlignType == Enum.AlignType.PrimaryAxisParallel)
-	assert(orientationAlign.PrimaryAxis == Vector3.zAxis)
+	assert(orientationAlign.AlignType == Enum.AlignType.AllAxes)
+	assert(orientationAlign.CFrame == CFrame.identity)
 	assert(orientationAlign.Responsiveness == config.OrientationResponsiveness)
 	assert(orientationAlign.RigidityEnabled == false)
-	assert(orientationAlign.Enabled == true, "planar orientation constraint must remain continuously enabled")
+	assert(orientationAlign.Enabled == true, "upright orientation correction must remain continuously enabled")
 
-	body.CFrame = CFrame.new(body.Position) * CFrame.Angles(0, 0, math.rad(70))
-	stabilizer:Step()
-	assert(orientationAlign.Enabled == true, "in-plane rotation around Z must remain unconstrained")
-	assert(orientationAlign.AlignType == Enum.AlignType.PrimaryAxisParallel, "in-plane rotation must not promote to AllAxes")
-
-	body.CFrame = CFrame.new(body.Position) * CFrame.Angles(math.rad(30), 0, 0)
-	stabilizer:Step()
-	assert(orientationAlign.Enabled == true, "out-of-plane disturbance must keep planar correction active")
-	assert(orientationAlign.AlignType == Enum.AlignType.PrimaryAxisParallel)
-
-	-- Real physics regression for the Studio failure that escaped the old property-only B10.
+	-- Real physics regression for the Studio lateral failure that escaped the old property-only B10.
 	body.CFrame = CFrame.new(-18, 8, laneCenterZ)
 	body.AssemblyLinearVelocity = Vector3.zero
 	body.AssemblyAngularVelocity = Vector3.zero
@@ -78,6 +73,33 @@ function B10StabilizationSpec.run()
 		maxObservedLaneDeviation <= config.LaneHardBound,
 		string.format("lateral impulse escaped the hard gameplay plane: %.6f", maxObservedLaneDeviation)
 	)
+
+	-- Reference-parity body contract: disturb the cube but keep it upright while the legs
+	-- remain the only rotating locomotion assemblies.
+	body.Anchored = true
+	body.CFrame = CFrame.new(-18, 8, laneCenterZ) * CFrame.Angles(0, 0, math.rad(2.5))
+	body.AssemblyLinearVelocity = Vector3.zero
+	body.AssemblyAngularVelocity = Vector3.zero
+	body.Anchored = false
+	local peakDeviation = bodyAngularDeviationDegrees(body)
+	assert(peakDeviation <= 3.0, string.format("upright body angular deviation peak %.4f", peakDeviation))
+	for _ = 1, 15 do
+		RunService.Heartbeat:Wait()
+	end
+	assert(bodyAngularDeviationDegrees(body) <= 1.0, "upright body angular deviation did not recover")
+
+	-- Upright correction must not accidentally become an X/Y position lock.
+	local freeStart = body.Position
+	body:ApplyImpulse(Vector3.new(body.AssemblyMass * 25, body.AssemblyMass * 12, 0))
+	for _ = 1, 6 do
+		RunService.Heartbeat:Wait()
+	end
+	local freeDelta = body.Position - freeStart
+	assert(
+		math.abs(freeDelta.X) > 0.01 or math.abs(freeDelta.Y) > 0.01,
+		"x/y translation must remain physically free"
+	)
+	assert(math.abs(body.Position.Z - laneCenterZ) <= config.LaneHardBound, "upright correction escaped lane plane")
 
 	stabilizer:Step()
 	assert(model:GetAttribute("LaneHardBoundExceeded") == false, "mechanical plane lock must recover within the hard lane bound")
