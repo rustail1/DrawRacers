@@ -30,4 +30,4 @@ This proves repository contract coverage plus Rojo project buildability. It does
 ## Gate result
 **B17/G0 remains HUMAN_GATE. Studio checkpoints: HUMAN PENDING.**
 
-There is no `ACCEPTED — B17` decision here. Local Studio verification and the six-external-tester empirical G0 protocol remain required before C01/M0.5.
+B17 is not accepted by this decision. Local Studio verification and the six-external-tester empirical G0 protocol remain required before C01/M0.5.
