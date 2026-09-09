@@ -76,6 +76,11 @@ Before every task read: `FEATURE_LIST → SESSION → 50 → 26 row → 66 task 
 
 AI may decide HOW inside owner contracts. It may not silently invent/change player verbs, layout hierarchy, launch track dimensions, economy meaning, catalog identity, fairness, persistence schema or scope.
 
+## Current repository implementation cursor
+The bounded pre-G0 implementation closure **R14.1–R14.10** is code/CI complete. Evidence head `2864661e5214db5a09e53a53b6c8da8a79365cce`, GitHub Actions run `34377868753`: **109 passed, 0 failed**, followed by a successful **Rojo build**.
+
+This evidence does not promote the human gate. **Studio checkpoints: HUMAN PENDING. B17/G0 remains HUMAN_GATE.** Roblox Studio physics/presentation/touch checks plus the empirical G0 protocol are still required before C01/M0.5. Detailed evidence is recorded in `DECISION_LOG_PRE_G0_RUNTIME_CLOSURE_R14_2026-09-09.md` and `SESSION.md`.
+
 ## History
 Historical audits/changelogs are **not included in the production handoff ZIP**. They are kept only in the separate history archive. Codex/programmers should ingest only files listed in `manifest.json.current_documents`.
 
