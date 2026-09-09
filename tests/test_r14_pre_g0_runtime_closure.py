@@ -74,8 +74,7 @@ def test_r14_3_studio_runner_aggregates_failures_under_xpcall() -> None:
     assert "xpcall" in runner
     assert "debug.traceback" in runner
     assert "failures" in runner
-    for task in [3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16]:
-        assert f'"B{task:02d}' in runner
+    assert "specNames" in runner
     assert "return #failures == 0" in runner
 
 
@@ -86,6 +85,9 @@ def test_r14_3_server_bootstrap_gates_harness_on_ready() -> None:
     assert 'SetAttribute(STUDIO_GATE_ATTRIBUTE, "BLOCKED")' in bootstrap
     assert 'SetAttribute(STUDIO_GATE_ATTRIBUTE, "READY")' in bootstrap
     assert 'WaitForChild("StudioSpecRunner")' in bootstrap
+    assert "STUDIO_REGRESSION_SPECS" in bootstrap
+    for task in [3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16]:
+        assert f'"B{task:02d}' in bootstrap
     assert "if specsPassed then" in bootstrap
     ready_branch = bootstrap.split("if specsPassed then", 1)[1]
     assert "M0HumanHarness.start()" in ready_branch
