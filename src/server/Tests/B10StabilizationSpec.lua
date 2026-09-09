@@ -1,5 +1,6 @@
 --!strict
 
+local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PhysicsConfig = require(
@@ -20,6 +21,11 @@ function B10StabilizationSpec.run()
 		spawnCFrame = CFrame.new(-18, 8, 2.5),
 		laneCenterZ = 2.5,
 	})
+
+	assert(PhysicsService:CollisionGroupsAreCollidable("Default", "RacerBody") == false, "Default must not collide with RacerBody")
+	assert(PhysicsService:CollisionGroupsAreCollidable("Default", "RacerLeg") == false, "Default must not collide with RacerLeg")
+	assert(PhysicsService:CollisionGroupsAreCollidable("Track", "RacerBody") == true, "Track must collide with RacerBody")
+	assert(PhysicsService:CollisionGroupsAreCollidable("Track", "RacerLeg") == true, "Track must collide with RacerLeg")
 
 	local body = racer:GetBody()
 	body.Anchored = true
