@@ -2,6 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
@@ -23,6 +24,30 @@ local function takeAttachment(runtimeAttachments: Instance, body: Part, name: st
 	return attachment
 end
 
+local function createLaneReference(model: Model, body: Part, laneCenterZ: number): (Part, Attachment)
+	local racersRoot = Workspace:WaitForChild("Runtime"):WaitForChild("Racers")
+	local laneReference = Instance.new("Part")
+	laneReference.Name = "LanePlaneReference"
+	laneReference.Size = Vector3.new(0.1, 0.1, 0.1)
+	laneReference.CFrame = CFrame.new(body.Position.X, body.Position.Y, laneCenterZ)
+	laneReference.Anchored = true
+	laneReference.CanCollide = false
+	laneReference.CanTouch = false
+	laneReference.CanQuery = false
+	laneReference.CastShadow = false
+	laneReference.Transparency = 1
+	laneReference.Parent = racersRoot
+	laneReference:SetAttribute("RacerModelName", model.Name)
+
+	local laneReferenceAttachment = Instance.new("Attachment")
+	laneReferenceAttachment.Name = "LanePlaneReferenceAttachment"
+	laneReferenceAttachment.Axis = Vector3.zAxis
+	laneReferenceAttachment.SecondaryAxis = Vector3.yAxis
+	laneReferenceAttachment.Parent = laneReference
+
+	return laneReference, laneReferenceAttachment
+end
+
 function RacerStabilizer.new(params: Params)
 	local config = PhysicsConfig.Stabilization
 	local model = params.racerModel
@@ -37,21 +62,13 @@ function RacerStabilizer.new(params: Params)
 	-- are owned by BodyCollider, remove the empty helper so spawned racers match doc 65.
 	runtimeAttachments:Destroy()
 
-	local laneAlign = Instance.new("AlignPosition")
-	laneAlign.Name = "LaneAlign"
-	laneAlign.Mode = Enum.PositionAlignmentMode.OneAttachment
-	laneAlign.Attachment0 = laneAttachment
-	laneAlign.ApplyAtCenterOfMass = true
-	laneAlign.RigidityEnabled = false
-	laneAlign.ReactionForceEnabled = false
-	laneAlign.ForceLimitMode = Enum.ForceLimitMode.PerAxis
-	laneAlign.ForceRelativeTo = Enum.ActuatorRelativeTo.World
-	laneAlign.MaxAxesForce = Vector3.new(0, 0, config.LaneMaxForceZ)
-	laneAlign.MaxVelocity = config.LaneMaxVelocity
-	laneAlign.Responsiveness = config.LaneResponsiveness
-	laneAlign.Position = Vector3.new(body.Position.X, body.Position.Y, params.laneCenterZ)
-	laneAlign.Enabled = true
-	laneAlign.Parent = body
+	local laneReference, laneReferenceAttachment = createLaneReference(model, body, params.laneCenterZ)
+	local lanePlane = Instance.new("PlaneConstraint")
+	lanePlane.Name = "LanePlane"
+	lanePlane.Attachment0 = laneReferenceAttachment
+	lanePlane.Attachment1 = laneAttachment
+	lanePlane.Enabled = true
+	lanePlane.Parent = body
 
 	local orientationAlign = Instance.new("AlignOrientation")
 	orientationAlign.Name = "OrientationAlign"
@@ -74,7 +91,8 @@ function RacerStabilizer.new(params: Params)
 		model = model,
 		body = body,
 		laneCenterZ = params.laneCenterZ,
-		laneAlign = laneAlign,
+		laneReference = laneReference,
+		lanePlane = lanePlane,
 		orientationAlign = orientationAlign,
 		connection = nil,
 		destroyed = false,
@@ -97,16 +115,15 @@ function RacerStabilizer:Step()
 	local errorZ = body.Position.Z - self.laneCenterZ
 	local absoluteError = math.abs(errorZ)
 
-	self.laneAlign.Position = Vector3.new(body.Position.X, body.Position.Y, self.laneCenterZ)
-	self.laneAlign.Enabled = true
+	self.lanePlane.Enabled = true
 	self.orientationAlign.Enabled = true
 	self.model:SetAttribute("LaneNormalBoundExceeded", absoluteError > config.LaneNormalError)
 	self.model:SetAttribute("LaneHardBoundExceeded", absoluteError > config.LaneHardBound)
 end
 
-function RacerStabilizer:GetLaneAlign(): AlignPosition
+function RacerStabilizer:GetLaneConstraint(): PlaneConstraint
 	assert(not self.destroyed, "RacerStabilizer is destroyed")
-	return self.laneAlign
+	return self.lanePlane
 end
 
 function RacerStabilizer:GetOrientationAlign(): AlignOrientation
@@ -129,14 +146,18 @@ function RacerStabilizer:Destroy()
 		self.connection:Disconnect()
 		self.connection = nil
 	end
-	if self.laneAlign then
-		self.laneAlign:Destroy()
+	if self.lanePlane then
+		self.lanePlane:Destroy()
 	end
 	if self.orientationAlign then
 		self.orientationAlign:Destroy()
 	end
-	self.laneAlign = nil
+	if self.laneReference then
+		self.laneReference:Destroy()
+	end
+	self.lanePlane = nil
 	self.orientationAlign = nil
+	self.laneReference = nil
 	self.body = nil
 	self.model = nil
 end
