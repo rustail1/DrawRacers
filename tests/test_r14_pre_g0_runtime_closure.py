@@ -210,15 +210,15 @@ def test_r14_10_active_remote_consumers_use_remote_names_registry() -> None:
 
 
 def test_r14_11_status_docs_record_code_closure_without_passing_human_gate() -> None:
-    evidence_sha = "2864661e5214db5a09e53a53b6c8da8a79365cce"
-    evidence_run = "34377868753"
-    for path in ["docs/README.md", "docs/SESSION.md", "docs/FEATURE_LIST.md"]:
+    evidence_sha = "8a6a05a31427346d2a1437820ffa759f21fca90c"
+    evidence_run = "34387618626"
+    for path in ["README.md", "docs/README.md", "docs/SESSION.md", "docs/FEATURE_LIST.md"]:
         text = read(path)
         for token in [
-            "R14.1–R14.10",
+            "R14.1–R14.11",
             evidence_sha,
             evidence_run,
-            "109 passed, 0 failed",
+            "120 passed, 0 failed",
             "Rojo build",
             "Studio checkpoints: HUMAN PENDING",
             "B17/G0",
@@ -228,9 +228,9 @@ def test_r14_11_status_docs_record_code_closure_without_passing_human_gate() -> 
         assert "ACCEPTED — B17" not in text
 
     decision = read("docs/DECISION_LOG_PRE_G0_RUNTIME_CLOSURE_R14_2026-09-09.md")
-    for task in range(1, 11):
+    for task in range(1, 12):
         assert f"R14.{task}" in decision
-    for token in [evidence_sha, evidence_run, "109 passed, 0 failed", "Rojo build", "HUMAN PENDING", "B17/G0"]:
+    for token in [evidence_sha, evidence_run, "120 passed, 0 failed", "Rojo build", "HUMAN PENDING", "B17/G0"]:
         assert token in decision
     assert "ACCEPTED — B17" not in decision
 
