@@ -114,6 +114,32 @@ function B13AtomicRedrawSpec.run()
 	assert(body.AssemblyLinearVelocity == linearBefore, "failed redraw reset AssemblyLinearVelocity")
 	assert(body.AssemblyAngularVelocity == angularBefore, "failed redraw reset AssemblyAngularVelocity")
 
+	-- Force the second commit to fail after the first staged leg has already committed. The
+	-- transaction must roll back both staged legs and restore the exact old pair/names.
+	local originalCommit = LegAssembly.Commit
+	local commitCount = 0
+	LegAssembly.Commit = function(self: any)
+		commitCount += 1
+		if commitCount == 2 then
+			error("B13 injected right-leg commit failure")
+		end
+		return originalCommit(self)
+	end
+
+	local commitFailed = LegShapeService.ValidateAndBuild(racer, SECOND_SHAPE, false)
+	LegAssembly.Commit = originalCommit
+
+	assert(commitFailed.accepted == false and commitFailed.rejectReasonCode == "BUILD_FAILED", "commit failure must fail closed")
+	assert(racer:GetShapeVersion() == 1, "commit failure changed ShapeVersion")
+	assert(legsFolder:FindFirstChild("LeftLeg") == oldLeftModel, "old LeftLeg not restored after commit failure")
+	assert(legsFolder:FindFirstChild("RightLeg") == oldRightModel, "old RightLeg not restored after commit failure")
+	assert(legsFolder:FindFirstChild("LeftLeg_Retiring") == nil, "LeftLeg_Retiring leaked after rollback")
+	assert(legsFolder:FindFirstChild("RightLeg_Retiring") == nil, "RightLeg_Retiring leaked after rollback")
+	assert(countLegModels(legsFolder) == 2, "commit failure leaked staged leg models")
+	assert(body.CFrame == bodyCFrameBefore, "commit failure teleported body CFrame")
+	assert(body.AssemblyLinearVelocity == linearBefore, "commit failure reset AssemblyLinearVelocity")
+	assert(body.AssemblyAngularVelocity == angularBefore, "commit failure reset AssemblyAngularVelocity")
+
 	local second = LegShapeService.ValidateAndBuild(racer, SECOND_SHAPE, false)
 	assert(second.accepted == true and second.shapeVersion == 2, "valid B13 redraw must accept exactly once")
 	assert(racer:GetShapeVersion() == 2)
