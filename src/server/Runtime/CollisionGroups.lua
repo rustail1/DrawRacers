@@ -3,6 +3,7 @@
 local PhysicsService = game:GetService("PhysicsService")
 
 local CollisionGroups = {
+	Default = "Default",
 	Track = "Track",
 	RacerBody = "RacerBody",
 	RacerLeg = "RacerLeg",
@@ -34,6 +35,8 @@ function CollisionGroups.ensure()
 	PhysicsService:CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.RacerLeg, false)
 	PhysicsService:CollisionGroupSetCollidable(CollisionGroups.RacerBody, CollisionGroups.Track, true)
 	PhysicsService:CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.Track, true)
+	PhysicsService:CollisionGroupSetCollidable(CollisionGroups.RacerBody, CollisionGroups.Default, false)
+	PhysicsService:CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.Default, false)
 	PhysicsService:CollisionGroupSetCollidable(CollisionGroups.Track, CollisionGroups.Decoration, false)
 	PhysicsService:CollisionGroupSetCollidable(CollisionGroups.Track, CollisionGroups.Trigger, false)
 	PhysicsService:CollisionGroupSetCollidable(CollisionGroups.RacerBody, CollisionGroups.Decoration, false)
