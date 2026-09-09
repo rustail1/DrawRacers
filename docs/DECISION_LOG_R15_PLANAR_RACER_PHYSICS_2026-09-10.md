@@ -12,57 +12,83 @@ Product contract:
 
 Player steering, invisible side walls, and normal-operation per-Heartbeat teleport are not part of this solution.
 
-## Trigger evidence
+## Original R15 trigger
 The pre-R15 Studio G0 session reached:
 - `[DrawRacers][StudioGate] TOTAL 13 PASS / 0 FAIL`;
 - `[DrawRacers][StudioGate] READY`;
 - `[DrawRacers][G0] human harness ready`.
 
-Despite the clean gate, normal play visibly allowed the racer to drift toward the side of the track. Debug telemetry showed `laneDeviation 0.418`, already above the old `0.35` normal lane-error allowance. The racer could then fall from a Z-side edge and only later trigger the existing R14.6 Y kill-plane recovery.
+Despite that clean gate, normal play showed visible side drift. The first captured debug evidence included `laneDeviation 0.418`, above the old `0.35` normal lane-error allowance. That proved the original soft lane corridor (`LaneCorrectionDeadzone = 0.15`, `LaneNormalError = 0.35`, `LaneHardBound = 0.75`) did not match the intended no-steering product contract.
 
-Root cause: the old stabilizer deliberately implemented a soft lane corridor (`LaneCorrectionDeadzone = 0.15`, `LaneNormalError = 0.35`, `LaneHardBound = 0.75`) and a full-orientation correction that remained disabled inside a 25-degree free-tilt envelope. That allowed lateral displacement and out-of-plane rotation which are not intended player verbs.
+## Original R15 implementation and evidence
+R15 initially replaced the soft corridor with an always-on Z-only `AlignPosition` and `PrimaryAxisParallel` orientation correction. This removed deadzones/free-tilt semantics and reduced the diagnostic bounds to `LaneNormalError = 0.03` / `LaneHardBound = 0.08`.
 
-## Owner and implementation
-`RacerStabilizer` remains the sole owner. No new movement service/controller was introduced.
+Automated evidence for that first implementation:
+- complete test-owner RED commit `df95b11c4593f48ccda39c5cfe40f1ee90d6b265`, run `34392903238` → **120 passed, 4 failed**;
+- production GREEN commit `f0e943b5d6e8c48c2eb144cec43d2e5531dbcc48`, run `34393130544` → **124 passed, 0 failed**, Rokit PASS, Rojo build PASS;
+- docs RED commit `b90e020e23f6d8a19acbc0ba46e343bb0cd19fe8`, run `34393250062` → **124 passed, 1 failed**.
 
-Implementation:
-- always-on world-space Z-only `AlignPosition`;
-- `MaxAxesForce.X = 0` and `MaxAxesForce.Y = 0` so the planar lock does not own forward/vertical locomotion;
-- `AlignOrientation` in `OneAttachment` mode with `AlignType = PrimaryAxisParallel`;
-- attachment/constraint primary axis = world/local Z plane normal;
-- in-plane rotation around world Z remains free;
-- out-of-plane X/Y rotation is corrected;
-- no intentional +X propulsion and no normal-operation hard snap.
+The first R15 implementation was **not** accepted by the Studio human gate.
 
-Canonical starting values:
+## R15.1 Studio failure evidence
+A fresh real Studio G0 session again reached:
+- `[DrawRacers][B10] stabilization/lane tests PASS`;
+- `[DrawRacers][StudioGate] TOTAL 13 PASS / 0 FAIL`;
+- `[DrawRacers][StudioGate] READY`;
+- `[DrawRacers][G0] human harness ready`;
+- three server-accepted strokes with `ShapeVersion = 3` and motors enabled.
+
+During that same session the debug panel showed **`laneDeviation 5.199`** and the racer was visibly able to travel sideways. This is far beyond `LaneHardBound = 0.08`, so the human R15 Studio checkpoint is an explicit FAIL, not a PASS.
+
+The red-looking B12/B13 lines in that session were expected injected failure-path tests: each owning B12/B13 spec completed PASS. They are not the cause of the lateral escape.
+
+## R15.1 root cause
+The hard product invariant had been implemented using the wrong mechanism. `AlignPosition` is a finite-force mover/follower; even with high Z-only force, real leg/contact impulses can overpower it. It therefore cannot be treated as an exact gameplay-plane constraint.
+
+The previous B10 also had an evidence blind spot: it anchored the body and mainly inspected constraint properties. It verified configuration shape, not real lateral solver behavior, so it could report PASS while the interactive racer escaped by several studs.
+
+## R15.1 implementation
+`RacerStabilizer` remains the sole owner; no new movement service/controller was introduced.
+
+The bounded repair replaces force-following lane correction with a mechanical `PlaneConstraint`:
+- an invisible anchored `LanePlaneReference` is created at the canonical lane-center Z;
+- it is non-collidable, non-touchable and non-queryable;
+- `PlaneConstraint` joins the reference attachment to the body lane attachment and stays enabled;
+- X/Y translation remains physical/free;
+- rotation around world Z remains physical/free;
+- `PrimaryAxisParallel` `AlignOrientation` still suppresses out-of-plane X/Y rotation;
+- no `AlignPosition`, no lane-force tuning, no side walls, no intentional +X propulsion, and no normal-operation CFrame/PivotTo correction.
+
+Canonical diagnostics remain:
 - `LaneNormalError = 0.03`
 - `LaneHardBound = 0.08`
-- `LaneMaxForceZ = 60000`
-- `LaneResponsiveness = 40`
-- `LaneMaxVelocity = 30`
 - `OrientationResponsiveness = 40`
 - `OrientationMaxTorque = 60000`
 - `OrientationMaxAngularVelocity = 30`
 
-`0.03` and `0.08` are diagnostic solver tolerances, not permitted lateral gameplay freedom.
+The removed `LaneMaxForceZ`, `LaneResponsiveness`, and `LaneMaxVelocity` values belonged only to the failed force-following implementation and are no longer contract owners.
 
-## TDD / automated evidence
-- R15 RED after all existing stabilization test owners were retargeted: commit `df95b11c4593f48ccda39c5cfe40f1ee90d6b265`, GitHub Actions run `34392903238` → **120 passed, 4 failed**. Failures were the intended old soft-lane/config mismatches.
-- R15 production GREEN: commit `f0e943b5d6e8c48c2eb144cec43d2e5531dbcc48`, GitHub Actions run `34393130544` → **124 passed, 0 failed**, Rokit install PASS, Rojo build PASS.
-- R15 docs reconciliation RED: commit `b90e020e23f6d8a19acbc0ba46e343bb0cd19fe8`, GitHub Actions run `34393250062` → **124 passed, 1 failed**, with the only failure proving owner/status docs still described the pre-R15 contract.
+## R15.1 regression coverage
+B10 now includes real physics evidence instead of property checks only. It unanchors the racer body, applies a large lateral impulse, samples several Heartbeats, and requires `maxObservedLaneDeviation <= LaneHardBound`. This specifically covers the class of failure observed in the human Studio session.
+
+TDD evidence:
+- R15.1 RED commit `8574b918988b8e26551140f2e0d3005caded8fe8`, GitHub Actions run `34394769781` → **123 passed, 2 failed**. Both failures were the intended missing mechanical-plane / real-lateral-impulse contracts.
+- R15.1 production GREEN head `be44304bf00391e05c7d7750609730a7368ebc87`, GitHub Actions run `34394991926` → **125 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**.
+- R15.1 docs-evidence RED commit `a77338bdc40644cfc1e74d104c7c46d025f05c99`, run `34395165597` → **124 passed, 1 failed**, with the single failure proving Source of Truth still described the failed AlignPosition version.
 
 ## Human acceptance still required
-R15 runtime acceptance remains a Roblox Studio human gate. Required evidence includes:
+R15.1 runtime acceptance remains a Roblox Studio human gate. Required evidence:
 - B03–B16 Studio runner remains `13 PASS / 0 FAIL` and reaches `READY`;
+- B10's new live lateral-impulse regression PASSes in Studio;
 - normal `laneDeviation` stays <= `0.03` during representative legal shapes;
-- deliberate asymmetric/lateral contact does not allow a visible Z-side escape; any unexplained excursion above `0.08` is FAIL evidence;
+- deliberate asymmetric/lateral contacts do not allow a visible Z-side escape; any unexplained excursion above `0.08` is FAIL evidence;
 - in-plane rotation/tumble around world Z remains physical;
 - out-of-plane X/Y rotation is suppressed;
-- actual gap/fall behavior still reaches R14.6 Y recovery and preserves the accepted ShapeSpec/ShapeVersion.
+- an actual track gap still causes a Y fall and R14.6 recovery while preserving accepted ShapeSpec/ShapeVersion.
 
 ## Status
-**R15 IMPLEMENTED/AUTOMATED GREEN; HUMAN STUDIO PENDING.**
+**R15.1 IMPLEMENTED/AUTOMATED GREEN; HUMAN STUDIO PENDING.**
 
 **B17/G0: PENDING.**
 
-R15 does not satisfy the separate empirical G0 requirement for six unique external testers.
+R15.1 does not satisfy the separate empirical G0 requirement for six unique external testers.
