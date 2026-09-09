@@ -171,6 +171,7 @@ function RacerRuntime.new(params: SpawnParams)
 	model:SetAttribute("LaneIndex", params.laneIndex)
 	model:SetAttribute("IsBot", params.isBot)
 	model:SetAttribute("ShapeVersion", 0)
+	model:SetAttribute("DebugSimplifiedPoints", 0)
 	model:SetAttribute("TrackId", params.trackId)
 	model:SetAttribute("Finished", false)
 	model:SetAttribute("LaneCenterZ", params.laneCenterZ or params.spawnCFrame.Position.Z)
@@ -329,6 +330,7 @@ function RacerRuntime:ApplyValidatedShape(shapeSpec: any, motorEnabled: boolean?
 	local leftLeg, rightLeg = self:_ApplyShapeSpec(shapeSpec, motorEnabled)
 	self.currentShapeSpec = shapeSpec
 	self.model:SetAttribute("ShapeVersion", shapeSpec.version)
+	self.model:SetAttribute("DebugSimplifiedPoints", #shapeSpec.normalizedPoints)
 	return leftLeg, rightLeg
 end
 

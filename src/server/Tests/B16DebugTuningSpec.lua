@@ -1,5 +1,10 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local PhysicsConfig = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
+)
 local DebugTelemetry = require(script.Parent.Parent.Runtime:WaitForChild("DebugTelemetry"))
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 local LegShapeService = require(script.Parent.Parent.Services:WaitForChild("LegShapeService"))
@@ -33,22 +38,32 @@ function B16DebugTuningSpec.run()
 
 	local model = racer:GetModel()
 	local body = racer:GetBody()
+	local currentShape = racer:GetCurrentShapeSpec()
+	assert(currentShape ~= nil, "B16 setup missing current ShapeSpec")
 	model:SetAttribute("LaneCenterZ", 0)
 	model:SetAttribute("Checkpoint", 2)
 	model:SetAttribute("Progress", 0.375)
-	body.AssemblyLinearVelocity = Vector3.new(3, 0, 0)
+	body.Anchored = true
 
-	DebugTelemetry.sampleRacer(model)
+	DebugTelemetry.sampleRacer(model, 0)
 
 	assert(model:GetAttribute("DebugShapeVersion") == 1, "shapeVersion telemetry mismatch")
-	assert(isFiniteNumber(model:GetAttribute("DebugSimplifiedPoints")), "simplified point metric missing")
+	assert(model:GetAttribute("DebugSimplifiedPoints") == #currentShape.normalizedPoints, "simplified point metric mismatch")
 	assert((model:GetAttribute("DebugColliderSegments") :: number) > 0, "collider segment metric missing")
 	assert((model:GetAttribute("DebugBodySpeed") :: number) >= 0, "body speed metric missing")
 	assert(isFiniteNumber(model:GetAttribute("DebugMotorAngularVelocity")), "motor angular velocity metric missing")
-	assert(type(model:GetAttribute("DebugStuckState")) == "boolean", "stuck state metric missing")
+	assert(model:GetAttribute("DebugStuckState") == false, "stuck must wait for a full progress window")
 	assert(isFiniteNumber(model:GetAttribute("DebugLaneDeviation")), "lane deviation metric missing")
 	assert(model:GetAttribute("DebugCheckpoint") == 2, "checkpoint metric mismatch")
 	assert(model:GetAttribute("DebugProgress") == 0.375, "progress metric mismatch")
+
+	body.Position = body.Position + Vector3.new(PhysicsConfig.Recovery.MeaningfulHorizontalProgress - 0.1, 0, 0)
+	DebugTelemetry.sampleRacer(model, PhysicsConfig.Recovery.ProgressSampleWindow)
+	assert(model:GetAttribute("DebugStuckState") == true, "sub-threshold X progress must report stuck")
+
+	body.Position = body.Position + Vector3.new(PhysicsConfig.Recovery.MeaningfulHorizontalProgress + 0.1, 0, 0)
+	DebugTelemetry.sampleRacer(model, PhysicsConfig.Recovery.ProgressSampleWindow * 2)
+	assert(model:GetAttribute("DebugStuckState") == false, "meaningful X progress must clear stuck")
 
 	racer:Destroy()
 	print("[DrawRacers][B16] debug tuning panel tests PASS")

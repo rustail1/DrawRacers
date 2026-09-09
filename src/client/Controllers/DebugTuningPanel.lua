@@ -42,12 +42,23 @@ local function findRacer(): Model?
 	if not racers then
 		return nil
 	end
+
+	local fallbackHuman: Model? = nil
+	local fallbackAny: Model? = nil
 	for _, child in racers:GetChildren() do
 		if child:IsA("Model") and child:FindFirstChild("BodyCollider") then
-			return child
+			if child:GetAttribute("DebugTarget") == true then
+				return child
+			end
+			if fallbackHuman == nil and child:GetAttribute("IsBot") == false then
+				fallbackHuman = child
+			end
+			if fallbackAny == nil then
+				fallbackAny = child
+			end
 		end
 	end
-	return nil
+	return fallbackHuman or fallbackAny
 end
 
 function DebugTuningPanel.new(playerGui: PlayerGui)
