@@ -12,6 +12,7 @@ local DebugTelemetry = {}
 
 local connection: RBXScriptConnection? = nil
 local elapsed = 0
+local progressStateByModel: any = setmetatable({}, { __mode = "k" })
 
 local function environmentAllowed(): boolean
 	if RunService:IsStudio() then
@@ -27,9 +28,17 @@ local function countColliderSegments(model: Model): number
 	if not legs then
 		return count
 	end
-	for _, descendant in legs:GetDescendants() do
-		if descendant:IsA("BasePart") and string.match(descendant.Name, "^LegSegment") then
-			count += 1
+
+	for _, leg in legs:GetChildren() do
+		if leg:IsA("Model") then
+			local segments = leg:FindFirstChild("Segments")
+			if segments and segments:IsA("Folder") then
+				for _, child in segments:GetChildren() do
+					if child:IsA("BasePart") then
+						count += 1
+					end
+				end
+			end
 		end
 	end
 	return count
@@ -43,12 +52,37 @@ local function getNumberAttribute(model: Model, name: string, fallback: number):
 	return fallback
 end
 
-function DebugTelemetry.sampleRacer(model: Model)
+local function sampleStuckState(model: Model, body: BasePart, now: number): boolean
+	local recovery = PhysicsConfig.Recovery
+	local state = progressStateByModel[model]
+	if state == nil then
+		state = {
+			windowStartAt = now,
+			windowStartX = body.Position.X,
+			stuck = false,
+		}
+		progressStateByModel[model] = state
+		return false
+	end
+
+	local windowElapsed = now - state.windowStartAt
+	if windowElapsed >= recovery.ProgressSampleWindow then
+		local horizontalProgress = body.Position.X - state.windowStartX
+		state.stuck = horizontalProgress < recovery.MeaningfulHorizontalProgress
+		state.windowStartAt = now
+		state.windowStartX = body.Position.X
+	end
+
+	return state.stuck
+end
+
+function DebugTelemetry.sampleRacer(model: Model, nowOverride: number?)
 	local body = model:FindFirstChild("BodyCollider")
 	if not body or not body:IsA("BasePart") then
 		return
 	end
 
+	local now = nowOverride or os.clock()
 	local laneCenterZ = getNumberAttribute(model, "LaneCenterZ", body.Position.Z)
 	local bodySpeed = body.AssemblyLinearVelocity.Magnitude
 	local shapeVersion = getNumberAttribute(model, "ShapeVersion", 0)
@@ -61,7 +95,7 @@ function DebugTelemetry.sampleRacer(model: Model)
 	model:SetAttribute("DebugColliderSegments", countColliderSegments(model))
 	model:SetAttribute("DebugBodySpeed", bodySpeed)
 	model:SetAttribute("DebugMotorAngularVelocity", PhysicsConfig.Motor.AngularVelocity)
-	model:SetAttribute("DebugStuckState", bodySpeed < 0.5)
+	model:SetAttribute("DebugStuckState", sampleStuckState(model, body, now))
 	model:SetAttribute("DebugLaneDeviation", body.Position.Z - laneCenterZ)
 	model:SetAttribute("DebugCheckpoint", checkpoint)
 	model:SetAttribute("DebugProgress", progress)
@@ -95,6 +129,7 @@ function DebugTelemetry.stop()
 		connection = nil
 	end
 	elapsed = 0
+	table.clear(progressStateByModel)
 end
 
 return DebugTelemetry
