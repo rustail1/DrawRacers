@@ -207,3 +207,41 @@ def test_r14_10_active_remote_consumers_use_remote_names_registry() -> None:
         assert 'WaitForChild("RemoteNames")' in source
         assert "RemoteNames.SubmitStroke" in source
         assert "RemoteNames.StrokeResult" in source
+
+
+def test_r14_11_status_docs_record_code_closure_without_passing_human_gate() -> None:
+    evidence_sha = "2864661e5214db5a09e53a53b6c8da8a79365cce"
+    evidence_run = "34377868753"
+    for path in ["docs/README.md", "docs/SESSION.md", "docs/FEATURE_LIST.md"]:
+        text = read(path)
+        for token in [
+            "R14.1–R14.10",
+            evidence_sha,
+            evidence_run,
+            "109 passed, 0 failed",
+            "Rojo build",
+            "Studio checkpoints: HUMAN PENDING",
+            "B17/G0",
+            "HUMAN_GATE",
+        ]:
+            assert token in text, f"{path} missing R14.11 evidence token: {token}"
+        assert "ACCEPTED — B17" not in text
+
+    decision = read("docs/DECISION_LOG_PRE_G0_RUNTIME_CLOSURE_R14_2026-09-09.md")
+    for task in range(1, 11):
+        assert f"R14.{task}" in decision
+    for token in [evidence_sha, evidence_run, "109 passed, 0 failed", "Rojo build", "HUMAN PENDING", "B17/G0"]:
+        assert token in decision
+    assert "ACCEPTED — B17" not in decision
+
+
+def test_r14_11_architecture_marks_target_tree_as_non_authorizing_and_keeps_racer_service_d05() -> None:
+    architecture = read("docs/21_SYSTEM_CLASS_ARCHITECTURE.md")
+    for token in [
+        "TARGET architecture",
+        "does not authorize early implementation",
+        "RacerService remains D05",
+        "Studio-only injected resolver",
+        "Do not implement RacerService before D05",
+    ]:
+        assert token in architecture, f"architecture missing R14.11 boundary: {token}"
