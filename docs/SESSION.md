@@ -4,7 +4,7 @@ Date: 2026-09-10
 Documentation version: **v1.3.4 EXECUTION CONSISTENCY FREEZE**
 
 ## Product state
-The product specification remains closed. CORE/pre-G0 repair **R01–R12** plus bounded runtime/evidence closure **R14.1–R14.11** stay inside the already-approved B03–B16/B17 scope; they introduce **no new WHAT/WHY** gameplay scope.
+The product specification remains closed. CORE/pre-G0 repair **R01–R12**, bounded runtime/evidence closure **R14.1–R14.11**, and bounded physics correction **R15** stay inside the already-approved B03–B16/B17 scope; they introduce **no new WHAT/WHY** gameplay scope.
 
 Locked direction remains: 8-player live physics drawing race; one continuous player stroke controls two real rotating physical legs; no competitive power monetization; progression/meta remains outside M0 until the ordered gates allow it.
 
@@ -22,7 +22,7 @@ B03–B16 code and regression specs exist in `main`, but they are **not promoted
 ## CORE/pre-G0 integrity repair R01–R12
 - **R01 Geometry Authority** — `GeometryMath` is the single pure owner of normalized-shape → mapped-points/segment-plan construction; server ShapeSpec carries that plan into `LegAssembly`. The visible wide DrawCanvas contains a square semantic DrawInputRect.
 - **R02 Drawing/Network Correctness** — visual preview sampling is decoupled from bounded semantic payload sampling; obvious too-short strokes are rejected locally; accepted-result ordering follows server truth.
-- **R03 Physics Contract** — complete semantic collision groups/matrix, 25° free-tilt stabilization window with no forward propulsion, M0 lab under `Workspace.Runtime.Tracks`, and tunnel geometry relative to `Lane.TopY`.
+- **R03 Physics Contract** — complete semantic collision groups/matrix, no forward propulsion from stabilization, M0 lab under `Workspace.Runtime.Tracks`, and tunnel geometry relative to `Lane.TopY`. The original soft/free-tilt stabilization detail was superseded by the Product Owner R15 planar-physics decision.
 - **R04 Debug Correctness** — collider count reads real `Segments` folders, cleaned-point telemetry comes from accepted ShapeSpec, stuck telemetry uses the documented 2.5 s +X progress window, and debug targeting prefers explicit `DebugTarget` then a human racer.
 - **R05 Studio/G0 Integration** — Studio uses exactly one selectable interactive harness. Default mode is `G0`; the Studio-only `M0HumanHarness` injects a temporary Player→RacerRuntime resolver into existing `StrokeRemoteTransport`. It does not implement D05 `RacerService`.
 - **R06 Documentation Consistency** — repository status/docs were reconciled to the B17/G0 hard stop without claiming Studio acceptance.
@@ -47,7 +47,23 @@ B03–B16 code and regression specs exist in `main`, but they are **not promoted
 - **R14.10 Types/RemoteNames** — `StrokeTypes` owns the stroke/network/ShapeSpec boundary types used by active runtime modules, while active remote consumers and B12 Studio coverage use `RemoteNames` rather than duplicate literals.
 - **R14.11 Docs/evidence reconciliation** — root/status/decision docs are aligned to the final verified R14 code/tooling evidence while preserving the B17 human hard stop.
 
-Decision records: `DECISION_LOG_CORE_AUDIT_REPAIR_2026-09-09.md`, `DECISION_LOG_PRE_G0_REVIEW_R07_R09_2026-09-09.md`, `DECISION_LOG_PRE_G0_BUG_SWEEP_R10_R12_2026-09-09.md`, and `DECISION_LOG_PRE_G0_RUNTIME_CLOSURE_R14_2026-09-09.md`.
+## R15 planar racer physics
+**R15 IMPLEMENTED/AUTOMATED GREEN; HUMAN STUDIO PENDING.**
+
+Trigger: a real local G0 session reached `TOTAL 13 PASS / 0 FAIL`, `READY`, and `human harness ready`, but normal play showed `laneDeviation 0.418` and visible side-edge falls followed later by R14.6 Y recovery. This proved the old soft-lane behavior was wrong for the intended no-steering drawing race.
+
+Product/runtime contract:
+- X/Y are the physical gameplay plane;
+- Z translation is locked to the racer lane center and is not gameplay steering;
+- rotation around world Z remains physical/free;
+- out-of-plane X/Y rotation is constrained;
+- `RacerStabilizer` remains the only owner; no side walls, no new movement service, and no normal-operation CFrame teleport were added.
+
+Implementation uses an always-on world-space Z-only `AlignPosition` and a one-attachment `PrimaryAxisParallel` `AlignOrientation`. Starting diagnostics/tuning are `LaneNormalError = 0.03`, `LaneHardBound = 0.08`, `LaneMaxForceZ = 60000`, `LaneResponsiveness = 40`, `LaneMaxVelocity = 30`, `OrientationResponsiveness = 40`, `OrientationMaxTorque = 60000`, and `OrientationMaxAngularVelocity = 30`.
+
+Automated production evidence: code head `f0e943b5d6e8c48c2eb144cec43d2e5531dbcc48`, GitHub Actions run `34393130544` → **124 passed, 0 failed**, Rokit install PASS, **Rojo build** PASS. Human Studio acceptance of the actual solver behavior is still pending.
+
+Decision records: `DECISION_LOG_CORE_AUDIT_REPAIR_2026-09-09.md`, `DECISION_LOG_PRE_G0_REVIEW_R07_R09_2026-09-09.md`, `DECISION_LOG_PRE_G0_BUG_SWEEP_R10_R12_2026-09-09.md`, `DECISION_LOG_PRE_G0_RUNTIME_CLOSURE_R14_2026-09-09.md`, and `DECISION_LOG_R15_PLANAR_RACER_PHYSICS_2026-09-10.md`.
 
 ## Automated evidence
 Historical evidence is intentionally retained:
@@ -60,6 +76,9 @@ Historical evidence is intentionally retained:
 - R11/R12 follow-up bug sweep completed on final code head `e2bedd34696bb99da43878c19d7984c9134c8bef`; run `34363706915` → **88 passed, 0 failed**.
 - R14.1–R14.10 final code/tooling evidence head `8a6a05a31427346d2a1437820ffa759f21fca90c`; GitHub Actions `Contract Verify` run `34387618626` → **120 passed, 0 failed**, with successful **Rojo build** of `DrawRacersDev.rbxlx`.
 - R14.11 evidence-drift RED commit `0d8a6b85b5184bc053275d3441daa103af3e22c2`; run `34388536445` → **119 passed, 1 failed**, with the single failure proving status/evidence docs were stale against the final code/tooling head.
+- R15 complete test-owner RED commit `df95b11c4593f48ccda39c5cfe40f1ee90d6b265`; run `34392903238` → **120 passed, 4 failed**, exposing the old soft-lane implementation/config against the new planar contract.
+- R15 production GREEN commit `f0e943b5d6e8c48c2eb144cec43d2e5531dbcc48`; run `34393130544` → **124 passed, 0 failed**, successful Rokit install and **Rojo build**.
+- R15 docs RED commit `b90e020e23f6d8a19acbc0ba46e343bb0cd19fe8`; run `34393250062` → **124 passed, 1 failed**, with the only failure proving owner/status docs still described pre-R15 behavior.
 
 The current GitHub workflow runs `python verify.py` contract/static checks and then a real Rojo project build. It still does **not** execute Roblox Studio physics, touch interaction, presentation acceptance, or external-player acceptance, and therefore cannot satisfy B17/G0 by itself.
 
@@ -75,38 +94,27 @@ The repository remains intentionally stopped at the M0 human gate. `StudioHarnes
 ### Studio evidence still required
 Verify current `main` locally before any B03–B16 implementation is promoted:
 - `git pull --ff-only`, `python verify.py`, and normal Rojo build/sync complete without project errors;
-- Studio Play runs B03–B16 specs with no red DrawRacers runtime error;
-- the Studio gate runner visibly reaches `READY` when all specs pass;
-- for the R14.3 injection check, temporarily force one Studio spec to fail, verify gate state becomes `BLOCKED` and the interactive G0 harness/client drawing do not start, then restore the spec and verify `READY`;
-- `[DrawRacers][B16] debug tuning panel tests PASS` appears;
+- Studio Play runs B03–B16 specs with no red DrawRacers runtime error and reaches `[StudioGate] TOTAL 13 PASS / 0 FAIL` then `READY`;
 - `[DrawRacers][G0] human harness ready` appears only after the gate is READY;
-- only one interactive G0 racer/harness remains after synchronous specs;
-- the normal Roblox Character is observer-only and cannot push/block the racer, including after Character respawn;
-- drawing creates server-accepted physical legs and movement;
-- accepted preview shape matches the authoritative server-accepted geometry;
+- drawing creates server-accepted physical legs and movement; accepted preview shape matches authoritative geometry;
 - redraw while moving changes the accepted physical shape without teleporting/resetting body state;
-- a sub-0.7 useful leg extent is rejected and leaves the old accepted shape intact;
-- accepted preview remains semantically stable across layout changes between strokes and uses the current layout thickness after Touch/Desktop switching;
-- after the first pointer-down `EmptyGhost` does not return on cancel/reject;
-- validation feedback disappears within about 2 seconds, a newer validation is not cleared by an older timer, and `ValidationToast` does not overlap `DrawHint`;
-- validation messages show player-facing copy rather than internal reason-code strings;
-- unsupported input families such as Gamepad do not force DrawHUD into desktop layout, and LastInputType changes do not reflow a stroke in progress;
-- a long/noisy stroke beyond the raw-point cap continues to incorporate later geometry through bounded compaction rather than freezing at the first 96 samples;
-- touch layout uses the doc-59 DrawCanvas/ValidationToast/DrawHint positions and never reflows in-progress drawing;
-- pending/network failure behavior does not accumulate unbounded requests and recovers after delayed/failed responses;
-- Default/normal Character geometry cannot physically push RacerBody/RacerLeg;
-- falling through the gap below `RecoveryKillY` resets the same racer to canonical spawn, preserves the accepted shape/version, and preserves the normal Character observer state;
+- R15: normal debug `laneDeviation` stays <= `0.03` during representative legal shapes;
+- R15: deliberate asymmetric/lateral contact does not let the racer visibly leave its Z plane; any unexplained excursion above `0.08` is FAIL evidence;
+- R15: in-plane tumble/rotation around world Z remains physical/free while out-of-plane X/Y rotation is suppressed;
+- falling through the actual gap below `RecoveryKillY` resets the same racer to canonical spawn, preserves accepted shape/version, and is caused by Y fall rather than side-edge escape;
+- the normal Roblox Character remains observer-only and cannot push/block the racer;
+- validation/network/pending behavior remains bounded and player-facing copy hides internal reason codes;
 - debug `simplifiedPoints`, `physicsPoints` and `colliderSegments` report real nonzero values after a valid shape;
-- `antiStallActive` is bounded on flat/recovery contact and immediately false on obstacle/unknown collidable/airborne cases;
-- M0 lab exists under `Workspace.Runtime.Tracks`, not as a second top-level gameplay root.
+- `antiStallActive` remains bounded on flat/recovery contact and false on obstacle/unknown collidable/airborne cases;
+- M0 lab remains under `Workspace.Runtime.Tracks`.
 
 ### Empirical G0 still required
 After the local technical smoke, `55_EMPIRICAL_PRODUCT_GATE_PROTOCOL.md` still owns product acceptance: **6 unique external testers** and every fixed G0 criterion must PASS. A local developer playtest is useful evidence but is not the six-tester empirical gate.
 
 ## Audit notes / remaining risk
-The R01–R12 repository pass plus R14 closure found no reason to introduce a new top-level service, manager, race system, or data owner. Current M0 layering remains aligned with `21`: Bootstrap is composition root; `LegShapeService` owns authoritative shape processing; `RacerRuntime` owns body/legs/stabilizer/anti-stall lifetime; `StrokeRemoteTransport` remains transport-only; no early D05 `RacerService` exists.
+The R01–R12 repository pass plus R14 closure and R15 planar correction found no reason to introduce a new top-level service, manager, race system, or data owner. Current M0 layering remains aligned with `21`: Bootstrap is composition root; `LegShapeService` owns authoritative shape processing; `RacerRuntime` owns body/legs/stabilizer/anti-stall lifetime; `StrokeRemoteTransport` remains transport-only; no early D05 `RacerService` exists.
 
-The known R09–R12 and R14.1–R14.11 implementation/documentation findings are CLOSED at repository level. The remaining gate risk is runtime/human evidence, not an open known repository defect from those findings.
+Known R09–R12 and R14 findings are CLOSED at repository level. R15 is **IMPLEMENTED/AUTOMATED GREEN; HUMAN STUDIO PENDING**. The remaining gate risk is runtime/human evidence, especially real Roblox solver behavior under the new planar constraints.
 
 CI includes Rojo buildability, but it cannot replace Roblox Studio execution or the human G0 test.
 
