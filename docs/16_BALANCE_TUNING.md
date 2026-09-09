@@ -50,17 +50,25 @@ Use one motorized hinge per leg as `11` describes.
 
 Acceptance meaning matters more than numeric scale: intended SmallSteps/WallLow must be solvable by suitable legal shapes; WallHigh must not be brute-forced by every compact/round shape.
 
-## 4. Lane and body stabilization defaults
-Observable contract: X forward, Y physical vertical, Z stays near lane center, body may bounce/tilt but not drift or spin forever.
+## 4. Planar lane/body stabilization defaults
+Observable contract: racer locomotion is 2.5D. X/Y are the physical gameplay plane; Z translation is locked to the racer's lane center; rotation around world Z remains physical/free; out-of-plane X/Y rotation is constrained.
 
-Start targets for whichever constraint/force implementation `21` chooses:
-- lane center target Z error `0`;
-- soft correction begins at `|Z error| > 0.15 stud`;
-- normal allowed error <=`0.35 stud`; hard safety bound `0.75 stud` before server recovery/debug flag;
-- orientation target keeps racer forward axis +X and up axis near +Y;
-- orientation correction responsiveness start `8`; sweep `5–12` if using Roblox responsiveness-style constraint;
-- stabilizer must allow at least ±25° transient pitch/roll without instantly snapping flat;
-- no stabilizer may add intentional +X race speed.
+Canonical R15 starting defaults:
+- `LaneNormalError = 0.03`
+- `LaneHardBound = 0.08`
+- `LaneMaxForceZ = 60000`
+- `LaneResponsiveness = 40`
+- `LaneMaxVelocity = 30`
+- `OrientationResponsiveness = 40`
+- `OrientationMaxTorque = 60000`
+- `OrientationMaxAngularVelocity = 30`
+
+Rules:
+- `RacerStabilizer` uses a continuous world-space Z-only `AlignPosition`; stabilizer authority on X/Y remains zero.
+- `LaneNormalError = 0.03` and `LaneHardBound = 0.08` are diagnostic solver tolerances, not permitted lateral gameplay freedom.
+- Plane-normal orientation correction suppresses out-of-plane X/Y rotation only; rotation around world Z remains physical/free.
+- No invisible side walls, no normal-operation per-Heartbeat teleport, and no stabilizer may add intentional +X race speed.
+- Hard projection/snap is **not** enabled initially; it may be added only after concrete Studio evidence that the continuous constraint can exceed the hard diagnostic bound under deliberate lateral disturbance.
 
 ## 5. Anti-stall assist
 Default = **enabled only on flat/recovery surfaces**, never on obstacle pieces that test geometry.
