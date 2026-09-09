@@ -65,3 +65,38 @@ def test_r14_2_client_bootstrap_wires_g0_presentation_without_future_camera_owne
     assert 'WaitForChild("M0G0PresentationHarness")' in bootstrap
     assert "M0G0PresentationHarness.start()" in bootstrap
     assert "RaceCameraController" not in bootstrap
+
+
+def test_r14_3_studio_runner_aggregates_failures_under_xpcall() -> None:
+    runner_path = ROOT / "src/server/Tests/StudioSpecRunner.lua"
+    assert runner_path.is_file(), "R14.3 requires StudioSpecRunner.lua"
+    runner = runner_path.read_text(encoding="utf-8")
+    assert "xpcall" in runner
+    assert "debug.traceback" in runner
+    assert "failures" in runner
+    for task in [3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16]:
+        assert f'"B{task:02d}' in runner
+    assert "return #failures == 0" in runner
+
+
+def test_r14_3_server_bootstrap_gates_harness_on_ready() -> None:
+    bootstrap = read("src/server/Bootstrap.server.lua")
+    assert 'local STUDIO_GATE_ATTRIBUTE = "DrawRacersStudioGateState"' in bootstrap
+    assert 'SetAttribute(STUDIO_GATE_ATTRIBUTE, "TESTING")' in bootstrap
+    assert 'SetAttribute(STUDIO_GATE_ATTRIBUTE, "BLOCKED")' in bootstrap
+    assert 'SetAttribute(STUDIO_GATE_ATTRIBUTE, "READY")' in bootstrap
+    assert 'WaitForChild("StudioSpecRunner")' in bootstrap
+    assert "if specsPassed then" in bootstrap
+    ready_branch = bootstrap.split("if specsPassed then", 1)[1]
+    assert "M0HumanHarness.start()" in ready_branch
+
+
+def test_r14_3_client_blocks_drawing_until_studio_gate_ready() -> None:
+    bootstrap = read("src/client/Bootstrap.client.lua")
+    drawing = read("src/client/Controllers/DrawingController.lua")
+    assert 'GetAttribute("DrawRacersStudioGateState")' in bootstrap
+    assert 'GetAttributeChangedSignal("DrawRacersStudioGateState")' in bootstrap
+    assert "SetStudioGateState" in bootstrap
+    assert "function DrawingController:SetStudioGateState" in drawing
+    assert 'self._studioGateState ~= "READY"' in drawing
+    assert 'G0 BLOCKED — SERVER TEST FAILED' in drawing
