@@ -140,80 +140,81 @@ function StrokeMath.ComputeBounds(points: { Vector2 }): Bounds?
 	}
 end
 
-local function pointToSegmentDistance(point: Vector2, a: Vector2, b: Vector2): number
-	local ab = b - a
-	local lengthSquared = ab:Dot(ab)
-	if lengthSquared <= 0 then
-		return (point - a).Magnitude
+function StrokeMath.CenterOnBounds(points: { Vector2 }): { Vector2 }
+	if #points == 0 then
+		return {}
 	end
 
-	local t = math.clamp((point - a):Dot(ab) / lengthSquared, 0, 1)
-	local projection = a + ab * t
-	return (point - projection).Magnitude
+	local bounds = StrokeMath.ComputeBounds(points)
+	assert(bounds ~= nil, "CenterOnBounds requires non-empty finite points")
+	local center = (bounds.min + bounds.max) * 0.5
+	local result = table.create(#points)
+	for index, point in points do
+		result[index] = point - center
+	end
+	return result
 end
 
 function StrokeMath.SimplifyRDP(points: { Vector2 }, epsilon: number): { Vector2 }
 	assert(isFiniteNumber(epsilon) and epsilon >= 0, "epsilon must be a finite non-negative number")
-	for _, point in points do
-		assert(StrokeMath.IsFinitePoint(point), "SimplifyRDP received a non-finite point")
-	end
-
 	if #points <= 2 then
 		return copyPoints(points)
 	end
 
 	local first = points[1]
 	local last = points[#points]
-	local furthestIndex = 0
-	local furthestDistance = -1
+	local line = last - first
+	local lineLengthSquared = line:Dot(line)
 
+	local maxDistance = -1
+	local splitIndex = 0
 	for index = 2, #points - 1 do
-		local distance = pointToSegmentDistance(points[index], first, last)
-		if distance > furthestDistance then
-			furthestDistance = distance
-			furthestIndex = index
+		local point = points[index]
+		local distance: number
+		if lineLengthSquared <= 0 then
+			distance = (point - first).Magnitude
+		else
+			local t = math.clamp((point - first):Dot(line) / lineLengthSquared, 0, 1)
+			local projection = first + line * t
+			distance = (point - projection).Magnitude
+		end
+		if distance > maxDistance then
+			maxDistance = distance
+			splitIndex = index
 		end
 	end
 
-	if furthestDistance <= epsilon or furthestIndex == 0 then
+	if maxDistance <= epsilon or splitIndex == 0 then
 		return { first, last }
 	end
 
-	local leftInput = table.create(furthestIndex)
-	for index = 1, furthestIndex do
+	local leftInput = table.create(splitIndex)
+	for index = 1, splitIndex do
 		leftInput[index] = points[index]
 	end
-
-	local rightCount = #points - furthestIndex + 1
-	local rightInput = table.create(rightCount)
-	for index = furthestIndex, #points do
-		rightInput[index - furthestIndex + 1] = points[index]
+	local rightInput = table.create(#points - splitIndex + 1)
+	for index = splitIndex, #points do
+		rightInput[index - splitIndex + 1] = points[index]
 	end
 
 	local left = StrokeMath.SimplifyRDP(leftInput, epsilon)
 	local right = StrokeMath.SimplifyRDP(rightInput, epsilon)
 	local result = table.create(#left + #right - 1)
-
 	for index = 1, #left do
 		result[index] = left[index]
 	end
 	for index = 2, #right do
-		result[#result + 1] = right[index]
+		table.insert(result, right[index])
 	end
-
 	return result
 end
 
-function StrokeMath.Resample(points: { Vector2 }, targetPoints: number): { Vector2 }
-	assert(targetPoints >= 1 and targetPoints % 1 == 0, "targetPoints must be a positive integer")
-	for _, point in points do
-		assert(StrokeMath.IsFinitePoint(point), "Resample received a non-finite point")
-	end
-
+function StrokeMath.Resample(points: { Vector2 }, targetCount: number): { Vector2 }
+	assert(targetCount >= 2 and math.floor(targetCount) == targetCount, "targetCount must be an integer >= 2")
 	if #points == 0 then
 		return {}
 	end
-	if #points == 1 or targetPoints == 1 then
+	if #points == 1 then
 		return { points[1] }
 	end
 
@@ -222,33 +223,26 @@ function StrokeMath.Resample(points: { Vector2 }, targetPoints: number): { Vecto
 	for index = 2, #points do
 		cumulative[index] = cumulative[index - 1] + (points[index] - points[index - 1]).Magnitude
 	end
-
 	local totalLength = cumulative[#points]
 	if totalLength <= 0 then
 		return { points[1] }
 	end
 
-	local result = table.create(targetPoints)
+	local result = table.create(targetCount)
 	local segmentIndex = 2
-	for sampleIndex = 0, targetPoints - 1 do
-		local targetDistance = if sampleIndex == targetPoints - 1
-			then totalLength
-			else totalLength * (sampleIndex / (targetPoints - 1))
-
+	for sampleIndex = 0, targetCount - 1 do
+		local targetDistance = totalLength * (sampleIndex / (targetCount - 1))
 		while segmentIndex < #points and cumulative[segmentIndex] < targetDistance do
 			segmentIndex += 1
 		end
 
-		local segmentStartIndex = math.max(1, segmentIndex - 1)
-		local segmentEndIndex = math.min(#points, segmentIndex)
-		local startDistance = cumulative[segmentStartIndex]
-		local endDistance = cumulative[segmentEndIndex]
-		local denominator = endDistance - startDistance
-		local alpha = if denominator > 0 then (targetDistance - startDistance) / denominator else 0
-
-		result[sampleIndex + 1] = points[segmentStartIndex]:Lerp(points[segmentEndIndex], math.clamp(alpha, 0, 1))
+		local previousIndex = math.max(1, segmentIndex - 1)
+		local previousDistance = cumulative[previousIndex]
+		local nextDistance = cumulative[segmentIndex]
+		local segmentLength = nextDistance - previousDistance
+		local t = if segmentLength <= 0 then 0 else (targetDistance - previousDistance) / segmentLength
+		result[sampleIndex + 1] = points[previousIndex]:Lerp(points[segmentIndex], t)
 	end
-
 	return result
 end
 
