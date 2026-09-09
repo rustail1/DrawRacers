@@ -44,6 +44,31 @@ local function countColliderSegments(model: Model): number
 	return count
 end
 
+local function getMotorState(model: Model): (boolean, number)
+	local legs = model:FindFirstChild("Legs")
+	if not legs then
+		return false, PhysicsConfig.Motor.AngularVelocity
+	end
+
+	local found = 0
+	local enabled = 0
+	local angularVelocity = PhysicsConfig.Motor.AngularVelocity
+	for _, leg in legs:GetChildren() do
+		if leg:IsA("Model") then
+			local joint = leg:FindFirstChild("HubJoint")
+			if joint and joint:IsA("HingeConstraint") then
+				found += 1
+				angularVelocity = joint.AngularVelocity
+				if joint.Enabled then
+					enabled += 1
+				end
+			end
+		end
+	end
+
+	return found > 0 and enabled == found, angularVelocity
+end
+
 local function getNumberAttribute(model: Model, name: string, fallback: number): number
 	local value = model:GetAttribute(name)
 	if type(value) == "number" then
@@ -86,15 +111,21 @@ function DebugTelemetry.sampleRacer(model: Model, nowOverride: number?)
 	local laneCenterZ = getNumberAttribute(model, "LaneCenterZ", body.Position.Z)
 	local bodySpeed = body.AssemblyLinearVelocity.Magnitude
 	local shapeVersion = getNumberAttribute(model, "ShapeVersion", 0)
+	local rawPoints = getNumberAttribute(model, "DebugRawPoints", 0)
 	local simplifiedPoints = getNumberAttribute(model, "DebugSimplifiedPoints", 0)
+	local physicsPoints = getNumberAttribute(model, "DebugPhysicsPoints", 0)
 	local checkpoint = getNumberAttribute(model, "Checkpoint", 0)
 	local progress = getNumberAttribute(model, "Progress", 0)
+	local motorEnabled, motorAngularVelocity = getMotorState(model)
 
 	model:SetAttribute("DebugShapeVersion", shapeVersion)
+	model:SetAttribute("DebugRawPoints", rawPoints)
 	model:SetAttribute("DebugSimplifiedPoints", simplifiedPoints)
+	model:SetAttribute("DebugPhysicsPoints", physicsPoints)
 	model:SetAttribute("DebugColliderSegments", countColliderSegments(model))
 	model:SetAttribute("DebugBodySpeed", bodySpeed)
-	model:SetAttribute("DebugMotorAngularVelocity", PhysicsConfig.Motor.AngularVelocity)
+	model:SetAttribute("DebugMotorEnabled", motorEnabled)
+	model:SetAttribute("DebugMotorAngularVelocity", motorAngularVelocity)
 	model:SetAttribute("DebugStuckState", sampleStuckState(model, body, now))
 	model:SetAttribute("DebugLaneDeviation", body.Position.Z - laneCenterZ)
 	model:SetAttribute("DebugCheckpoint", checkpoint)

@@ -83,6 +83,7 @@ function B12StrokeRemoteSpec.run()
 	assert(malformed ~= nil and malformed.accepted == false and malformed.rejectReasonCode == "MALFORMED_POINTS")
 	assert(racer:GetShapeVersion() == 1, "MALFORMED_POINTS changed ShapeVersion")
 
+	now = 10.50
 	local nonFinite = processor:Handle(TEST_PLAYER, {
 		sequence = 3,
 		points = {
@@ -94,6 +95,7 @@ function B12StrokeRemoteSpec.run()
 	assert(nonFinite ~= nil and nonFinite.accepted == false and nonFinite.rejectReasonCode == "NON_FINITE_POINT")
 	assert(racer:GetShapeVersion() == 1, "NON_FINITE_POINT changed ShapeVersion")
 
+	now = 10.75
 	local tooManyPoints = table.create(97)
 	for index = 1, 97 do
 		tooManyPoints[index] = { x = index / 100, y = 0 }
@@ -105,6 +107,7 @@ function B12StrokeRemoteSpec.run()
 	assert(tooMany ~= nil and tooMany.accepted == false and tooMany.rejectReasonCode == "TOO_MANY_POINTS")
 	assert(racer:GetShapeVersion() == 1, "TOO_MANY_POINTS changed ShapeVersion")
 
+	now = 11.00
 	local oversizedPoints = table.create(96)
 	for index = 1, 96 do
 		oversizedPoints[index] = {
@@ -119,10 +122,17 @@ function B12StrokeRemoteSpec.run()
 	assert(oversized ~= nil and oversized.accepted == false and oversized.rejectReasonCode == "PAYLOAD_TOO_LARGE", "bounded >4096 payload must reject")
 	assert(racer:GetShapeVersion() == 1, "PAYLOAD_TOO_LARGE changed ShapeVersion")
 
+	now = 11.25
+	local unexpectedField = validPayload(6)
+	unexpectedField.unexpectedField = "not part of SubmitStroke contract"
+	local malformedEnvelope = processor:Handle(TEST_PLAYER, unexpectedField)
+	assert(malformedEnvelope ~= nil and malformedEnvelope.accepted == false and malformedEnvelope.rejectReasonCode == "MALFORMED_PAYLOAD", "extra top-level fields must fail closed")
+	assert(racer:GetShapeVersion() == 1, "MALFORMED_PAYLOAD changed ShapeVersion")
+
 	local noRacer = processor:Handle(OTHER_PLAYER, validPayload(1))
 	assert(noRacer ~= nil and noRacer.accepted == false and noRacer.rejectReasonCode == "NO_RACER", "unresolved player must fail closed")
 
-	now = 10.50
+	now = 11.50
 	local second = processor:Handle(TEST_PLAYER, validPayload(2))
 	assert(second ~= nil and second.accepted == true and second.sequence == 2, "new valid sequence after cooldown must accept")
 	assert(second.shapeVersion == 2 and racer:GetShapeVersion() == 2, "second accepted submit must advance ShapeVersion to 2")

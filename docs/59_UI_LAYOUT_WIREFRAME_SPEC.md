@@ -40,12 +40,12 @@ No cosmetic/VFX element may render above DrawCanvas input feedback or modal purc
 | ConnectionBanner | A(.5,0) | P(.500,.085) S(.420,.050) | same | non-blocking; never covers progress strip |
 
 ### DrawCanvas internal layout
-- Inner drawing rect: 92% width × 82% height centered; remaining area is border/status only.
+- The outer DrawCanvas remains the wide status panel above. Its **square semantic DrawInputRect** is centered inside it: height = 82% of DrawCanvas and width is constrained to the same pixel size (`AspectRatio=1`). Remaining width is border/status/thumbnail space, not semantic drawing area.
 - Stroke visual thickness: 6 px equivalent desktop, 8 px touch; physics thickness is unrelated.
 - Empty-state ghost icon centered at 18% opacity until first pointer-down; disappears permanently for that heat after first stroke.
 - Pivot marker: non-interactive 8 px equivalent dot at exact DrawInputRect center `(0,0)`, 25% opacity; semantic mapping owner is `73`.
 - No Apply / Confirm / Delete button.
-- Input rect exactly matches visible drawing rect; no invisible oversized hit area.
+- Input rect exactly matches the **visible** square drawing surface; no invisible oversized or undersized hit area.
 - Current accepted-shape thumbnail: top-right of canvas, 14% canvas width, square; informational only, no click.
 - Local preview color uses equipped Ink; invalid preview adds dashed outline, not color-only failure.
 

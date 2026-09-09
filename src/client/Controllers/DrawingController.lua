@@ -117,6 +117,8 @@ local function createUi(drawHud: ScreenGui)
 	drawInputRect.AnchorPoint = Vector2.new(0.5, 0.5)
 	drawInputRect.Position = UDim2.fromScale(0.5, 0.5)
 	drawInputRect.Size = DRAW_INPUT_SIZE
+	drawInputRect.BackgroundColor3 = Color3.fromRGB(31, 39, 52)
+	drawInputRect.BackgroundTransparency = 0.72
 	drawInputRect.Active = true
 	drawInputRect.ClipsDescendants = true
 	drawInputRect.ZIndex = 21
@@ -126,6 +128,12 @@ local function createUi(drawHud: ScreenGui)
 	semanticSquareConstraint.AspectRatio = 1
 	semanticSquareConstraint.DominantAxis = Enum.DominantAxis.Height
 	semanticSquareConstraint.Parent = drawInputRect
+
+	local drawInputSurfaceStroke = Instance.new("UIStroke")
+	drawInputSurfaceStroke.Name = "DrawInputSurfaceStroke"
+	drawInputSurfaceStroke.Thickness = 1
+	drawInputSurfaceStroke.Transparency = 0.45
+	drawInputSurfaceStroke.Parent = drawInputRect
 
 	local strokePreview = makeFrame("StrokePreview", drawInputRect)
 	strokePreview.AnchorPoint = Vector2.new(0, 0)

@@ -32,6 +32,14 @@ export type SpawnParams = {
 	laneCenterZ: number?,
 }
 
+local function debugEnvironmentAllowed(): boolean
+	if RunService:IsStudio() then
+		return true
+	end
+	local environment = game:GetAttribute("DrawRacersEnvironment")
+	return environment == "DEV" or environment == "STAGING"
+end
+
 local function makeHub(name: string, offset: Vector3, body: Part, parent: Model): Part
 	local hub = Instance.new("Part")
 	hub.Name = name
@@ -141,6 +149,8 @@ local function makeInternalShapeSpec(normalizedPoints: { Vector2 })
 		mappedPoints = plan.mappedPoints,
 		segmentPlan = plan.segmentPlan,
 		extent = plan.extent,
+		debugRawPointCount = #normalizedPoints,
+		debugPhysicsPointCount = #plan.mappedPoints,
 	}
 end
 
@@ -162,7 +172,7 @@ function RacerRuntime.new(params: SpawnParams)
 
 	ensureRuntimeFolder(model, "Legs")
 	ensureRuntimeFolder(model, "Presentation")
-	if RunService:IsStudio() then
+	if debugEnvironmentAllowed() then
 		ensureRuntimeFolder(model, "Debug")
 	end
 
@@ -171,7 +181,9 @@ function RacerRuntime.new(params: SpawnParams)
 	model:SetAttribute("LaneIndex", params.laneIndex)
 	model:SetAttribute("IsBot", params.isBot)
 	model:SetAttribute("ShapeVersion", 0)
+	model:SetAttribute("DebugRawPoints", 0)
 	model:SetAttribute("DebugSimplifiedPoints", 0)
+	model:SetAttribute("DebugPhysicsPoints", 0)
 	model:SetAttribute("TrackId", params.trackId)
 	model:SetAttribute("Finished", false)
 	model:SetAttribute("LaneCenterZ", params.laneCenterZ or params.spawnCFrame.Position.Z)
@@ -330,7 +342,9 @@ function RacerRuntime:ApplyValidatedShape(shapeSpec: any, motorEnabled: boolean?
 	local leftLeg, rightLeg = self:_ApplyShapeSpec(shapeSpec, motorEnabled)
 	self.currentShapeSpec = shapeSpec
 	self.model:SetAttribute("ShapeVersion", shapeSpec.version)
+	self.model:SetAttribute("DebugRawPoints", shapeSpec.debugRawPointCount or #shapeSpec.normalizedPoints)
 	self.model:SetAttribute("DebugSimplifiedPoints", #shapeSpec.normalizedPoints)
+	self.model:SetAttribute("DebugPhysicsPoints", shapeSpec.debugPhysicsPointCount or #shapeSpec.mappedPoints)
 	return leftLeg, rightLeg
 end
 

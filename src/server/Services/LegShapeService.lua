@@ -150,6 +150,8 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 		bounds = bounds,
 		extent = geometryPlan.extent,
 		segmentPlan = geometryPlan.segmentPlan,
+		debugRawPointCount = #points,
+		debugPhysicsPointCount = #geometryPlan.mappedPoints,
 		debugId = buildDebugId(nextVersion, cleaned, cleanedLength),
 	}
 
@@ -181,6 +183,24 @@ local function extractSequence(payload: any): number?
 		return nil
 	end
 	return sequence
+end
+
+local function validateNetworkEnvelope(payload: any): string?
+	if type(payload) ~= "table" then
+		return "MALFORMED_PAYLOAD"
+	end
+
+	local fieldCount = 0
+	for key, _ in payload do
+		fieldCount += 1
+		if fieldCount > 2 or (key ~= "sequence" and key ~= "points") then
+			return "MALFORMED_PAYLOAD"
+		end
+	end
+	if fieldCount ~= 2 or payload.points == nil then
+		return "MALFORMED_PAYLOAD"
+	end
+	return nil
 end
 
 local function validateSemanticPoint(point: any): (number?, number?, string?)
@@ -264,6 +284,11 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 			return nil
 		end
 
+		local envelopeError = validateNetworkEnvelope(payload)
+		if envelopeError ~= nil then
+			return networkReject(sequence, envelopeError)
+		end
+
 		local racerRuntime = deps.resolveRacer(playerKey)
 		if racerRuntime == nil then
 			return networkReject(sequence, "NO_RACER")
@@ -287,6 +312,17 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 		end
 		state.pendingSequence = sequence
 
+		local now = nowFn()
+		if type(now) ~= "number" or not isFiniteNumber(now) then
+			state.pendingSequence = nil
+			return networkReject(sequence, "SERVER_TIME_INVALID")
+		end
+		if now - state.lastRequestAt < PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown then
+			state.pendingSequence = nil
+			return networkReject(sequence, "RATE_LIMITED")
+		end
+		state.lastRequestAt = now
+
 		local vectors, canonicalPoints, pointsError = validateNetworkPoints(payload.points)
 		if vectors == nil or canonicalPoints == nil then
 			state.pendingSequence = nil
@@ -304,17 +340,6 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 			state.pendingSequence = nil
 			return networkReject(sequence, "PAYLOAD_TOO_LARGE")
 		end
-
-		local now = nowFn()
-		if type(now) ~= "number" or not isFiniteNumber(now) then
-			state.pendingSequence = nil
-			return networkReject(sequence, "SERVER_TIME_INVALID")
-		end
-		if now - state.lastRequestAt < PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown then
-			state.pendingSequence = nil
-			return networkReject(sequence, "RATE_LIMITED")
-		end
-		state.lastRequestAt = now
 
 		local buildResult = LegShapeService.ValidateAndBuild(racerRuntime, vectors, true)
 		state.pendingSequence = nil

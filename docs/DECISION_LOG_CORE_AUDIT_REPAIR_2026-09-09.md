@@ -17,7 +17,7 @@ Observable behavior after the repair:
 
 - **R01:** one `GeometryMath` path owns normalized shape → mapped points → physical segment plan; the accepted server ShapeSpec is the plan used by runtime leg construction. The wide visual DrawCanvas contains a **square semantic DrawInputRect** so equal screen X/Y distances remain equal semantic/physical distances.
 - **R02:** visual stroke preview may sample every input event, but network semantics use bounded movement-threshold samples. The client does not submit obviously too-short strokes. A matching accepted server result newer than the last accepted sequence becomes the accepted preview even if a newer request is pending or later rejected.
-- **R03:** the semantic collision matrix includes Track/RacerBody/RacerLeg/RacerGhostVisual/Decoration/Trigger; stabilization permits the documented transient tilt window without +X propulsion; M0 generated geometry lives below canonical Runtime.Tracks and remains relative to Lane.TopY.
+- **R03:** the semantic collision matrix includes Track/RacerBody/RacerLeg/Decoration/Trigger; stabilization permits the documented transient tilt window without +X propulsion; M0 generated geometry lives below canonical Runtime.Tracks and remains relative to Lane.TopY.
 - **R04:** debug telemetry reads actual accepted shape/leg state; stuck means insufficient +X progress over the documented window; debug selection prefers explicit `DebugTarget`, then a human racer.
 - **R05:** Studio runs exactly one interactive harness selected by config. Default is G0. The G0 harness uses the existing stroke transport with a Studio-only injected Player→RacerRuntime resolver. **D05 RacerService** remains a later task and is not implemented early.
 

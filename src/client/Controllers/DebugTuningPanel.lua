@@ -8,9 +8,12 @@ DebugTuningPanel.__index = DebugTuningPanel
 
 local ROWS = {
 	{ key = "shapeVersion", attribute = "DebugShapeVersion" },
+	{ key = "rawPoints", attribute = "DebugRawPoints" },
 	{ key = "simplifiedPoints", attribute = "DebugSimplifiedPoints" },
+	{ key = "physicsPoints", attribute = "DebugPhysicsPoints" },
 	{ key = "colliderSegments", attribute = "DebugColliderSegments" },
 	{ key = "bodySpeed", attribute = "DebugBodySpeed" },
+	{ key = "motorEnabled", attribute = "DebugMotorEnabled" },
 	{ key = "motorAngularVelocity", attribute = "DebugMotorAngularVelocity" },
 	{ key = "stuckState", attribute = "DebugStuckState" },
 	{ key = "laneDeviation", attribute = "DebugLaneDeviation" },

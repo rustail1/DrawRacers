@@ -48,14 +48,27 @@ function B16DebugTuningSpec.run()
 	DebugTelemetry.sampleRacer(model, 0)
 
 	assert(model:GetAttribute("DebugShapeVersion") == 1, "shapeVersion telemetry mismatch")
+	assert(model:GetAttribute("DebugRawPoints") == #SHAPE, "raw point metric mismatch")
 	assert(model:GetAttribute("DebugSimplifiedPoints") == #currentShape.normalizedPoints, "simplified point metric mismatch")
+	assert(model:GetAttribute("DebugPhysicsPoints") == #currentShape.mappedPoints, "physics point metric mismatch")
 	assert((model:GetAttribute("DebugColliderSegments") :: number) > 0, "collider segment metric missing")
 	assert((model:GetAttribute("DebugBodySpeed") :: number) >= 0, "body speed metric missing")
+	assert(model:GetAttribute("DebugMotorEnabled") == false, "disabled setup motor must report false")
 	assert(isFiniteNumber(model:GetAttribute("DebugMotorAngularVelocity")), "motor angular velocity metric missing")
 	assert(model:GetAttribute("DebugStuckState") == false, "stuck must wait for a full progress window")
 	assert(isFiniteNumber(model:GetAttribute("DebugLaneDeviation")), "lane deviation metric missing")
 	assert(model:GetAttribute("DebugCheckpoint") == 2, "checkpoint metric mismatch")
 	assert(model:GetAttribute("DebugProgress") == 0.375, "progress metric mismatch")
+
+	for _, legName in { "LeftLeg", "RightLeg" } do
+		local leg = model.Legs:FindFirstChild(legName)
+		assert(leg and leg:IsA("Model"), "B16 setup leg missing")
+		local joint = leg:FindFirstChild("HubJoint")
+		assert(joint and joint:IsA("HingeConstraint"), "B16 setup HubJoint missing")
+		joint.Enabled = true
+	end
+	DebugTelemetry.sampleRacer(model, 0.1)
+	assert(model:GetAttribute("DebugMotorEnabled") == true, "enabled physical motors must report true")
 
 	body.Position = body.Position + Vector3.new(PhysicsConfig.Recovery.MeaningfulHorizontalProgress - 0.1, 0, 0)
 	DebugTelemetry.sampleRacer(model, PhysicsConfig.Recovery.ProgressSampleWindow)

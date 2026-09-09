@@ -19,7 +19,10 @@ DrawHUD
   SafeRoot
     DrawCanvas
       DrawInputRect
-      StrokePreview
+        StrokePreview
+          AcceptedLayer
+          LiveLayer
+        PivotMarker
       AcceptedShapeThumbnail
       EmptyGhost
     ValidationToast
@@ -83,6 +86,7 @@ Canonical local presentation states:
 Only one modal family (`RESULTS/GARAGE/STORE/SETTINGS`) owns modal input at a time. Settings may overlay race non-destructively; DrawCanvas input pauses while Settings modal owns pointer focus.
 
 ## 4. DrawCanvas input rules
+- The wide DrawCanvas contains one **square semantic DrawInputRect**; its visible boundary and pointer-capture area are the same square. Isotropic `[-1,+1]` mapping is owned by `73`.
 - only `DrawInputRect` captures drawing pointer;
 - pointer-down inside starts one stroke;
 - pointer exit does not terminate until pointer-up/cancel;
