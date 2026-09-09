@@ -2,6 +2,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local controllers = script.Parent:WaitForChild("Controllers")
 local InputController = require(controllers:WaitForChild("InputController"))
@@ -22,5 +23,16 @@ drawingController:Start()
 
 local debugTuningPanel = DebugTuningPanel.new(playerGui)
 debugTuningPanel:Start()
+
+if RunService:IsStudio() then
+	local StudioHarnessConfig = require(
+		ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("StudioHarnessConfig")
+	)
+	if StudioHarnessConfig.Mode == "G0" then
+		local devFolder = script.Parent:WaitForChild("Dev")
+		local M0G0PresentationHarness = require(devFolder:WaitForChild("M0G0PresentationHarness"))
+		M0G0PresentationHarness.start()
+	end
+end
 
 print("[DrawRacers] client bootstrap ready")
