@@ -14,13 +14,17 @@ Before implementation, read:
 6. only the owner specs named by that row
 
 ## Current state
-**R01–R09 bounded CORE/pre-G0 integrity repair is implemented in `main`; the next permitted item remains B17/G0 HUMAN_GATE.**
+**R01–R12 bounded CORE/pre-G0 integrity repair plus R14.1–R14.10 runtime closure are implemented in `main`; the next permitted item remains B17/G0 HUMAN_GATE. Studio checkpoints: HUMAN PENDING.**
 
 Historical evidence is preserved: the pre-R06 full automated baseline on GitHub Actions run `34336175789` was **66 passed, 0 failed**. R08 then closed the touch-first/G0-character/minimum-extent/bounded-anti-stall gaps; commit `3a0a32ce90f2cfcd2f37e3be430758dacc86d6d3` passed run `34349254516` at **77 passed, 0 failed**.
 
 R09 performed another pre-G0 repository review. Its RED commit `35c4df76dd4d663e4785bcb295fda357b8c48ef9` intentionally exposed three concrete gaps and failed run `34351760319` at **77 passed, 3 failed**. The bounded repair commit `3d414556677577af6b07ff253b97041c0eb59c30` passed run `34352130204` at **80 passed, 0 failed**.
 
-These checks are repository/static contract evidence only. The workflow currently runs `python verify.py`; it does not prove Roblox Studio physics, touch feel, or the external-tester G0 product gate.
+R10–R12 then closed the drawing UI, hybrid-input/preview-bound, long-stroke, and G0 Character-respawn isolation gaps. Final R10–R12 code head `e2bedd34696bb99da43878c19d7984c9134c8bef` passed run `34363706915` at **88 passed, 0 failed**.
+
+R14.1–R14.10 closed the pre-G0 runtime/tooling gaps: authoritative shape parity, Studio G0 presentation harness, gate runner, Default collision contract, network pending/failure containment, racer-only recovery, atomic rollback regression, validation copy, CI Rojo build, and shared StrokeTypes/RemoteNames. Evidence head `2864661e5214db5a09e53a53b6c8da8a79365cce`, run `34377868753`: **109 passed, 0 failed** plus successful **Rojo build**.
+
+These checks prove repository contracts and Rojo project buildability. They do not prove Roblox Studio physics, touch feel, visual acceptance, or the external-tester G0 product gate.
 
 A01–A04 and B01–B02 remain recorded ACCEPTED. B03–B16 implementation and regression specs exist in `main`, but required Studio/human evidence remains pending. **B17/G0 is a hard stop before C01/M0.5.**
 
@@ -35,9 +39,11 @@ The repair series did not add a new product feature or pull later race/meta syst
 - **R06 — Documentation consistency:** repository status docs were reconciled at the G0 hard stop without promoting Studio acceptance.
 - **R07 — Core review fixes:** strict outer network payload validation/rate-ordering, complete debug metrics/environment gating, and square semantic input ownership were tightened.
 - **R08 — Final core closure:** touch layout is selected safely between strokes, the normal Roblox Character is isolated from G0 racer physics, minimum useful leg extent is enforced server-side, and bounded anti-stall uses canonical contact/tag semantics with G0 telemetry.
-- **R09 — Pre-G0 consistency review:** accepted-shape presentation now stores semantic coordinates so responsive layout changes cannot distort the accepted preview; exact touch ValidationToast/DrawHint layout tokens are applied; an obstacle `RequirementTag` overrides recovery assist; spawned racers remove the empty template-only `RuntimeAttachments` helper after its attachments move to `BodyCollider`.
+- **R09 — Pre-G0 consistency review:** accepted-shape presentation stores semantic coordinates so responsive layout changes cannot distort the accepted preview; exact touch ValidationToast/DrawHint layout tokens are applied; an obstacle `RequirementTag` overrides recovery assist; spawned racers remove the empty template-only `RuntimeAttachments` helper after its attachments move to `BodyCollider`.
+- **R10–R12 — bounded bug sweep:** accepted-thickness/ghost/toast/input-family behavior, hybrid-input bounds, long-stroke compaction, and retired Character isolation are regression-covered.
+- **R14.1–R14.10 — runtime closure:** server-authoritative accepted geometry reaches the client, Studio harness gating is fail-closed, network/recovery/rollback/validation contracts are bounded, CI performs a real Rojo build, and shared type/remote registries own those contracts.
 
-Decision records: `docs/DECISION_LOG_CORE_AUDIT_REPAIR_2026-09-09.md` and `docs/DECISION_LOG_PRE_G0_REVIEW_R07_R09_2026-09-09.md`.
+Decision records include `docs/DECISION_LOG_CORE_AUDIT_REPAIR_2026-09-09.md`, `docs/DECISION_LOG_PRE_G0_REVIEW_R07_R09_2026-09-09.md`, `docs/DECISION_LOG_PRE_G0_BUG_SWEEP_R10_R12_2026-09-09.md`, and `docs/DECISION_LOG_PRE_G0_RUNTIME_CLOSURE_R14_2026-09-09.md`.
 
 ## Toolchain
 Rokit manages Rojo. From the repository root:
@@ -69,15 +75,20 @@ Replacement legs stage before commit; invalid/failed redraw preserves the previo
 The M0 lab contains the canonical flat/steps/wall/gap/tunnel representatives. DEV/STAGING/Studio debug telemetry exposes shape/segment/speed/motor/stuck/anti-stall/lane/checkpoint/progress information.
 
 ## B17/G0 local Studio gate
-Default Studio mode is `G0`. After current `main` is synced, a Play session should run the synchronous B03–B16 specs and then leave one interactive human G0 racer.
+Default Studio mode is `G0`. After current `main` is synced, a Play session should run the synchronous B03–B16 specs through the R14.3 gate runner and then leave one interactive human G0 racer only if the gate reaches READY.
 
 Expected local evidence includes:
 - no red DrawRacers runtime error;
+- injected one-spec failure produces BLOCKED, restoring it produces READY;
 - `[DrawRacers][B16] debug tuning panel tests PASS`;
-- `[DrawRacers][G0] human harness ready`;
+- `[DrawRacers][G0] human harness ready` only after READY;
 - drawing in DrawInputRect produces server-accepted physical legs and locomotion;
+- accepted preview matches the authoritative accepted shape;
 - redraw while moving swaps the accepted shape without body teleport/velocity reset;
-- accepted preview remains semantically identical after between-stroke desktop/touch reflow;
+- Default/Character geometry cannot push RacerBody/RacerLeg;
+- gap/fall below recovery threshold respawns only the racer;
+- pending/network failure does not accumulate unbounded requests;
+- validation shows player-facing copy and bounded toast behavior;
 - debug cleaned-point/collider values update from the actual accepted shape;
 - `antiStallActive` is bounded to flat/recovery contact and is false on obstacle/airborne cases;
 - M0 lab is under `Workspace.Runtime.Tracks`.
