@@ -41,7 +41,8 @@ def test_b10_stabilizer_uses_mechanical_plane_and_has_no_forward_propulsion() ->
         'Instance.new("AlignOrientation")',
         "Enum.AlignType.AllAxes",
         "orientationAlign.CFrame = CFrame.identity",
-        "orientationAttachment.Axis = Vector3.zAxis",
+        "orientationAttachment.Axis = Vector3.xAxis",
+        "orientationAttachment.SecondaryAxis = Vector3.yAxis",
         "orientationAlign.Enabled = true",
         "LaneHardBound",
         "OrientationResponsiveness",
@@ -53,6 +54,7 @@ def test_b10_stabilizer_uses_mechanical_plane_and_has_no_forward_propulsion() ->
     for forbidden in [
         'Instance.new("AlignPosition")',
         "Enum.AlignType.PrimaryAxisParallel",
+        "orientationAttachment.Axis = Vector3.zAxis",
         "MaxAxesForce",
         "ApplyImpulse(",
         "AssemblyLinearVelocity =",
@@ -63,7 +65,7 @@ def test_b10_stabilizer_uses_mechanical_plane_and_has_no_forward_propulsion() ->
         "LaneCorrectionDeadzone",
         "OrientationFreeTiltDegrees",
     ]:
-        assert forbidden not in text, f"R16 stabilizer must not use soft-lane/forward/teleport behavior: {forbidden}"
+        assert forbidden not in text, f"R16 stabilizer must not use soft-lane/forward/legacy-axis behavior: {forbidden}"
 
 
 def test_b10_racer_runtime_owns_stabilizer_lifetime() -> None:
@@ -82,6 +84,8 @@ def test_b10_studio_spec_is_wired() -> None:
         "LaneHardBoundExceeded",
         "Enum.AlignType.AllAxes",
         "orientationAlign.CFrame == CFrame.identity",
+        "orientation attachment X axis must stay canonical",
+        "orientation attachment Y axis must stay canonical",
         "GetLaneConstraint",
         'lanePlane:IsA("PlaneConstraint")',
         "body:ApplyImpulse",
