@@ -32,11 +32,12 @@ def test_r03_stabilizer_has_planar_lock_without_forward_force():
     assert "OrientationFreeTiltDegrees" not in stabilizer
     assert "LaneCorrectionDeadzone" not in config
     assert "LaneCorrectionDeadzone" not in stabilizer
+    assert 'Instance.new("PlaneConstraint")' in stabilizer
+    assert 'Instance.new("AlignPosition")' not in stabilizer
     assert "orientationAlign.AlignType = Enum.AlignType.PrimaryAxisParallel" in stabilizer
     assert "orientationAlign.PrimaryAxis = Vector3.zAxis" in stabilizer
     assert "orientationAlign.Enabled = true" in stabilizer
-    assert "laneAlign.Enabled = true" in stabilizer
-    assert "MaxAxesForce = Vector3.new(0, 0, config.LaneMaxForceZ)" in stabilizer
+    assert "lanePlane.Enabled = true" in stabilizer
 
 
 def test_r03_m0_lab_lives_under_runtime_tracks_and_tunnel_uses_top_y():
