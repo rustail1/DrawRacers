@@ -18,3 +18,11 @@ jobs:
           python-version: "3.12"
       - name: Run contract checks
         run: python verify.py
+      - name: Setup Rokit
+        uses: paradoxum-games/setup-rokit@v3
+        with:
+          version: 1.1.0
+      - name: Install Roblox toolchain
+        run: rokit install
+      - name: Build Rojo project
+        run: rojo build default.project.json -o /tmp/DrawRacersDev.rbxlx
