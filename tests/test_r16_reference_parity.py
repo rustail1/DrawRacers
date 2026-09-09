@@ -17,3 +17,23 @@ def test_r16_1_body_orientation_is_upright_not_free_about_z() -> None:
     assert "upright body angular deviation" in b10
     assert "x/y translation must remain physically free" in b10
     assert "in-plane rotation around Z must remain unconstrained" not in b10
+
+
+def test_r16_2_hub_offsets_have_one_numeric_owner() -> None:
+    config = read("src/shared/Config/PhysicsConfig.lua")
+    runtime = read("src/server/Runtime/RacerRuntime.lua")
+    b06 = read("src/server/Tests/B06RacerRuntimeSpec.lua")
+
+    for token in [
+        "HubOffsetX = 0.0",
+        "HubOffsetY = -0.35",
+        "HubOffsetZAbs = 1.62",
+    ]:
+        assert token in config
+
+    assert "PhysicsConfig.LegGeometry.HubOffsetX" in runtime
+    assert "PhysicsConfig.LegGeometry.HubOffsetY" in runtime
+    assert "PhysicsConfig.LegGeometry.HubOffsetZAbs" in runtime
+    assert "Vector3.new(0, -0.75, -1.62)" not in runtime
+    assert "Vector3.new(0, -0.75, 1.62)" not in runtime
+    assert "PhysicsConfig.LegGeometry.HubOffsetY" in b06
