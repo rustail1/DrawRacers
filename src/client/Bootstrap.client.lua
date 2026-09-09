@@ -9,6 +9,8 @@ local InputController = require(controllers:WaitForChild("InputController"))
 local DrawingController = require(controllers:WaitForChild("DrawingController"))
 local DebugTuningPanel = require(controllers:WaitForChild("DebugTuningPanel"))
 
+local STUDIO_GATE_ATTRIBUTE = "DrawRacersStudioGateState"
+
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local drawHud = playerGui:WaitForChild("DrawHUD") :: ScreenGui
@@ -19,20 +21,68 @@ local strokeResult = remotes:WaitForChild("StrokeResult")
 
 local inputController = InputController.new()
 local drawingController = DrawingController.new(inputController, drawHud, submitStroke, strokeResult)
-drawingController:Start()
 
 local debugTuningPanel = DebugTuningPanel.new(playerGui)
 debugTuningPanel:Start()
+
+local function createStudioGateBanner(): TextLabel
+	local existing = playerGui:FindFirstChild("DrawRacersStudioGate")
+	if existing then
+		existing:Destroy()
+	end
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "DrawRacersStudioGate"
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 2000
+	gui.Parent = playerGui
+
+	local label = Instance.new("TextLabel")
+	label.Name = "Status"
+	label.AnchorPoint = Vector2.new(0.5, 0)
+	label.Position = UDim2.fromScale(0.5, 0.03)
+	label.Size = UDim2.fromOffset(520, 42)
+	label.BackgroundTransparency = 0.15
+	label.TextScaled = true
+	label.Visible = false
+	label.Parent = gui
+	return label
+end
 
 if RunService:IsStudio() then
 	local StudioHarnessConfig = require(
 		ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("StudioHarnessConfig")
 	)
-	if StudioHarnessConfig.Mode == "G0" then
-		local devFolder = script.Parent:WaitForChild("Dev")
-		local M0G0PresentationHarness = require(devFolder:WaitForChild("M0G0PresentationHarness"))
-		M0G0PresentationHarness.start()
+	local devFolder = script.Parent:WaitForChild("Dev")
+	local M0G0PresentationHarness = require(devFolder:WaitForChild("M0G0PresentationHarness"))
+	local gateBanner = createStudioGateBanner()
+	local drawingStarted = false
+	local presentationStarted = false
+
+	local function applyStudioGateState()
+		local state = ReplicatedStorage:GetAttribute("DrawRacersStudioGateState")
+		if state == "READY" then
+			gateBanner.Visible = false
+			if not drawingStarted then
+				drawingStarted = true
+				drawingController:Start()
+			end
+			if StudioHarnessConfig.Mode == "G0" and not presentationStarted then
+				presentationStarted = true
+				M0G0PresentationHarness.start()
+			end
+		elseif state == "BLOCKED" then
+			gateBanner.Text = "G0 BLOCKED — SERVER TEST FAILED"
+			gateBanner.Visible = true
+		else
+			gateBanner.Text = "G0 TESTS RUNNING"
+			gateBanner.Visible = true
+		end
 	end
+
+	ReplicatedStorage:GetAttributeChangedSignal("DrawRacersStudioGateState"):Connect(applyStudioGateState)
+	applyStudioGateState()
+else
+	drawingController:Start()
 end
 
 print("[DrawRacers] client bootstrap ready")
