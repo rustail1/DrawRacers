@@ -9,6 +9,8 @@
 
 # 1. DataModel target tree
 
+The tree below is **TARGET architecture** for the ordered production route. It **does not authorize early implementation** of modules before their task/milestone becomes active in `25/66`. In particular, **RacerService remains D05**. M0/B17 uses the existing **Studio-only injected resolver** in `M0HumanHarness`; **Do not implement RacerService before D05**.
+
 ```text
 ReplicatedStorage
 ├── Shared
@@ -114,7 +116,7 @@ Folder names may change only by explicit architecture decision. Responsibilities
 
 `Bootstrap.server.lua` является composition root. Именно он создаёт/инициализирует project services и передаёт зависимости.
 
-Recommended order:
+Recommended order once each ordered module is actually authorized/implemented:
 1. `AnalyticsAdapter`
 2. `PlayerDataService`
 3. `TrackService`
@@ -179,6 +181,8 @@ Depends on: `PlayerDataService`, Roblox TeleportService adapter, `AnalyticsAdapt
 ---
 
 ## RacerService
+**First authorized task:** **D05** in the ordered implementation sequence. **RacerService remains D05** even though this target architecture document describes its future ownership now. M0/B17 must keep using the **Studio-only injected resolver** in `M0HumanHarness`. **Do not implement RacerService before D05**.
+
 **Owns:** spawn/despawn racer entities and mapping `Player → RacerRuntime`.
 
 ```text
@@ -554,7 +558,7 @@ CosmeticService → PlayerDataService + RacerRuntime visuals
 MonetizationService → PlayerDataService/Reward grant path
 ```
 
-Rule: orchestration may depend on lower-level domain services; low-level modules never require `RaceService` back.
+Rule: orchestration may depend on lower-level domain services; low-level modules never require `RaceService` back. This graph is target dependency topology, not permission to instantiate later modules early.
 
 ---
 
@@ -574,14 +578,15 @@ Without new Decision Log do not create:
 
 # 10. Milestone introduction map
 
-| Module | First milestone |
+| Module | First milestone / task |
 |---|---|
 | StrokeMath | M0 |
 | InputController | M0 |
 | DrawingController | M0 |
 | LegAssembly | M0 |
 | LegShapeService | M0 |
-| RacerRuntime/RacerService | M0 |
+| RacerRuntime | M0 |
+| RacerService | M1 / D05 |
 | TrackMath/TrackService minimal | M0.5/M1 |
 | RaceRuntime/RaceService | M1 |
 | ProgressValidationService | M1 |
