@@ -42,4 +42,8 @@ return {
 		OrientationMaxTorque = 18000,
 		OrientationMaxAngularVelocity = 8,
 	},
+	Recovery = {
+		ProgressSampleWindow = 2.5,
+		MeaningfulHorizontalProgress = 0.35,
+	},
 }
