@@ -125,12 +125,7 @@ end
 local function respawnActiveRacer()
 	local player = activePlayer
 	local racer = activeRacer
-	if player == nil then
-		return
-	end
-	if racer == nil then
-		createActiveRacer(player)
-		print("[DrawRacers][R14.6] G0 racer recovered at canonical spawn")
+	if player == nil or racer == nil then
 		return
 	end
 
