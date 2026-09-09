@@ -27,9 +27,11 @@ def test_r15_1_stabilizer_uses_mechanical_plane_not_force_follower() -> None:
     # R16 keeps the mechanical plane but upgrades body orientation to full upright lock.
     assert "Enum.AlignType.AllAxes" in stabilizer
     assert "orientationAlign.CFrame = CFrame.identity" in stabilizer
-    assert "orientationAttachment.Axis = Vector3.zAxis" in stabilizer
+    assert "orientationAttachment.Axis = Vector3.xAxis" in stabilizer
+    assert "orientationAttachment.SecondaryAxis = Vector3.yAxis" in stabilizer
     assert "orientationAlign.Enabled = true" in stabilizer
     assert "Enum.AlignType.PrimaryAxisParallel" not in stabilizer
+    assert "orientationAttachment.Axis = Vector3.zAxis" not in stabilizer
 
     for token in [
         "LaneNormalError = 0.03",
