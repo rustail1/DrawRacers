@@ -23,6 +23,11 @@ local function assertClose(actual: number, expected: number, epsilon: number, me
 	assert(math.abs(actual - expected) <= epsilon, string.format("%s: expected %.6f got %.6f", message, expected, actual))
 end
 
+local function angularDistanceDegrees(a: number, b: number): number
+	local delta = (a - b + 180) % 360 - 180
+	return math.abs(delta)
+end
+
 local function assertSamePoints(a: { Vector2 }, b: { Vector2 })
 	assert(#a == #b, string.format("mapped point counts differ %d ~= %d", #a, #b))
 	for index = 1, #a do
@@ -65,6 +70,7 @@ function B09TwoLegPhaseSpec.run()
 	assert(rightJoint.ActuatorType == Enum.ActuatorType.Motor)
 	assert(leftJoint.AngularVelocity == PhysicsConfig.Motor.AngularVelocity)
 	assert(rightJoint.AngularVelocity == PhysicsConfig.Motor.AngularVelocity)
+	assert(leftJoint.AngularVelocity == rightJoint.AngularVelocity, "both leg motors must use the same direction/sign")
 	assert(leftJoint.MotorMaxTorque == rightJoint.MotorMaxTorque)
 	assert(leftJoint.MotorMaxAcceleration == rightJoint.MotorMaxAcceleration)
 	assert(leftHub.MotorAttachment.Axis == Vector3.zAxis, "LeftHub hinge axis must be +Z")
@@ -72,8 +78,18 @@ function B09TwoLegPhaseSpec.run()
 
 	local _, _, leftPhaseZ = leftHub.CFrame:ToObjectSpace(leftLeg:GetRoot().CFrame):ToOrientation()
 	local _, _, rightPhaseZ = rightHub.CFrame:ToObjectSpace(rightLeg:GetRoot().CFrame):ToOrientation()
-	assertClose(math.deg(leftPhaseZ), 0, 0.1, "left initial phase")
-	assertClose(math.abs(math.deg(rightPhaseZ)), PhysicsConfig.Motor.RightPhaseOffsetDegrees, 0.1, "right initial phase")
+	local leftPhaseDegrees = math.deg(leftPhaseZ)
+	local rightPhaseDegrees = math.deg(rightPhaseZ)
+	local phaseDifference = (rightPhaseDegrees - leftPhaseDegrees + 360) % 360
+	assertClose(leftPhaseDegrees, 0, 0.1, "left initial phase")
+	assert(
+		angularDistanceDegrees(phaseDifference, PhysicsConfig.Motor.RightPhaseOffsetDegrees) <= 1.0,
+		string.format(
+			"phase difference expected %.3f got %.3f",
+			PhysicsConfig.Motor.RightPhaseOffsetDegrees,
+			phaseDifference
+		)
+	)
 
 	racer:Destroy()
 	print("[DrawRacers][B09] two-leg same-XY/phase tests PASS")
