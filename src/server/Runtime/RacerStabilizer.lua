@@ -32,6 +32,7 @@ function RacerStabilizer.new(params: Params)
 
 	local laneAttachment = takeAttachment(runtimeAttachments, body, "LaneAlignAttachment")
 	local orientationAttachment = takeAttachment(runtimeAttachments, body, "OrientationAttachment")
+	orientationAttachment.Axis = Vector3.zAxis
 	-- RuntimeAttachments is a template staging container only. Once the attachments
 	-- are owned by BodyCollider, remove the empty helper so spawned racers match doc 65.
 	runtimeAttachments:Destroy()
@@ -49,20 +50,21 @@ function RacerStabilizer.new(params: Params)
 	laneAlign.MaxVelocity = config.LaneMaxVelocity
 	laneAlign.Responsiveness = config.LaneResponsiveness
 	laneAlign.Position = Vector3.new(body.Position.X, body.Position.Y, params.laneCenterZ)
-	laneAlign.Enabled = false
+	laneAlign.Enabled = true
 	laneAlign.Parent = body
 
 	local orientationAlign = Instance.new("AlignOrientation")
 	orientationAlign.Name = "OrientationAlign"
 	orientationAlign.Mode = Enum.OrientationAlignmentMode.OneAttachment
 	orientationAlign.Attachment0 = orientationAttachment
+	orientationAlign.AlignType = Enum.AlignType.PrimaryAxisParallel
+	orientationAlign.PrimaryAxis = Vector3.zAxis
 	orientationAlign.RigidityEnabled = false
 	orientationAlign.ReactionTorqueEnabled = false
 	orientationAlign.Responsiveness = config.OrientationResponsiveness
 	orientationAlign.MaxTorque = config.OrientationMaxTorque
 	orientationAlign.MaxAngularVelocity = config.OrientationMaxAngularVelocity
-	orientationAlign.CFrame = CFrame.identity
-	orientationAlign.Enabled = false
+	orientationAlign.Enabled = true
 	orientationAlign.Parent = body
 
 	model:SetAttribute("LaneHardBoundExceeded", false)
@@ -96,13 +98,10 @@ function RacerStabilizer:Step()
 	local absoluteError = math.abs(errorZ)
 
 	self.laneAlign.Position = Vector3.new(body.Position.X, body.Position.Y, self.laneCenterZ)
-	self.laneAlign.Enabled = absoluteError > config.LaneCorrectionDeadzone
+	self.laneAlign.Enabled = true
+	self.orientationAlign.Enabled = true
 	self.model:SetAttribute("LaneNormalBoundExceeded", absoluteError > config.LaneNormalError)
 	self.model:SetAttribute("LaneHardBoundExceeded", absoluteError > config.LaneHardBound)
-
-	local pitch, yaw, roll = body.CFrame:ToOrientation()
-	local orientationErrorDegrees = math.deg(math.max(math.abs(pitch), math.abs(yaw), math.abs(roll)))
-	self.orientationAlign.Enabled = orientationErrorDegrees > config.OrientationFreeTiltDegrees
 end
 
 function RacerStabilizer:GetLaneAlign(): AlignPosition
