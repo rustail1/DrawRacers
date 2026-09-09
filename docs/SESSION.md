@@ -35,7 +35,13 @@ The full R01–R05 code/test head was verified by GitHub Actions `Contract Verif
 - command: `python verify.py`
 - result: **66 passed, 0 failed**.
 
-R06 adds documentation-consistency checks on top of that baseline. Studio/Rojo runtime evidence is not available to GitHub Actions and must not be fabricated.
+R06 then added documentation-consistency checks and reconciled `README.md`, `FEATURE_LIST.md`, `SESSION.md`, and the CORE audit decision record at the hard G0 stop.
+
+Final R06 repository verification on commit `1269336b6754a7f9ea3172a1b99cddfe8fa276f7` used GitHub Actions `Contract Verify` run `34337310421`:
+- command: `python verify.py`
+- result: **68 passed, 0 failed**.
+
+This is automated/static evidence only. Studio/Rojo runtime evidence is not available to GitHub Actions and must not be fabricated.
 
 ## Current implementation/evidence cursor
 **B17 — G0 HUMAN_GATE — Studio PASS PENDING.**
