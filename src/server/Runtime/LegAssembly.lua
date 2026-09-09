@@ -6,6 +6,9 @@ local RunService = game:GetService("RunService")
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
 )
+local StrokeTypes = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
+)
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
 
 local RACER_LEG_GROUP = "RacerLeg"
@@ -13,10 +16,12 @@ local RACER_LEG_GROUP = "RacerLeg"
 local LegAssembly = {}
 LegAssembly.__index = LegAssembly
 
+type ShapeSpec = StrokeTypes.ShapeSpec
+
 export type BuildParams = {
 	racerModel: Model,
 	side: string,
-	shapeSpec: any,
+	shapeSpec: ShapeSpec,
 	motorEnabled: boolean?,
 	initialPhaseDegrees: number?,
 	staged: boolean?,
