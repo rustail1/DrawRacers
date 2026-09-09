@@ -18,6 +18,7 @@ return {
 	LegGeometry = {
 		LegCanvasHalfSpan = 3.15,
 		MaxLegExtentFromHub = 4.5,
+		MinUsefulLegExtent = 0.7,
 		PhysicalLegSegmentThickness = 0.45,
 		MaxColliderSegmentsPerLeg = 14,
 		InnerHubNoCollisionRadius = 0.65,
@@ -41,6 +42,15 @@ return {
 		OrientationResponsiveness = 8,
 		OrientationMaxTorque = 18000,
 		OrientationMaxAngularVelocity = 8,
+	},
+	AntiStall = {
+		Enabled = true,
+		ActivationForwardSpeed = 0.35,
+		ActivationDelay = 0.60,
+		MaxAccelerationX = 2.0,
+		MaxAssistDuration = 0.75,
+		DisableForwardSpeed = 1.0,
+		GroundProbeDistance = 6.5,
 	},
 	Recovery = {
 		ProgressSampleWindow = 2.5,
