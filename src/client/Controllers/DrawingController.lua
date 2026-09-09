@@ -121,9 +121,6 @@ local function createUi(drawHud: ScreenGui)
 	drawInputRect.ClipsDescendants = true
 	drawInputRect.ZIndex = 21
 
-	-- R01 audit repair: the semantic coordinate surface is square in pixels so one
-	-- screen-space unit on X means the same physical distance as one unit on Y.
-	-- The outer DrawCanvas remains the wide HUD panel from spec 59.
 	local semanticSquareConstraint = Instance.new("UIAspectRatioConstraint")
 	semanticSquareConstraint.Name = "SemanticSquareConstraint"
 	semanticSquareConstraint.AspectRatio = 1
@@ -237,18 +234,18 @@ function DrawingController.new(inputController: any, drawHud: ScreenGui, submitS
 		_connection = nil,
 		_resultConnection = nil,
 		_livePoints = {} :: { Vector2 },
+		_semanticPixelPoints = {} :: { Vector2 },
 		acceptedPoints = {} :: { Vector2 },
 		livePoints = {} :: { Vector2 },
 		_drawing = false,
 		_pointerFamily = "mouse",
 		_nextSequence = 1,
 		_latestSubmittedSequence = 0,
+		_lastAcceptedSequence = 0,
 		_pendingStrokes = {} :: { [number]: { Vector2 } },
 	}, DrawingController)
 
-	-- Alias names are intentionally explicit for the B02 contract/readability.
 	self.livePoints = self._livePoints
-
 	return self
 end
 
@@ -274,6 +271,7 @@ end
 
 function DrawingController:_clearLiveStroke()
 	table.clear(self._livePoints)
+	table.clear(self._semanticPixelPoints)
 	clearSegments(self._ui.liveLayer)
 end
 
@@ -286,6 +284,44 @@ function DrawingController:_setValidation(message: string?)
 	end
 	toast.Text = message
 	toast.Visible = true
+end
+
+function DrawingController:_normalizedPixelDistance(a: Vector2, b: Vector2): number
+	local inputSize = self._ui.drawInputRect.AbsoluteSize
+	if inputSize.X <= 0 or inputSize.Y <= 0 then
+		return math.huge
+	end
+	local delta = a - b
+	return Vector2.new((delta.X / inputSize.X) * 2, (delta.Y / inputSize.Y) * 2).Magnitude
+end
+
+function DrawingController:_tryAppendSemanticPoint(point: Vector2, forceFinal: boolean)
+	local samples = self._semanticPixelPoints
+	local config = PhysicsConfig.StrokeProcessing
+	local last = samples[#samples]
+	if last == nil then
+		table.insert(samples, point)
+		return
+	end
+	if (point - last).Magnitude <= 0 then
+		return
+	end
+
+	if forceFinal then
+		if #samples >= config.MaxRawPoints then
+			samples[#samples] = point
+		else
+			table.insert(samples, point)
+		end
+		return
+	end
+
+	if #samples >= config.MaxRawPoints then
+		return
+	end
+	if self:_normalizedPixelDistance(point, last) >= config.RawSampleMinMovementNormalized then
+		table.insert(samples, point)
+	end
 end
 
 local function renderThumbnail(self)
@@ -315,6 +351,10 @@ function DrawingController:_prepareSemanticPoints(pixelPoints: { Vector2 }): ({ 
 	end
 
 	local config = PhysicsConfig.StrokeProcessing
+	if #pixelPoints < config.MinimumRawPoints then
+		return nil, "TOO_FEW_POINTS"
+	end
+
 	local normalized = StrokeMath.Normalize(pixelPoints, inputSize)
 	local clamped, clampError = StrokeMath.Clamp(normalized, {
 		minCoordinate = config.NormalizedMin,
@@ -337,7 +377,7 @@ function DrawingController:_prepareSemanticPoints(pixelPoints: { Vector2 }): ({ 
 
 	local targetPoints = math.min(config.ResampleTargetPoints, config.MaxCleanedPoints)
 	local cleaned = StrokeMath.Resample(simplified, targetPoints)
-	if #cleaned < 2 then
+	if #cleaned < 2 or StrokeMath.MeasureLength(cleaned) < config.MinimumCleanedPolylineLength then
 		return nil, "TOO_SHORT"
 	end
 
@@ -351,13 +391,13 @@ function DrawingController:_prepareSemanticPoints(pixelPoints: { Vector2 }): ({ 
 	return points, nil
 end
 
-function DrawingController:_submitStrokeIntent(pixelPoints: { Vector2 })
+function DrawingController:_submitStrokeIntent(previewPixels: { Vector2 }, semanticPixelPoints: { Vector2 })
 	if self._submitStroke == nil then
 		self:_setValidation("NETWORK_NOT_READY")
 		return
 	end
 
-	local semanticPoints, prepareError = self:_prepareSemanticPoints(pixelPoints)
+	local semanticPoints, prepareError = self:_prepareSemanticPoints(semanticPixelPoints)
 	if semanticPoints == nil then
 		self:_setValidation(prepareError or "INVALID_STROKE")
 		return
@@ -366,13 +406,7 @@ function DrawingController:_submitStrokeIntent(pixelPoints: { Vector2 })
 	local sequence = self._nextSequence
 	self._nextSequence += 1
 	self._latestSubmittedSequence = sequence
-
-	for oldSequence, _ in self._pendingStrokes do
-		if oldSequence < sequence then
-			self._pendingStrokes[oldSequence] = nil
-		end
-	end
-	self._pendingStrokes[sequence] = copyPoints(pixelPoints)
+	self._pendingStrokes[sequence] = copyPoints(previewPixels)
 	self:_setValidation(nil)
 
 	self._submitStroke:FireServer({
@@ -391,9 +425,6 @@ function DrawingController:_onStrokeResult(result: any)
 	if type(sequence) ~= "number" or math.floor(sequence) ~= sequence then
 		return
 	end
-	if sequence ~= self._latestSubmittedSequence then
-		return
-	end
 
 	local pending = self._pendingStrokes[sequence]
 	if pending == nil then
@@ -402,11 +433,20 @@ function DrawingController:_onStrokeResult(result: any)
 	self._pendingStrokes[sequence] = nil
 
 	if result.accepted == true then
-		self.acceptedPoints = copyPoints(pending)
-		self:_renderAcceptedStroke()
-		renderThumbnail(self)
-		self._ui.emptyGhost.Visible = false
-		self:_setValidation(nil)
+		if sequence > self._lastAcceptedSequence then
+			self._lastAcceptedSequence = sequence
+			self.acceptedPoints = copyPoints(pending)
+			self:_renderAcceptedStroke()
+			renderThumbnail(self)
+			self._ui.emptyGhost.Visible = false
+			self:_setValidation(nil)
+
+			for pendingSequence, _ in self._pendingStrokes do
+				if pendingSequence < sequence then
+					self._pendingStrokes[pendingSequence] = nil
+				end
+			end
+		end
 		print(("[DrawRacers][B12] stroke accepted sequence=%d shapeVersion=%s"):format(
 			sequence,
 			tostring(result.shapeVersion)
@@ -416,11 +456,13 @@ function DrawingController:_onStrokeResult(result: any)
 
 	self:_renderAcceptedStroke()
 	self._ui.emptyGhost.Visible = #self.acceptedPoints == 0
-	local rejectReasonCode = if type(result.rejectReasonCode) == "string"
-		then result.rejectReasonCode
-		else "STROKE_REJECTED"
-	self:_setValidation(rejectReasonCode)
-	print(("[DrawRacers][B12] stroke rejected sequence=%d reason=%s"):format(sequence, rejectReasonCode))
+	if sequence == self._latestSubmittedSequence then
+		local rejectReasonCode = if type(result.rejectReasonCode) == "string"
+			then result.rejectReasonCode
+			else "STROKE_REJECTED"
+		self:_setValidation(rejectReasonCode)
+		print(("[DrawRacers][B12] stroke rejected sequence=%d reason=%s"):format(sequence, rejectReasonCode))
+	end
 end
 
 function DrawingController:_onPointer(event)
@@ -435,6 +477,7 @@ function DrawingController:_onPointer(event)
 
 		local point = self:_toLocal(event.position)
 		table.insert(self._livePoints, point)
+		self:_tryAppendSemanticPoint(point, false)
 	elseif event.phase == "move" then
 		if not self._drawing then
 			return
@@ -446,6 +489,7 @@ function DrawingController:_onPointer(event)
 		if previous then
 			drawSegment(self._ui.liveLayer, previous, point, self:_strokeThickness(), 0)
 		end
+		self:_tryAppendSemanticPoint(point, false)
 	elseif event.phase == "end" then
 		if not self._drawing then
 			return
@@ -457,19 +501,24 @@ function DrawingController:_onPointer(event)
 			table.insert(self._livePoints, point)
 			drawSegment(self._ui.liveLayer, previous, point, self:_strokeThickness(), 0)
 		end
+		self:_tryAppendSemanticPoint(point, true)
 
 		local pendingPixels = copyPoints(self._livePoints)
+		local semanticPixels = copyPoints(self._semanticPixelPoints)
 		self._drawing = false
 		self:_clearLiveStroke()
 		self._ui.acceptedLayer.Visible = true
 		self:_renderAcceptedStroke()
 		self._ui.emptyGhost.Visible = #self.acceptedPoints == 0
 
-		if #pendingPixels >= 2 then
-			self:_submitStrokeIntent(pendingPixels)
+		if #semanticPixels >= PhysicsConfig.StrokeProcessing.MinimumRawPoints then
+			self:_submitStrokeIntent(pendingPixels, semanticPixels)
+		else
+			self:_setValidation("TOO_FEW_POINTS")
 		end
-		print(("[DrawRacers][B02] local stroke complete pending=%d accepted=%d"):format(
+		print(("[DrawRacers][B02] local stroke complete pending=%d semantic=%d accepted=%d"):format(
 			#pendingPixels,
+			#semanticPixels,
 			#self.acceptedPoints
 		))
 	elseif event.phase == "cancel" then
