@@ -1,8 +1,8 @@
 --!strict
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
@@ -16,12 +16,49 @@ export type Params = {
 	body: BasePart,
 }
 
-local function makeRaycastParams(model: Model): RaycastParams
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { model }
-	params.IgnoreWater = true
-	return params
+local function hasRecoverySurfaceTag(instance: Instance): boolean
+	local cursor: Instance? = instance
+	while cursor ~= nil do
+		if CollectionService:HasTag(cursor, "RecoverySurface") then
+			return true
+		end
+		cursor = cursor.Parent
+	end
+	return false
+end
+
+local function getRequirementTag(instance: Instance): string?
+	local cursor: Instance? = instance
+	while cursor ~= nil do
+		local requirementTag = cursor:GetAttribute("RequirementTag")
+		if type(requirementTag) == "string" then
+			return requirementTag
+		end
+		if requirementTag ~= nil then
+			return "__INVALID__"
+		end
+		cursor = cursor.Parent
+	end
+	return nil
+end
+
+local function classifyContactSurface(surface: BasePart): string
+	if hasRecoverySurfaceTag(surface) then
+		return "ELIGIBLE"
+	end
+
+	local requirementTag = getRequirementTag(surface)
+	if requirementTag == "FAST_ROLL" then
+		return "ELIGIBLE"
+	end
+	if requirementTag ~= nil then
+		return "OBSTACLE"
+	end
+
+	if surface.CanCollide then
+		return "UNKNOWN_COLLIDABLE"
+	end
+	return "IGNORE"
 end
 
 function RacerAntiStall.new(params: Params)
@@ -45,7 +82,6 @@ function RacerAntiStall.new(params: Params)
 		body = body,
 		attachment = attachment,
 		force = force,
-		raycastParams = makeRaycastParams(params.racerModel),
 		stallDuration = 0,
 		assistDuration = 0,
 		pulseSpent = false,
@@ -62,7 +98,7 @@ function RacerAntiStall.new(params: Params)
 end
 
 function RacerAntiStall:_setActive(active: boolean)
-	if self.destroyed or self.force == nil or self.model == nil then
+	if self.destroyed or self.force == nil or self.model == nil or self.body == nil then
 		return
 	end
 
@@ -75,18 +111,24 @@ function RacerAntiStall:_setActive(active: boolean)
 	self.model:SetAttribute("AntiStallActive", active)
 end
 
-function RacerAntiStall:_eligibleSurface(): boolean
-	local config = PhysicsConfig.AntiStall
-	local body = self.body
-	local result = Workspace:Raycast(
-		body.Position,
-		Vector3.new(0, -config.GroundProbeDistance, 0),
-		self.raycastParams
-	)
-	if result == nil then
-		return false
+function RacerAntiStall:_eligibleContact(): boolean
+	local hasEligibleContact = false
+	for _, descendant in self.model:GetDescendants() do
+		if descendant:IsA("BasePart") and descendant.CanCollide and descendant.CanTouch then
+			for _, touchingPart in descendant:GetTouchingParts() do
+				if not touchingPart:IsDescendantOf(self.model) then
+					local classification = classifyContactSurface(touchingPart)
+					if classification == "OBSTACLE" or classification == "UNKNOWN_COLLIDABLE" then
+						return false
+					end
+					if classification == "ELIGIBLE" then
+						hasEligibleContact = true
+					end
+				end
+			end
+		end
 	end
-	return result.Instance:GetAttribute("AntiStallSurface") == true
+	return hasEligibleContact
 end
 
 function RacerAntiStall:_resetEpisode()
@@ -119,15 +161,18 @@ function RacerAntiStall:Step(dt: number)
 	end
 
 	local speedX = self.body.AssemblyLinearVelocity.X
-	local eligibleSurface = self:_eligibleSurface()
-	if not eligibleSurface or speedX >= config.DisableForwardSpeed then
+	if speedX >= config.DisableForwardSpeed then
+		self:_resetEpisode()
+		return
+	end
+	if not self:_eligibleContact() then
 		self:_resetEpisode()
 		return
 	end
 
 	if self.model:GetAttribute("AntiStallActive") == true then
 		self.assistDuration += dt
-		if self.assistDuration >= config.MaxAssistDuration or speedX >= config.DisableForwardSpeed then
+		if self.assistDuration >= config.MaxAssistDuration then
 			self.pulseSpent = true
 			self:_setActive(false)
 		end

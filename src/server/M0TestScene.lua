@@ -1,5 +1,6 @@
 --!strict
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -62,7 +63,10 @@ local function makeTrackPart(
 	part.CollisionGroup = CollisionGroups.Track
 	part.Material = Enum.Material.SmoothPlastic
 	part.Color = Color3.fromRGB(115, 120, 130)
-	part:SetAttribute("AntiStallSurface", antiStallSurface == true)
+	if antiStallSurface == true then
+		CollectionService:AddTag(part, "RecoverySurface")
+		part:SetAttribute("RequirementTag", "FAST_ROLL")
+	end
 	return part
 end
 

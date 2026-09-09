@@ -50,7 +50,6 @@ return {
 		MaxAccelerationX = 2.0,
 		MaxAssistDuration = 0.75,
 		DisableForwardSpeed = 1.0,
-		GroundProbeDistance = 6.5,
 	},
 	Recovery = {
 		ProgressSampleWindow = 2.5,

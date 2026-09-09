@@ -16,6 +16,7 @@ local ROWS = {
 	{ key = "motorEnabled", attribute = "DebugMotorEnabled" },
 	{ key = "motorAngularVelocity", attribute = "DebugMotorAngularVelocity" },
 	{ key = "stuckState", attribute = "DebugStuckState" },
+	{ key = "antiStallActive", attribute = "DebugAntiStallActive" },
 	{ key = "laneDeviation", attribute = "DebugLaneDeviation" },
 	{ key = "checkpoint", attribute = "DebugCheckpoint" },
 	{ key = "progress", attribute = "DebugProgress" },
