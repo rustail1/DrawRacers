@@ -115,6 +115,9 @@ function B14RedrawStressSpec.run()
 	assert(stale ~= nil and stale.accepted == false and stale.rejectReasonCode == "STALE_SEQUENCE")
 	assertCurrentShapeIntact(racer, legsFolder, 1, leftModel, rightModel)
 
+	-- Each expensive invalid-payload check runs outside the previous accepted/validated request's
+	-- cooldown window. Otherwise RATE_LIMITED correctly wins before point walking by contract.
+	now += PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown + 0.01
 	local malformed = processor:Handle(TEST_PLAYER, payload(3, {
 		{ x = -0.4, y = 0.0 },
 		"not-a-point",
@@ -123,6 +126,7 @@ function B14RedrawStressSpec.run()
 	assert(malformed ~= nil and malformed.accepted == false and malformed.rejectReasonCode == "MALFORMED_POINTS")
 	assertCurrentShapeIntact(racer, legsFolder, 1, leftModel, rightModel)
 
+	now += PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown + 0.01
 	local nonFinite = processor:Handle(TEST_PLAYER, payload(4, {
 		{ x = -0.4, y = 0.0 },
 		{ x = math.huge, y = 0.2 },
@@ -135,6 +139,7 @@ function B14RedrawStressSpec.run()
 	for index = 1, PhysicsConfig.StrokeProcessing.MaxRawPoints + 1 do
 		tooManyPoints[index] = { x = index / 1000, y = 0 }
 	end
+	now += PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown + 0.01
 	local tooMany = processor:Handle(TEST_PLAYER, payload(5, tooManyPoints))
 	assert(tooMany ~= nil and tooMany.accepted == false and tooMany.rejectReasonCode == "TOO_MANY_POINTS")
 	assertCurrentShapeIntact(racer, legsFolder, 1, leftModel, rightModel)
@@ -146,6 +151,7 @@ function B14RedrawStressSpec.run()
 			y = -9.876543210987654e299,
 		}
 	end
+	now += PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown + 0.01
 	local oversized = processor:Handle(TEST_PLAYER, payload(6, oversizedPoints))
 	assert(oversized ~= nil and oversized.accepted == false and oversized.rejectReasonCode == "PAYLOAD_TOO_LARGE")
 	assertCurrentShapeIntact(racer, legsFolder, 1, leftModel, rightModel)
