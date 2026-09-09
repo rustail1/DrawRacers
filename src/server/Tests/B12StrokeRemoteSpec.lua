@@ -2,6 +2,9 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local RemoteNames = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Net"):WaitForChild("RemoteNames")
+)
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 local LegShapeService = require(script.Parent.Parent.Services:WaitForChild("LegShapeService"))
 local StrokeRemoteTransport = require(script.Parent.Parent.Services:WaitForChild("StrokeRemoteTransport"))
@@ -54,8 +57,8 @@ function B12StrokeRemoteSpec.run()
 	)
 
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
-	local submitStroke = remotes:WaitForChild("SubmitStroke")
-	local strokeResult = remotes:WaitForChild("StrokeResult")
+	local submitStroke = remotes:WaitForChild(RemoteNames.SubmitStroke)
+	local strokeResult = remotes:WaitForChild(RemoteNames.StrokeResult)
 	assert(submitStroke:IsA("RemoteEvent"), "SubmitStroke must be RemoteEvent")
 	assert(strokeResult:IsA("RemoteEvent"), "StrokeResult must be RemoteEvent")
 	assert(remotes:FindFirstChildWhichIsA("RemoteFunction") == nil, "B12 must not expose RemoteFunction/generic RPC")
