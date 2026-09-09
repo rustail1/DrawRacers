@@ -1,6 +1,9 @@
 --!strict
 
 local RunService = game:GetService("RunService")
+local DebugTelemetry = require(script.Parent:WaitForChild("Runtime"):WaitForChild("DebugTelemetry"))
+
+DebugTelemetry.start()
 
 if RunService:IsStudio() then
 	local M0TestScene = require(script.Parent.M0TestScene)
