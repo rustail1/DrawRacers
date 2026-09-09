@@ -87,6 +87,20 @@ def test_r16_3a_server_centers_shape_by_bounds_without_resizing() -> None:
     assert "centering must preserve shape height" in b11
 
 
+def test_r16_3a_docs_supersede_raw_canvas_offset_semantics() -> None:
+    shape_doc = read("docs/73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md")
+    design = read("docs/superpowers/specs/2026-09-10-r16-draw-climber-reference-parity-design.md")
+
+    assert "R16.3A" in shape_doc
+    assert "server recenters the cleaned stroke around its own bounds center" in shape_doc
+    assert "MUST NOT recenter the stroke around its own bounds" not in shape_doc
+    assert "offset shapes remain offset relative to the hub" not in shape_doc
+    assert "HubOffsetY = -0.35" in shape_doc
+    assert "R16.3A — Reference Shape Centering" in design
+    assert "It is not mirrored, recentered to its bounding box" not in design
+    assert "no auto-centering by stroke bounds" not in design
+
+
 def test_r16_4_phase_is_180_and_redraw_retains_each_side() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
