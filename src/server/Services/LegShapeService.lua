@@ -199,6 +199,10 @@ local function extractSequence(payload: any): number?
 	return sequence
 end
 
+function LegShapeService.ExtractSafeSequence(payload: any): number?
+	return extractSequence(payload)
+end
+
 local function validateNetworkEnvelope(payload: any): string?
 	if type(payload) ~= "table" then
 		return "MALFORMED_PAYLOAD"
