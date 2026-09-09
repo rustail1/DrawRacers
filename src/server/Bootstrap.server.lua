@@ -5,6 +5,21 @@ local RunService = game:GetService("RunService")
 local DebugTelemetry = require(script.Parent:WaitForChild("Runtime"):WaitForChild("DebugTelemetry"))
 
 local STUDIO_GATE_ATTRIBUTE = "DrawRacersStudioGateState"
+local STUDIO_REGRESSION_SPECS = {
+	"B03StrokeMathSpec",
+	"B04StrokeMathSpec",
+	"B05StrokeMathMatrixSpec",
+	"B06RacerRuntimeSpec",
+	"B07LegAssemblySpec",
+	"B09TwoLegPhaseSpec",
+	"B10StabilizationSpec",
+	"B11LegShapeServiceSpec",
+	"B12StrokeRemoteSpec",
+	"B13AtomicRedrawSpec",
+	"B14RedrawStressSpec",
+	"B15ObstacleLabSpec",
+	"B16DebugTuningSpec",
+}
 
 DebugTelemetry.start()
 
@@ -27,7 +42,7 @@ if RunService:IsStudio() then
 
 	local specsPassed = false
 	if sceneOk then
-		local passed = StudioSpecRunner.run(testsFolder)
+		local passed = StudioSpecRunner.run(testsFolder, STUDIO_REGRESSION_SPECS)
 		specsPassed = passed == true
 	end
 
