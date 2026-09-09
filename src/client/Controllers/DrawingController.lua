@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
@@ -18,6 +19,17 @@ local DRAW_INPUT_SIZE = UDim2.fromScale(0.92, 0.82)
 
 local DESKTOP_THICKNESS = 6
 local TOUCH_THICKNESS = 8
+
+local function inputTypeFamily(inputType: Enum.UserInputType): string
+	return if inputType == Enum.UserInputType.Touch then "touch" else "mouse"
+end
+
+local function initialLayoutFamily(): string
+	if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
+		return "touch"
+	end
+	return inputTypeFamily(UserInputService:GetLastInputType())
+end
 
 local function makeFrame(name: string, parent: Instance): Frame
 	local frame = Instance.new("Frame")
@@ -75,7 +87,7 @@ local function copyPoints(points: { Vector2 }): { Vector2 }
 	return result
 end
 
-local function createUi(drawHud: ScreenGui)
+local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	local oldSafeRoot = drawHud:FindFirstChild("SafeRoot")
 	if oldSafeRoot then
 		oldSafeRoot:Destroy()
@@ -97,7 +109,7 @@ local function createUi(drawHud: ScreenGui)
 	drawCanvas.Name = "DrawCanvas"
 	drawCanvas.AnchorPoint = Vector2.new(0.5, 1)
 	drawCanvas.Position = UDim2.fromScale(0.5, 0.975)
-	drawCanvas.Size = DESKTOP_CANVAS_SIZE
+	drawCanvas.Size = if layoutFamily == "touch" then TOUCH_CANVAS_SIZE else DESKTOP_CANVAS_SIZE
 	drawCanvas.BackgroundColor3 = Color3.fromRGB(24, 31, 42)
 	drawCanvas.BackgroundTransparency = 0.18
 	drawCanvas.BorderSizePixel = 0
@@ -232,7 +244,8 @@ local function createUi(drawHud: ScreenGui)
 end
 
 function DrawingController.new(inputController: any, drawHud: ScreenGui, submitStroke: any?, strokeResult: any?)
-	local ui = createUi(drawHud)
+	local layoutFamily = initialLayoutFamily()
+	local ui = createUi(drawHud, layoutFamily)
 
 	local self = setmetatable({
 		_inputController = inputController,
@@ -241,12 +254,15 @@ function DrawingController.new(inputController: any, drawHud: ScreenGui, submitS
 		_ui = ui,
 		_connection = nil,
 		_resultConnection = nil,
+		_layoutConnection = nil,
 		_livePoints = {} :: { Vector2 },
 		_semanticPixelPoints = {} :: { Vector2 },
 		acceptedPoints = {} :: { Vector2 },
 		livePoints = {} :: { Vector2 },
 		_drawing = false,
-		_pointerFamily = "mouse",
+		_pointerFamily = layoutFamily,
+		_layoutFamily = layoutFamily,
+		_pendingLayoutFamily = nil,
 		_nextSequence = 1,
 		_latestSubmittedSequence = 0,
 		_lastAcceptedSequence = 0,
@@ -262,11 +278,26 @@ function DrawingController:_strokeThickness(): number
 end
 
 function DrawingController:_applyLayout(family: string)
+	if self._drawing then
+		self._pendingLayoutFamily = family
+		return
+	end
+	self._layoutFamily = family
+	self._pendingLayoutFamily = nil
 	if family == "touch" then
 		self._ui.drawCanvas.Size = TOUCH_CANVAS_SIZE
 	else
 		self._ui.drawCanvas.Size = DESKTOP_CANVAS_SIZE
 	end
+end
+
+function DrawingController:_applyPendingLayout()
+	local family = self._pendingLayoutFamily
+	if family == nil then
+		return
+	end
+	self._pendingLayoutFamily = nil
+	self:_applyLayout(family)
 end
 
 function DrawingController:_toLocal(screenPoint: Vector2): Vector2
@@ -476,7 +507,9 @@ end
 function DrawingController:_onPointer(event)
 	if event.phase == "start" then
 		self._pointerFamily = event.family
-		self:_applyLayout(event.family)
+		if event.family ~= self._layoutFamily then
+			self._pendingLayoutFamily = event.family
+		end
 		self._drawing = true
 		self._ui.emptyGhost.Visible = false
 		self._ui.acceptedLayer.Visible = false
@@ -529,6 +562,7 @@ function DrawingController:_onPointer(event)
 			#semanticPixels,
 			#self.acceptedPoints
 		))
+		self:_applyPendingLayout()
 	elseif event.phase == "cancel" then
 		if not self._drawing then
 			return
@@ -540,6 +574,7 @@ function DrawingController:_onPointer(event)
 		self:_renderAcceptedStroke()
 		self._ui.emptyGhost.Visible = #self.acceptedPoints == 0
 		print(("[DrawRacers][B02] stroke cancelled; accepted preserved=%d"):format(#self.acceptedPoints))
+		self:_applyPendingLayout()
 	end
 end
 
@@ -553,6 +588,17 @@ function DrawingController:Start()
 	inputController:Bind(drawInputRect)
 	self._connection = inputController:Connect(function(event)
 		self:_onPointer(event)
+	end)
+	self._layoutConnection = UserInputService.LastInputTypeChanged:Connect(function(inputType)
+		local family = inputTypeFamily(inputType)
+		if family == self._layoutFamily then
+			return
+		end
+		if self._drawing then
+			self._pendingLayoutFamily = family
+		else
+			self:_applyLayout(family)
+		end
 	end)
 
 	if self._strokeResult ~= nil and self._resultConnection == nil then
@@ -572,6 +618,10 @@ function DrawingController:Destroy()
 	if self._resultConnection then
 		self._resultConnection:Disconnect()
 		self._resultConnection = nil
+	end
+	if self._layoutConnection then
+		self._layoutConnection:Disconnect()
+		self._layoutConnection = nil
 	end
 	table.clear(self._pendingStrokes)
 	self._inputController:Unbind()
