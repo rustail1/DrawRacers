@@ -4,8 +4,8 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
 **Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle lab → debug/tuning pipeline, implementation items **B03–B16**.  
-**Current implementation integrity:** bounded CORE/pre-G0 repair **R01–R12** is implemented in `main`. Historical pre-R06 baseline was **66 passed, 0 failed**; R08 closed at **77 passed, 0 failed**; R09 bounded repair verified **80 passed, 0 failed**; final R10–R12 code head `e2bedd34696bb99da43878c19d7984c9134c8bef` / run `34363706915` verified **88 passed, 0 failed**. The known R09–R12 findings are **CLOSED at implementation/regression level**.  
-**Current gate:** **B17/G0 HUMAN_GATE**. Studio/human evidence is pending; implementation/CI alone does not promote B03–B16 to ACCEPTED.  
+**Current implementation integrity:** bounded CORE/pre-G0 repair **R01–R12** plus runtime closure **R14.1–R14.10** are implemented in `main`. Historical pre-R06 baseline was **66 passed, 0 failed**; R08 closed at **77 passed, 0 failed**; R09 bounded repair verified **80 passed, 0 failed**; final R10–R12 code head `e2bedd34696bb99da43878c19d7984c9134c8bef` / run `34363706915` verified **88 passed, 0 failed**. R14.1–R14.10 code/tooling head `2864661e5214db5a09e53a53b6c8da8a79365cce` / run `34377868753` verified **109 passed, 0 failed** plus successful **Rojo build**. The known R09–R12 and R14 implementation findings are **CLOSED at implementation/regression level**.  
+**Current gate:** **B17/G0 HUMAN_GATE**. **Studio checkpoints: HUMAN PENDING.** Implementation/CI/Rojo build alone do not promote B03–B16 to ACCEPTED.  
 **Acceptance note:** A01–A04 and B01–B02 remain recorded ACCEPTED.  
 **Rule:** only one gameplay feature may be ACTIVE at a time. `SESSION.md` owns the evidence cursor; `25` owns implementation order. No C01 or later work may start without recorded G0 PASS or an explicit Product Owner gate decision.
 
@@ -20,6 +20,7 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - ACTIVE / IMPLEMENTED — B03–B16 core locomotion/redraw/obstacle/debug pipeline.
 - ACTIVE / REPAIR COMPLETE, STUDIO EVIDENCE PENDING — R01–R08 implementation-integrity repair series.
 - CLOSED / IMPLEMENTATION-REGRESSION — R09–R12 pre-G0 findings; retained in B17 only as runtime verification points.
+- CLOSED / IMPLEMENTATION-REGRESSION-CI — R14.1–R14.10 pre-G0 runtime/tooling closure; Studio checkpoints remain HUMAN PENDING.
 - BACKLOG / HUMAN_GATE — B17 G0 record; **hard stop before M0.5**.
 
 ### R01–R12 implementation-integrity record
@@ -36,7 +37,19 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - **R11 — CLOSED** — hybrid LastInputType changes do not overwrite live-stroke layout intent; live preview points/Frames stay bounded by the existing stroke budget via compaction.
 - **R12 — CLOSED** — long/noisy semantic strokes compact at the cap instead of freezing so later geometry still contributes; G0 Character respawn isolation does not re-enable retired Character collision/query/touch.
 
-Repository audit conclusion at this gate: no new top-level gameplay service/controller family is justified. CI remains static-contract evidence and does not replace Rojo/Studio/external-tester G0 evidence.
+### R14.1–R14.10 pre-G0 runtime closure record
+- **R14.1 Shape parity — CLOSED code/contract** — accepted preview uses server-authoritative accepted points; B12 Studio spec compares result geometry to current ShapeSpec.
+- **R14.2 G0 presentation — CLOSED code/contract** — Studio-only non-physical camera/proxy harness, with no early `RaceCameraController` implementation.
+- **R14.3 Studio gate runner — CLOSED code/contract** — aggregated spec failures drive `TESTING/BLOCKED/READY`; injected fail→BLOCKED→restore→READY observation remains HUMAN PENDING in Studio.
+- **R14.4 Collision Default — CLOSED code/contract** — Default collision semantics cannot push RacerBody/RacerLeg; Studio physics observation remains HUMAN PENDING.
+- **R14.5 Network pending/failure — CLOSED code/contract** — count/time bounded pending strokes, late trusted accepts supported, server exceptions contained.
+- **R14.6 Recovery — CLOSED code/contract** — racer-only kill-Y respawn; gap/fall Studio observation remains HUMAN PENDING.
+- **R14.7 Atomic commit rollback — CLOSED regression** — injected commit failure restores prior accepted legs and removes partial staged/retiring state.
+- **R14.8 Validation UX — CLOSED code/contract** — player-facing validation copy replaces internal reason-code display; final Studio visual/timing acceptance remains HUMAN PENDING.
+- **R14.9 CI Rojo build — CLOSED CI** — GitHub Actions installs toolchain and executes real Rojo build after contract checks.
+- **R14.10 Types/RemoteNames — CLOSED code/contract** — shared StrokeTypes owns payload/debug types; active remote consumers use shared RemoteNames.
+
+Repository audit conclusion at this gate: no new top-level gameplay service/controller family is justified. CI now includes Rojo buildability but still does not replace Studio/external-tester G0 evidence.
 
 ## M0.5 — Adaptation Acceptance
 - BACKLOG — Mixed adaptation test track using `60` geometry
