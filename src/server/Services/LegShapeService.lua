@@ -151,12 +151,16 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 		return reject("TOO_SHORT")
 	end
 
-	local bounds = StrokeMath.ComputeBounds(cleaned)
+	-- R16.3A: placement inside DrawCanvas is presentation-only. Translate the
+	-- cleaned shape so its own bounds center is the mechanical hub; do not scale,
+	-- rotate, mirror, or close the stroke.
+	local centered = StrokeMath.CenterOnBounds(cleaned)
+	local bounds = StrokeMath.ComputeBounds(centered)
 	if bounds == nil then
 		return reject("TOO_SHORT")
 	end
 
-	local geometryPlan = GeometryMath.BuildSegmentPlan(cleaned, PhysicsConfig.LegGeometry)
+	local geometryPlan = GeometryMath.BuildSegmentPlan(centered, PhysicsConfig.LegGeometry)
 	if #geometryPlan.segmentPlan == 0 then
 		return reject("TOO_SHORT")
 	end
@@ -167,14 +171,14 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 	local nextVersion = racerRuntime:GetShapeVersion() + 1
 	local shapeSpec: ShapeSpec = {
 		version = nextVersion,
-		normalizedPoints = cleaned,
+		normalizedPoints = centered,
 		mappedPoints = geometryPlan.mappedPoints,
 		bounds = bounds,
 		extent = geometryPlan.extent,
 		segmentPlan = geometryPlan.segmentPlan,
 		debugRawPointCount = #points,
 		debugPhysicsPointCount = #geometryPlan.mappedPoints,
-		debugId = buildDebugId(nextVersion, cleaned, cleanedLength),
+		debugId = buildDebugId(nextVersion, centered, cleanedLength),
 	}
 
 	local applied, applyError = pcall(function()
