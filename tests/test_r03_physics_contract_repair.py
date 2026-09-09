@@ -16,6 +16,15 @@ def test_r03_collision_matrix_includes_decoration_and_trigger():
     assert "CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.Trigger, false)" in collision
 
 
+def test_r14_4_default_group_cannot_push_racer_geometry():
+    collision = read("src/server/Runtime/CollisionGroups.lua")
+    assert 'Default = "Default"' in collision
+    assert "CollisionGroupSetCollidable(CollisionGroups.RacerBody, CollisionGroups.Default, false)" in collision
+    assert "CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.Default, false)" in collision
+    assert "CollisionGroupSetCollidable(CollisionGroups.RacerBody, CollisionGroups.Track, true)" in collision
+    assert "CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.Track, true)" in collision
+
+
 def test_r03_stabilizer_has_free_tilt_deadzone_without_forward_force():
     config = read("src/shared/Config/PhysicsConfig.lua")
     stabilizer = read("src/server/Runtime/RacerStabilizer.lua")
