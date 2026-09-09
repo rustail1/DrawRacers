@@ -28,7 +28,7 @@ B03–B16 code and regression specs exist in `main`, but they are **not promoted
 - **R06 Documentation Consistency** — repository status/docs were reconciled to the B17/G0 hard stop without claiming Studio acceptance.
 - **R07 Core Review Fixes** — exact B12 outer payload validation and abuse work-ordering, complete B16 raw/physics/motor telemetry and environment gating, plus semantic DrawInputRect ownership were tightened.
 - **R08 Final Core Closure** — touch layout changes only between strokes; the normal Roblox Character is isolated from G0 physics before racer spawn; server enforces `MinUsefulLegExtent = 0.7`; anti-stall is bounded, actual-contact based, canonical-tag based and visible as `antiStallActive`.
-- **R09 Pre-G0 Consistency Review** — accepted preview state is semantic rather than layout-pixel state; exact doc-59 touch ValidationToast/DrawHint tokens reflow with DrawCanvas; obstacle `RequirementTag` overrides recovery assist; spawned racers discard the empty template-only `RuntimeAttachments` helper after moving its attachments onto `BodyCollider`.
+- **R09 Pre-G0 Consistency Review — CLOSED at implementation/regression level** — accepted preview state is semantic rather than layout-pixel state; exact doc-59 touch ValidationToast/DrawHint tokens reflow with DrawCanvas; obstacle `RequirementTag` overrides recovery assist; spawned racers discard the empty template-only `RuntimeAttachments` helper after moving its attachments onto `BodyCollider`. The three R09 findings are no longer open code items; they remain in B17 Studio smoke only as runtime verification points.
 
 Decision records: `DECISION_LOG_CORE_AUDIT_REPAIR_2026-09-09.md` and `DECISION_LOG_PRE_G0_REVIEW_R07_R09_2026-09-09.md`.
 
@@ -38,7 +38,7 @@ Historical evidence is intentionally retained:
 - R06 repository status reconciliation: commit `1269336b6754a7f9ea3172a1b99cddfe8fa276f7`, run `34337310421` → **68 passed, 0 failed**.
 - R08 closure head: commit `3a0a32ce90f2cfcd2f37e3be430758dacc86d6d3`, run `34349254516` → **77 passed, 0 failed**.
 - R09 RED: commit `35c4df76dd4d663e4785bcb295fda357b8c48ef9`, run `34351760319` → **77 passed, 3 failed**, exposing all three newly recorded gaps.
-- R09 bounded repair: commit `3d414556677577af6b07ff253b97041c0eb59c30`, run `34352130204` → **80 passed, 0 failed**.
+- R09 bounded repair: commit `3d414556677577af6b07ff253b97041c0eb59c30`, run `34352130204` → **80 passed, 0 failed**; the three R09 implementation findings are formally CLOSED.
 
 The current GitHub workflow is intentionally described accurately: it runs `python verify.py` contract/static checks. It does **not** execute Roblox Studio physics, touch interaction, or external-player acceptance, and therefore cannot satisfy B17/G0 by itself.
 
@@ -71,6 +71,8 @@ After the local technical smoke, `55_EMPIRICAL_PRODUCT_GATE_PROTOCOL.md` still o
 
 ## Audit notes / remaining risk
 The R09 repository pass found no reason to introduce a new top-level service, manager, race system, or data owner. Current M0 layering remains aligned with `21`: Bootstrap is composition root; `LegShapeService` owns authoritative shape processing; `RacerRuntime` owns body/legs/stabilizer/anti-stall lifetime; `StrokeRemoteTransport` remains transport-only; no early D05 `RacerService` exists.
+
+The three R09 implementation findings are CLOSED. The remaining gate risk is runtime evidence, not an open known code defect from those findings.
 
 One infrastructure limitation remains deliberately **not disguised as a pass**: CI is primarily static Python contract verification and does not compile/run Luau or Studio physics. The immediate mitigation at B17 is the required local `rojo build`/Studio gate. Adding broader CI toolchain coverage may be considered as a later bounded tooling task, but it does not replace the human G0 test and is not a reason to start C01 early.
 

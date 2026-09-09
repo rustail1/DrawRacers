@@ -1,6 +1,6 @@
 # Decision Log — Pre-G0 Repository Review R07–R09 — 2026-09-09
 
-Status: **BOUNDED B17/G0 REWORK — NO NEW PRODUCT SCOPE**
+Status: **R09 FINDINGS CLOSED — B17/G0 HUMAN_GATE STILL PENDING**
 
 ## Context
 After R01–R06, the repository was already hard-stopped at `B17/G0 HUMAN_GATE`. A later code/document review found additional implementation-integrity issues inside the existing B03–B16/G0 path. This record does not authorize C01, M0.5, multiplayer, meta, economy, shop, or any new player verb.
@@ -26,22 +26,30 @@ The canonical R08 repair head `3a0a32ce90f2cfcd2f37e3be430758dacc86d6d3` passed 
 ## R09 — repository-wide pre-G0 consistency findings
 R09 inspected the active client input/presentation path, network/authority boundary, racer/leg/stabilizer/anti-stall ownership, M0 scene, debug path, root DataModel contract, and current automated test boundary.
 
-### Finding A — accepted preview was tied to transient pixel layout
+### Finding A — accepted preview was tied to transient pixel layout — CLOSED
 `DrawingController` submitted semantic normalized points to the server but stored raw preview pixels in `_pendingStrokes`. If the same UI switched touch/desktop layout between pointer-up and `StrokeResult`, or after an already accepted stroke, the accepted drawing/thumbnail could display in the wrong coordinate scale. An out-of-bounds visual path could also look different from the clamped semantic shape that was actually accepted.
 
-Decision: pending/accepted presentation now stores the semantic points used for submission. Rendering maps those semantic coordinates to the current `DrawInputRect`/thumbnail size. A between-stroke responsive change re-renders after Roblox updates `AbsoluteSize`. This changes presentation correctness only; server physics authority and network contract stay unchanged.
+Closure: pending/accepted presentation stores the semantic points used for submission. Rendering maps those semantic coordinates to the current `DrawInputRect`/thumbnail size. A between-stroke responsive change re-renders after Roblox updates `AbsoluteSize`. `ValidationToast` and `DrawHint` use the exact touch positions/sizes from `59`. No second mobile UI tree was introduced.
 
-The same review found that `ValidationToast` and `DrawHint` stayed on desktop layout tokens while DrawCanvas switched to touch. R09 applies the exact touch positions/sizes from `59`; no second mobile UI tree is created.
-
-### Finding B — recovery tag could override an obstacle RequirementTag
+### Finding B — recovery tag could override an obstacle RequirementTag — CLOSED
 The R08 anti-stall classifier checked `RecoverySurface` before `RequirementTag`. A future mistakenly dual-authored obstacle could therefore be assist-eligible even though `16` requires immediate disable on obstacle RequirementTag.
 
-Decision: inspect `RequirementTag` first. Any explicit non-`FAST_ROLL` tag is `OBSTACLE` and wins over `RecoverySurface`. `FAST_ROLL` or an otherwise non-conflicting explicit recovery surface may be eligible. Unknown collidable contact remains fail-closed. No new tag is introduced.
+Closure: `RequirementTag` is inspected first. Any explicit non-`FAST_ROLL` tag is `OBSTACLE` and wins over `RecoverySurface`. `FAST_ROLL` or an otherwise non-conflicting explicit recovery surface may be eligible. Unknown collidable contact remains fail-closed. No new tag was introduced.
 
-### Finding C — template-only RuntimeAttachments leaked into spawned racer tree
+### Finding C — template-only RuntimeAttachments leaked into spawned racer tree — CLOSED
 `RacerTemplate` correctly uses `RuntimeAttachments` as a staging folder for `LaneAlignAttachment` and `OrientationAttachment`. `RacerStabilizer` moved those attachments onto `BodyCollider` but left the now-empty folder inside the spawned racer, while `65` defines that helper only on the template and gives the spawned racer a different runtime tree.
 
-Decision: after both attachments are transferred, destroy the empty helper folder. Stabilizer ownership and constraints are unchanged.
+Closure: after both attachments are transferred, the empty helper folder is destroyed. Stabilizer ownership and constraints are unchanged.
+
+## Closure evidence for all three R09 findings
+All three findings are **CLOSED at implementation/regression level** by repair commit `3d414556677577af6b07ff253b97041c0eb59c30`.
+
+The dedicated R09 regressions cover:
+- semantic accepted-preview state and exact responsive UI tokens;
+- obstacle `RequirementTag` precedence over recovery assist;
+- removal of the spawned racer's template-only `RuntimeAttachments` helper.
+
+GitHub Actions run `34352130204` passed **80 passed, 0 failed** after the repair. These three findings are no longer open implementation items. They remain part of the B17 Studio smoke checklist because automated/static checks cannot substitute for Roblox runtime evidence.
 
 ## Architecture conclusion
 No crooked dependency or duplicate owner requiring a refactor was found in the active M0 path:
@@ -66,4 +74,4 @@ R09 RED commit `35c4df76dd4d663e4785bcb295fda357b8c48ef9` added regressions for 
 Minimal repair commit `3d414556677577af6b07ff253b97041c0eb59c30` changed only the owned client/runtime files. Run `34352130204` then passed **80 passed, 0 failed**.
 
 ## Gate decision
-`B17/G0 HUMAN_GATE` remains **PENDING**. Automated/static repair is not G0 acceptance. Local Studio runtime evidence and the `55` six-external-tester criteria remain required before C01/M0.5.
+The three R09 findings above are **CLOSED**. `B17/G0 HUMAN_GATE` remains **PENDING**. Automated/static repair is not G0 acceptance. Local Studio runtime evidence and the `55` six-external-tester criteria remain required before C01/M0.5.
