@@ -140,6 +140,33 @@ function B13AtomicRedrawSpec.run()
 	assert(body.AssemblyLinearVelocity == linearBefore, "commit failure reset AssemblyLinearVelocity")
 	assert(body.AssemblyAngularVelocity == angularBefore, "commit failure reset AssemblyAngularVelocity")
 
+	-- Force an error only after both staged legs have committed and both motor-enable calls
+	-- have run. Rollback must still remove the fully-parented staged pair and restore the old
+	-- accepted assembly without advancing ShapeVersion or disturbing racer motion.
+	local originalSetEnabled = LegAssembly.SetEnabled
+	local enableCount = 0
+	LegAssembly.SetEnabled = function(self: any, enabled: boolean)
+		enableCount += 1
+		originalSetEnabled(self, enabled)
+		if enableCount == 2 then
+			error("B13 injected post-enable failure")
+		end
+	end
+
+	local enableFailed = LegShapeService.ValidateAndBuild(racer, SECOND_SHAPE, true)
+	LegAssembly.SetEnabled = originalSetEnabled
+
+	assert(enableFailed.accepted == false and enableFailed.rejectReasonCode == "BUILD_FAILED", "enable failure must fail closed")
+	assert(racer:GetShapeVersion() == 1, "enable failure changed ShapeVersion")
+	assert(legsFolder:FindFirstChild("LeftLeg") == oldLeftModel, "old LeftLeg not restored after enable failure")
+	assert(legsFolder:FindFirstChild("RightLeg") == oldRightModel, "old RightLeg not restored after enable failure")
+	assert(legsFolder:FindFirstChild("LeftLeg_Retiring") == nil, "LeftLeg_Retiring leaked after enable rollback")
+	assert(legsFolder:FindFirstChild("RightLeg_Retiring") == nil, "RightLeg_Retiring leaked after enable rollback")
+	assert(countLegModels(legsFolder) == 2, "enable failure leaked staged leg models")
+	assert(body.CFrame == bodyCFrameBefore, "enable failure teleported body CFrame")
+	assert(body.AssemblyLinearVelocity == linearBefore, "enable failure reset AssemblyLinearVelocity")
+	assert(body.AssemblyAngularVelocity == angularBefore, "enable failure reset AssemblyAngularVelocity")
+
 	local second = LegShapeService.ValidateAndBuild(racer, SECOND_SHAPE, false)
 	assert(second.accepted == true and second.shapeVersion == 2, "valid B13 redraw must accept exactly once")
 	assert(racer:GetShapeVersion() == 2)
