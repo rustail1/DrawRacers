@@ -62,10 +62,11 @@ Final body rotation contract:
 
 The body remains a physical assembly; the orientation system may apply corrective torque, but it must not provide forward propulsion or vertical lift.
 
-Starting acceptance values:
-- normal body angular deviation <= 1 degree;
-- transient strong-contact deviation <= 3 degrees;
-- after a transient disturbance, return to <= 1 degree within 0.25 s under the canonical B10 test setup.
+Canonical B10 acceptance:
+- normal body angular deviation <= 1.0 degree;
+- injected strong-contact disturbance may transiently reach <= 3.0 degrees;
+- after injection, return to <= 1.0 degree within 0.25 s;
+- the same test must show non-zero allowed X/Y displacement from physical impulses so upright correction is not an accidental position lock.
 
 ### 3.4 Leg rotation
 
@@ -77,12 +78,13 @@ Both legs use the same motor direction. The right leg starts 180 degrees after t
 
 Canonical phase acceptance:
 - initial right-minus-left phase = 180 degrees +/- 1 degree;
-- accepted redraw preserves current phase as closely as current runtime APIs permit;
-- redraw must not reset both legs to launch phase.
+- immediately before an accepted redraw, capture each leg phase relative to its own hub;
+- immediately after the atomic redraw, each new leg phase must be within 5 degrees of that side's captured pre-redraw phase (modulo 360);
+- repeated redraw must not reset either leg to canonical launch phase unless the racer itself was newly created.
 
 ## 4. Hub / axle geometry
 
-Current hardcoded offsets in RacerRuntime must move to a single numeric owner in `PhysicsConfig.LegGeometry` (or a clearly named adjacent canonical geometry table consumed by RacerRuntime and tests).
+`PhysicsConfig.LegGeometry` is the single numeric owner for hub offsets. RacerRuntime consumes these values and must not retain duplicate hub-position literals.
 
 Canonical starting values for R16 implementation:
 - `HubOffsetX = 0.0`;
@@ -91,14 +93,16 @@ Canonical starting values for R16 implementation:
 - LeftHub = `(HubOffsetX, HubOffsetY, -HubOffsetZAbs)`;
 - RightHub = `(HubOffsetX, HubOffsetY, +HubOffsetZAbs)`.
 
-`-0.35` is an explicit project starting decision for reference parity, not a claim about the original game's hidden numeric value. It replaces the old hardcoded `-0.75` only after RED tests record the old contract.
+`-0.35` is an explicit project starting decision for reference parity, not a claim about the original game's hidden numeric value. It replaces the old hardcoded `-0.75` only after RED tests record the old contract. Any later change to `HubOffsetY` requires Studio evidence from the fixed test protocol below and a separate config/test commit; it may not be silently hand-tuned.
 
-Acceptance:
-- hubs remain symmetric in Z;
-- both hubs remain fixed relative to BodyCollider across redraw;
-- hub location never depends on the submitted shape;
-- a ROUND shape on flat does not cause BodyCollider to continuously scrape the track solely because of axle placement;
-- canonical steps remain physically climbable by at least one legal shape.
+Hub calibration Studio protocol:
+- use ROUND_01 on FlatShort for 8 seconds after first accepted contact;
+- then use HOOK_01 or ASYM_01 on SmallSteps for 10 seconds from first step contact;
+- body must not continuously scrape the flat solely because of axle placement;
+- at least one of HOOK_01/ASYM_01 must gain >= 8 studs of +X progress through/over the SmallSteps segment within the 10-second window;
+- hubs remain symmetric in Z and fixed relative to BodyCollider before/after redraw.
+
+If `HubOffsetY=-0.35` fails this protocol while all other R16.1 mechanics are correct, only then may the next experiment compare `-0.75`, `-0.35`, and `0.0`; the selected value becomes canonical in section 11 docs before motor tuning continues.
 
 ## 5. Shape/pivot contract retained
 
@@ -117,7 +121,7 @@ If a new regression exposes a violation, fix only that violation inside the exis
 
 ## 6. Motor, grip, mass tuning order
 
-Do not tune multiple physics families simultaneously. After upright body, plane lock, pivot and phase are mechanically correct, tune in this order only:
+Do not tune multiple physics families simultaneously. After upright body, plane lock, pivot, hub and phase are mechanically correct and the Stage-A Studio gate passes, tune in this order only:
 
 1. `Motor.AngularVelocity`;
 2. `Motor.MotorMaxTorque` / `MotorMaxAcceleration` only if required;
@@ -125,26 +129,28 @@ Do not tune multiple physics families simultaneously. After upright body, plane 
 4. body friction/elasticity only if still required;
 5. anti-stall only as the final bounded safety net, never as normal locomotion.
 
-Starting targets for the canonical M0 lab:
-- ROUND_01 on flat: sustained body speed approximately 4–7 studs/s after initial contact settles;
-- motor remains enabled and does not normally stall on flat;
-- a generic round shape must not automatically defeat the wall/steps/tunnel matrix;
-- antiStallActive should remain false during healthy ROUND flat movement after startup.
+Canonical FlatShort speed protocol:
+- use ROUND_01;
+- ignore the first 2.0 s after stable track contact;
+- measure average +X body speed over the next 3.0 s;
+- target average = 4.0–7.0 studs/s;
+- `antiStallActive` must remain false for the measured 3.0-second window;
+- motor must remain enabled.
 
-These ranges are acceptance targets, not hidden reference numbers.
+The canonical wall/steps/tunnel matrix must also prevent ROUND_01 from trivially dominating every obstacle. These ranges are project acceptance targets, not hidden reference numbers.
 
 ## 7. Reference shape behavior matrix
 
-Use the existing canonical presets in doc 73 and route all presets through the normal authoritative geometry path.
+Use the existing canonical presets in doc 73 and route all presets through the normal authoritative geometry path. Each comparison starts from the same canonical spawn/checkpoint, zeroed body linear/angular velocity, the same current physics config, and no hidden obstacle changes.
 
-Required qualitative matrix:
-- `ROUND_01`: reliable/fast baseline on FlatShort;
-- `HOOK_01` or `ASYM_01`: observably better than ROUND_01 on at least one SmallSteps/ledge condition;
-- `LONG_BAR_01`: observably useful for reach/gap interaction but not universal on all obstacles;
-- `SMALL_ROUND_01`: observably useful in low-clearance situations;
-- `SUBOPTIMAL_01`: legal but measurably worse than a suitable shape on at least one canonical piece.
+Required measurable matrix:
+- `ROUND_01` FlatShort: meets the 4.0–7.0 studs/s protocol in section 6;
+- `HOOK_01` or `ASYM_01` SmallSteps: within 10 s from first step contact, achieves at least 4 studs more +X progress than ROUND_01 under the same reset conditions, OR reaches at least one higher canonical step when ROUND_01 is blocked; either condition is sufficient and must be recorded;
+- `LONG_BAR_01` GapSmall/reach: must produce a distinct reach interaction, recorded as either successful far-edge contact/landing where SMALL_ROUND_01 fails, or >= 2 studs more +X progress across the gap attempt within 6 s; if neither occurs, LONG_BAR has no validated niche and R16 fails;
+- `SMALL_ROUND_01` LowTunnelWide: must complete the tunnel or achieve >= 6 studs more +X progress within the tunnel than LONG_BAR_01 under the same 8-second window;
+- `SUBOPTIMAL_01`: on at least one of FlatShort or SmallSteps, must be >= 20% worse in measured +X progress/speed than the best suitable tested shape for that piece.
 
-Hard rule: no single tested shape may be best or equally dominant on every canonical obstacle. If one shape trivially solves the whole lab, G0 reference parity fails and tuning must continue before external testers.
+Hard rule: no single tested shape may win or tie every measured canonical piece. If one shape trivially solves the whole lab, R16 reference parity fails and tuning must continue before external testers.
 
 ## 8. Redraw behavior
 
@@ -157,9 +163,9 @@ Acceptance for one accepted redraw while moving:
 - BodyCollider CFrame is not reset solely because of redraw;
 - BodyCollider linear velocity is not zeroed solely because of redraw;
 - both legs switch to the same new ShapeSpec in one protected transaction;
-- current phase is preserved closely enough that redraw does not visibly restart the gait.
+- each side's post-redraw phase is within 5 degrees of its captured pre-redraw phase modulo 360.
 
-Stress acceptance: 10 accepted redraws during movement without runtime error, leaked leg assemblies, body teleport, or phase reset to canonical launch every time.
+Stress acceptance: 10 accepted redraws during movement without runtime error, leaked leg assemblies, body teleport, velocity reset, or repeated phase reset to launch.
 
 ## 9. Camera / Studio G0 presentation
 
@@ -167,17 +173,20 @@ This change remains Studio-only until the later production RaceCamera owner is p
 
 Goal: present the reference core as a readable side race rather than the current strong three-quarter view.
 
-Starting G0 presentation constants:
-- camera lateral view direction primarily along world `-Z` toward the racer plane;
-- camera position follows body at approximately `Vector3.new(-6, 5, 16)` relative to BodyCollider;
-- look-ahead target approximately `Vector3.new(7, 1, 0)` relative to BodyCollider;
-- camera may be tuned only inside the Studio presentation harness during R16.
+Exact starting G0 presentation constants for the first R16.9 implementation:
+- `CAMERA_OFFSET = Vector3.new(-6, 5, 16)`;
+- `CAMERA_LOOK_AHEAD = Vector3.new(7, 1, 0)`;
+- camera remains Scriptable and follows only the current DebugTarget body;
+- the camera does not alter body physics.
+
+These are starting project constants, not claimed reference internals. Any later camera tuning is limited to the Studio-only harness and must retain the acceptance below.
 
 Acceptance:
-- body, both visible leg silhouettes, and upcoming obstacle are readable simultaneously;
-- racer remains roughly in the left-to-middle portion of the viewport rather than centered with no look-ahead;
+- body and upcoming obstacle are simultaneously visible through Flat/Steps/Wall;
+- at least one complete leg silhouette is readable at all times on the side-facing camera; depth-separated second leg may overlap visually because the race is 2.5D;
+- racer center remains between 25% and 50% of viewport width during normal follow, leaving forward look-ahead space;
 - camera never changes racer CFrame/velocity;
-- the observer Roblox Character is not visible in the gameplay framing;
+- observer Roblox Character is not visible in gameplay framing;
 - debug proxy remains non-collidable/non-query/non-touch.
 
 ## 10. Existing canonical obstacle course is sufficient
@@ -197,7 +206,7 @@ Expected production/config files:
 - `src/server/Runtime/RacerStabilizer.lua` — upright body orientation owner;
 - `src/server/Runtime/RacerRuntime.lua` — consume canonical hub offsets; preserve existing runtime ownership;
 - `src/server/Runtime/LegAssembly.lua` — only if phase/motor regression exposes a real issue;
-- `src/shared/Config/PhysicsConfig.lua` — hub offsets and physics tuning numbers;
+- `src/shared/Config/PhysicsConfig.lua` — single numeric owner for hub offsets and physics tuning numbers;
 - `src/client/Dev/M0G0PresentationHarness.lua` — Studio-only side presentation;
 - `src/server/Tests/M0HumanHarness.lua` — only to keep observer out of presentation if needed, not to alter racer physics.
 
@@ -205,12 +214,12 @@ Expected tests:
 - `src/server/Tests/B06RacerRuntimeSpec.lua` — hub/runtime structural contract;
 - `src/server/Tests/B07LegAssemblySpec.lua` — pivot/geometry invariants if needed;
 - `src/server/Tests/B09TwoLegPhaseSpec.lua` — same XY + 180-degree phase + redraw phase retention;
-- `src/server/Tests/B10StabilizationSpec.lua` — real upright body + real lateral impulse + no propulsion;
+- `src/server/Tests/B10StabilizationSpec.lua` — real upright body + real lateral impulse + no propulsion/lift;
 - `src/server/Tests/B13AtomicRedrawSpec.lua` / B14 stress — redraw parity;
 - Python regression files under `tests/` mirroring each repaired owner;
-- a new R16 consistency/regression file may be added instead of overloading unrelated old tests.
+- one dedicated R16 regression file may aggregate cross-owner static contracts, but it must not replace the Studio physics specs.
 
-Expected owner/status docs after behavior is proven:
+Owner/status docs after behavior is proven:
 - `docs/03_CORE_MECHANICS_SPEC.md`;
 - `docs/16_BALANCE_TUNING.md`;
 - `docs/73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md`;
@@ -220,41 +229,33 @@ Expected owner/status docs after behavior is proven:
 
 Do not touch network contracts, StrokeMath, economy/meta, race services, DataStore, multiplayer services, or later milestone systems unless a failing regression proves a direct dependency.
 
-## 12. Ordered implementation stages
+## 12. Ordered implementation stages and mandatory gates
 
-### R16.1 — Upright Body
+### Stage A — mechanical parity: R16.1–R16.4
+
+#### R16.1 — Upright Body
 
 RED first:
 - old B10 behavior allowing free world-Z body rotation must fail the new contract;
-- add real angular impulse/disturbance test;
+- add real angular disturbance test using the section 3.3 timing/tolerance;
 - assert body can still translate X/Y;
-- assert stabilizer adds no intentional +X or +Y force.
+- assert stabilizer adds no intentional +X or +Y force/lift.
 
 GREEN:
 - change orientation constraint configuration so all body axes are held upright while keeping PlaneConstraint for Z translation;
 - no position teleports per frame.
 
-Studio acceptance:
-- cube stays visually upright under ROUND/HOOK/ASYM contact;
-- legs rotate independently;
-- cube can rise/fall in Y.
-
-### R16.2 — Hub Calibration
+#### R16.2 — Hub Calibration implementation
 
 RED first:
-- tests require hub offsets from config rather than hardcoded literals;
-- require `HubOffsetY=-0.35`, `HubOffsetZAbs=1.62` initially;
+- tests require hub offsets from `PhysicsConfig.LegGeometry`, not RacerRuntime literals;
+- require starting `HubOffsetY=-0.35`, `HubOffsetZAbs=1.62`;
 - verify symmetry and redraw stability.
 
 GREEN:
 - replace hardcoded hub offsets with canonical config consumption.
 
-Studio acceptance:
-- ROUND flat no chronic body scraping;
-- at least one legal shape climbs canonical steps;
-- hub visual relationship remains stable during redraw.
-
-### R16.3 — Pivot / one stroke -> two legs
+#### R16.3 — Pivot / one stroke -> two legs
 
 Prefer verification-only. Add regressions first. Change production only on demonstrated failure.
 
@@ -263,22 +264,35 @@ Acceptance:
 - center marker = hub pivot;
 - no mirror/recenter/spoke.
 
-### R16.4 — Twin-leg phase
+#### R16.4 — Twin-leg phase
 
 RED first:
 - initial phase difference 180 +/-1 degree;
 - same motor sign/direction;
-- redraw retains pre-redraw phase relationship rather than resetting both to launch phase.
+- each side's redraw phase delta <=5 degrees modulo 360.
 
 GREEN only if existing behavior fails.
 
-### R16.5 — Motor / grip / mass
+### Mandatory Studio Gate A
 
-One parameter family per commit/experiment. Do not change obstacle geometry in this stage.
+Do not begin R16.5 tuning until current-main Studio evidence shows:
+- StudioGate `13 PASS / 0 FAIL`, READY;
+- laneDeviation normal <=0.03 and no unexplained >0.08;
+- body upright tolerance from section 3.3;
+- body still rises/falls in Y from physics;
+- hub protocol in section 4 executed;
+- one stroke visibly produces two matching physical legs;
+- right/left phase behavior is visually consistent with the recorded 180-degree contract.
 
-Acceptance targets are section 6 plus the shape matrix in section 7.
+If HubOffsetY=-0.35 fails only the hub calibration while mechanical parity passes, run the explicit three-value hub experiment from section 4 before proceeding.
 
-### R16.6 — Vertical physics
+### Stage B — feel parity: R16.5–R16.7
+
+#### R16.5 — Motor / grip / mass
+
+One parameter family per RED/experiment/GREEN commit. Do not change obstacle geometry in this stage. Use section 6 protocol.
+
+#### R16.6 — Vertical physics
 
 Regression must prove no normal-operation script directly drives Y position/velocity for locomotion.
 
@@ -287,27 +301,38 @@ Studio acceptance:
 - gap lowers body through gravity;
 - R14.6 recovery only occurs after real Y fall.
 
-### R16.7 — Reference shape matrix
+#### R16.7 — Reference shape matrix
 
-Run fixed shapes against fixed canonical pieces and record outcomes. This is an empirical Studio gate, not merely a static test.
+Run and record the exact measurable matrix from section 7.
 
-### R16.8 — Redraw parity
+### Mandatory Studio Gate B
 
-Run atomic/stress tests plus live moving redraws. Preserve body state and phase.
+Do not begin presentation/final integration until all section 7 niches are evidenced and no universal tested shape exists.
 
-### R16.9 — G0 side presentation
+### Stage C — integration/presentation: R16.8–R16.10
 
-Tune only the Studio presentation harness to the side-view contract in section 9.
+#### R16.8 — Redraw parity
 
-### R16.10 — Canonical obstacle pass
+Run atomic/stress tests plus live moving redraws using section 8 tolerances.
 
-Run the whole lab using multiple legal shapes. Do not alter course geometry to hide physics defects.
+#### R16.9 — G0 side presentation
+
+Apply the exact starting constants from section 9, then tune only if acceptance requires it.
+
+#### R16.10 — Canonical obstacle pass
+
+Run the whole unchanged lab using multiple legal shapes. Do not alter course geometry to hide physics defects.
+
+### Mandatory Studio Gate C
+
+One current-main session/evidence set must satisfy section 14 before docs are frozen.
 
 ### R16.11 — Docs/evidence reconciliation
 
-Only after R16.1–R16.10 implementation evidence is green and Studio observations are recorded:
+Only after Gates A, B and C pass:
 - remove old body-tumble contract from docs;
-- record actual chosen constants;
+- record actual selected hub/motor/grip/camera constants;
+- record RED/GREEN/CI and Studio evidence;
 - keep B17/G0 HUMAN_GATE pending until the external protocol is completed.
 
 ## 13. Test discipline
@@ -331,18 +356,21 @@ Before returning to B17 external testing, all of these must be true in one curre
 - G0 human harness starts only after READY;
 - no red DrawRacers runtime error;
 - normal `laneDeviation <= 0.03`; unexplained excursion `>0.08` is FAIL;
-- body is upright: normal angular deviation <=1 degree;
-- strong contact may transiently reach <=3 degrees and returns <=1 degree within 0.25 s in the canonical test;
+- body normal angular deviation <=1.0 degree;
+- injected strong-contact test peak <=3.0 degrees and returns <=1.0 degree within 0.25 s;
 - X/Y body translation remains physical/free;
 - no scripted Y locomotion;
 - one accepted drawing creates exactly two same-XY legs;
 - physical pivot equals DrawCanvas center `(0,0)`;
 - right leg initial phase equals left +180 degrees +/-1 degree;
-- redraw does not teleport/reset body and does not visibly restart gait;
-- ROUND, HOOK/ASYM, LONG_BAR, SMALL_ROUND have observably different useful niches;
-- no tested shape is universal-best across Flat/Steps/Wall/Gap/Tunnel;
+- each side's accepted-redraw phase delta <=5 degrees modulo 360;
+- ROUND FlatShort average speed over the fixed measurement window is 4.0–7.0 studs/s with antiStallActive false;
+- HOOK/ASYM, LONG_BAR and SMALL_ROUND each satisfy at least one exact niche criterion from section 7;
+- SUBOPTIMAL satisfies its >=20% worse criterion;
+- no tested shape wins/ties every canonical piece;
+- 10 moving redraws pass section 8 without teleport/reset/leak;
 - gap/recovery preserves accepted ShapeSpec/ShapeVersion;
-- G0 camera is readable side-view with upcoming obstacle visibility;
+- G0 camera satisfies viewport/readability criteria from section 9;
 - observer Roblox Character is absent from gameplay framing.
 
 ## 15. Hard stop
