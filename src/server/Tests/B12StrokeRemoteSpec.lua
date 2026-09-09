@@ -38,6 +38,20 @@ end
 
 function B12StrokeRemoteSpec.run()
 	assert(type(StrokeRemoteTransport.Bind) == "function", "B12 transport helper must expose Bind")
+	assert(type(StrokeRemoteTransport.ProcessSafely) == "function", "B12 transport helper must expose ProcessSafely")
+
+	local injectedError = StrokeRemoteTransport.ProcessSafely({
+		Handle = function()
+			error("B12 injected processor failure")
+		end,
+	}, TEST_PLAYER, validPayload(99))
+	assert(
+		injectedError ~= nil
+			and injectedError.sequence == 99
+			and injectedError.accepted == false
+			and injectedError.rejectReasonCode == "SERVER_ERROR",
+		"processor exception must become immediate generic SERVER_ERROR"
+	)
 
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local submitStroke = remotes:WaitForChild("SubmitStroke")
