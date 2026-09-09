@@ -53,22 +53,20 @@ Acceptance meaning matters more than numeric scale: intended SmallSteps/WallLow 
 ## 4. Planar lane/body stabilization defaults
 Observable contract: racer locomotion is 2.5D. X/Y are the physical gameplay plane; Z translation is locked to the racer's lane center; rotation around world Z remains physical/free; out-of-plane X/Y rotation is constrained.
 
-Canonical R15 starting defaults:
+Canonical R15.1 starting defaults:
 - `LaneNormalError = 0.03`
 - `LaneHardBound = 0.08`
-- `LaneMaxForceZ = 60000`
-- `LaneResponsiveness = 40`
-- `LaneMaxVelocity = 30`
 - `OrientationResponsiveness = 40`
 - `OrientationMaxTorque = 60000`
 - `OrientationMaxAngularVelocity = 30`
 
 Rules:
-- `RacerStabilizer` uses a continuous world-space Z-only `AlignPosition`; stabilizer authority on X/Y remains zero.
-- `LaneNormalError = 0.03` and `LaneHardBound = 0.08` are diagnostic solver tolerances, not permitted lateral gameplay freedom.
-- Plane-normal orientation correction suppresses out-of-plane X/Y rotation only; rotation around world Z remains physical/free.
-- No invisible side walls, no normal-operation per-Heartbeat teleport, and no stabilizer may add intentional +X race speed.
-- Hard projection/snap is **not** enabled initially; it may be added only after concrete Studio evidence that the continuous constraint can exceed the hard diagnostic bound under deliberate lateral disturbance.
+- `RacerStabilizer` uses a mechanical `PlaneConstraint` between the racer body attachment and an anchored, invisible, non-collidable lane-plane reference at the canonical lane-center Z.
+- The plane constraint owns only the forbidden out-of-plane Z translation. X/Y translation remains physical gameplay and receives no stabilizer propulsion.
+- `LaneNormalError = 0.03` and `LaneHardBound = 0.08` are diagnostic tolerances, not permitted lateral gameplay freedom; any unexplained excursion above `0.08` is failed Studio evidence.
+- Plane-normal orientation correction uses `PrimaryAxisParallel` to suppress out-of-plane X/Y rotation only; rotation around world Z remains physical/free.
+- No invisible side walls, no normal-operation per-Heartbeat CFrame/PivotTo projection, and no stabilizer may add intentional +X race speed.
+- R15.1 supersedes the failed R15 force-following implementation. Finite-force `AlignPosition` lane correction and its force/responsiveness/velocity tuning are no longer part of the planar contract.
 
 ## 5. Anti-stall assist
 Default = **enabled only on flat/recovery surfaces**, never on obstacle pieces that test geometry.
