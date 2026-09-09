@@ -61,3 +61,20 @@ def test_b07_exact_defaults_and_studio_spec() -> None:
     bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
     assert "B07LegAssemblySpec" in bootstrap
     assert "B07LegAssemblySpec.run()" in bootstrap
+
+
+def test_b07_studio_spec_distinguishes_corner_mapping_from_radial_cap() -> None:
+    spec_text = (ROOT / "src" / "server" / "Tests" / "B07LegAssemblySpec.lua").read_text(encoding="utf-8")
+
+    assert "local expectedCornerMagnitude = math.min(" in spec_text
+    assert "PhysicsConfig.LegGeometry.LegCanvasHalfSpan * math.sqrt(2)" in spec_text
+    assert "PhysicsConfig.LegGeometry.MaxLegExtentFromHub" in spec_text
+    assert "assertClose(mapped[3].Magnitude, expectedCornerMagnitude" in spec_text
+    assert "mapped[3].Magnitude <= PhysicsConfig.LegGeometry.MaxLegExtentFromHub + 1e-5" in spec_text
+
+    assert "local hardCapGeometry = table.clone(PhysicsConfig.LegGeometry)" in spec_text
+    assert "hardCapGeometry.LegCanvasHalfSpan = 4.0" in spec_text
+    assert "GeometryMath.MapPoint(Vector2.new(1, 1), hardCapGeometry)" in spec_text
+    assert "assertClose(hardCapped.Magnitude, hardCapGeometry.MaxLegExtentFromHub" in spec_text
+
+    assert "assertClose(mapped[3].Magnitude, 4.5" not in spec_text
