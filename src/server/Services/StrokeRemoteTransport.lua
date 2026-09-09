@@ -1,10 +1,17 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local StrokeTypes = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
+)
 local LegShapeService = require(script.Parent:WaitForChild("LegShapeService"))
 
 local StrokeRemoteTransport = {}
 
-function StrokeRemoteTransport.ProcessSafely(processor: any, player: any, payload: any)
+type StrokeResultPayload = StrokeTypes.StrokeResultPayload
+
+function StrokeRemoteTransport.ProcessSafely(processor: any, player: any, payload: any): StrokeResultPayload?
 	local ok, resultOrError = xpcall(function()
 		return processor:Handle(player, payload)
 	end, debug.traceback)
