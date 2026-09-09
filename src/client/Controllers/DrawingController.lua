@@ -28,21 +28,42 @@ local TOUCH_HINT_SIZE = UDim2.fromScale(0.50, 0.064)
 
 local DESKTOP_THICKNESS = 6
 local TOUCH_THICKNESS = 8
+local VALIDATION_TOAST_DURATION = 2.0
 
 type SemanticPoint = {
 	x: number,
 	y: number,
 }
 
-local function inputTypeFamily(inputType: Enum.UserInputType): string
-	return if inputType == Enum.UserInputType.Touch then "touch" else "mouse"
+local function inputTypeFamily(inputType: Enum.UserInputType): string?
+	if inputType == Enum.UserInputType.Touch then
+		return "touch"
+	end
+	if inputType == Enum.UserInputType.Keyboard
+		or inputType == Enum.UserInputType.MouseMovement
+		or inputType == Enum.UserInputType.MouseButton1
+		or inputType == Enum.UserInputType.MouseButton2
+		or inputType == Enum.UserInputType.MouseButton3
+		or inputType == Enum.UserInputType.MouseWheel
+	then
+		return "mouse"
+	end
+	return nil
 end
 
 local function initialLayoutFamily(): string
 	if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
 		return "touch"
 	end
-	return inputTypeFamily(UserInputService:GetLastInputType())
+
+	local family = inputTypeFamily(UserInputService:GetLastInputType())
+	if family ~= nil then
+		return family
+	end
+	if UserInputService.MouseEnabled or UserInputService.KeyboardEnabled then
+		return "mouse"
+	end
+	return if UserInputService.TouchEnabled then "touch" else "mouse"
 end
 
 local function makeFrame(name: string, parent: Instance): Frame
@@ -296,9 +317,11 @@ function DrawingController.new(inputController: any, drawHud: ScreenGui, submitS
 		acceptedPoints = {} :: { Vector2 },
 		livePoints = {} :: { Vector2 },
 		_drawing = false,
+		_hasStartedStroke = false,
 		_pointerFamily = layoutFamily,
 		_layoutFamily = layoutFamily,
 		_pendingLayoutFamily = nil,
+		_validationGeneration = 0,
 		_nextSequence = 1,
 		_latestSubmittedSequence = 0,
 		_lastAcceptedSequence = 0,
@@ -310,7 +333,8 @@ function DrawingController.new(inputController: any, drawHud: ScreenGui, submitS
 end
 
 function DrawingController:_strokeThickness(): number
-	return if self._pointerFamily == "touch" then TOUCH_THICKNESS else DESKTOP_THICKNESS
+	local family = if self._drawing then self._pointerFamily else self._layoutFamily
+	return if family == "touch" then TOUCH_THICKNESS else DESKTOP_THICKNESS
 end
 
 function DrawingController:_renderAcceptedStroke()
@@ -392,14 +416,24 @@ function DrawingController:_clearLiveStroke()
 end
 
 function DrawingController:_setValidation(message: string?)
+	self._validationGeneration += 1
+	local generation = self._validationGeneration
 	local toast = self._ui.validationToast
 	if message == nil or message == "" then
 		toast.Text = ""
 		toast.Visible = false
 		return
 	end
+
+	self._ui.drawHint.Visible = false
 	toast.Text = message
 	toast.Visible = true
+	task.delay(VALIDATION_TOAST_DURATION, function()
+		if generation == self._validationGeneration and self._ui.safeRoot.Parent ~= nil then
+			toast.Text = ""
+			toast.Visible = false
+		end
+	end)
 end
 
 function DrawingController:_normalizedPixelDistance(a: Vector2, b: Vector2): number
@@ -534,7 +568,7 @@ function DrawingController:_onStrokeResult(result: any)
 			self._acceptedSemanticPoints = copySemanticPoints(pending)
 			self:_renderAcceptedStroke()
 			self:_renderThumbnail()
-			self._ui.emptyGhost.Visible = false
+			self._ui.emptyGhost.Visible = not self._hasStartedStroke
 			self:_setValidation(nil)
 
 			for pendingSequence, _ in self._pendingStrokes do
@@ -552,7 +586,7 @@ function DrawingController:_onStrokeResult(result: any)
 
 	self:_renderAcceptedStroke()
 	self:_renderThumbnail()
-	self._ui.emptyGhost.Visible = #self._acceptedSemanticPoints == 0
+	self._ui.emptyGhost.Visible = not self._hasStartedStroke
 	if sequence == self._latestSubmittedSequence then
 		local rejectReasonCode = if type(result.rejectReasonCode) == "string"
 			then result.rejectReasonCode
@@ -569,6 +603,7 @@ function DrawingController:_onPointer(event)
 			self._pendingLayoutFamily = event.family
 		end
 		self._drawing = true
+		self._hasStartedStroke = true
 		self._ui.emptyGhost.Visible = false
 		self._ui.acceptedLayer.Visible = false
 		self:_setValidation(nil)
@@ -608,7 +643,7 @@ function DrawingController:_onPointer(event)
 		self:_clearLiveStroke()
 		self._ui.acceptedLayer.Visible = true
 		self:_renderAcceptedStroke()
-		self._ui.emptyGhost.Visible = #self._acceptedSemanticPoints == 0
+		self._ui.emptyGhost.Visible = not self._hasStartedStroke
 
 		if #semanticPixels >= PhysicsConfig.StrokeProcessing.MinimumRawPoints then
 			self:_submitStrokeIntent(semanticPixels)
@@ -630,7 +665,7 @@ function DrawingController:_onPointer(event)
 		self:_clearLiveStroke()
 		self._ui.acceptedLayer.Visible = true
 		self:_renderAcceptedStroke()
-		self._ui.emptyGhost.Visible = #self._acceptedSemanticPoints == 0
+		self._ui.emptyGhost.Visible = not self._hasStartedStroke
 		print(("[DrawRacers][B02] stroke cancelled; accepted preserved=%d"):format(#self.acceptedPoints))
 		self:_applyPendingLayout()
 	end
@@ -649,6 +684,9 @@ function DrawingController:Start()
 	end)
 	self._layoutConnection = UserInputService.LastInputTypeChanged:Connect(function(inputType)
 		local family = inputTypeFamily(inputType)
+		if family == nil then
+			return
+		end
 		if family == self._layoutFamily then
 			return
 		end
@@ -681,6 +719,7 @@ function DrawingController:Destroy()
 		self._layoutConnection:Disconnect()
 		self._layoutConnection = nil
 	end
+	self._validationGeneration += 1
 	table.clear(self._pendingStrokes)
 	table.clear(self._acceptedSemanticPoints)
 	self._inputController:Unbind()
