@@ -9,6 +9,9 @@ local PhysicsConfig = require(
 local StrokeMath = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("StrokeMath")
 )
+local StrokeTypes = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
+)
 
 local DrawingController = {}
 DrawingController.__index = DrawingController
@@ -30,10 +33,8 @@ local DESKTOP_THICKNESS = 6
 local TOUCH_THICKNESS = 8
 local VALIDATION_TOAST_DURATION = 2.0
 
-type SemanticPoint = {
-	x: number,
-	y: number,
-}
+type SemanticPoint = StrokeTypes.SemanticPoint
+type SubmitStrokePayload = StrokeTypes.SubmitStrokePayload
 
 type PendingStroke = {
 	points: { SemanticPoint },
@@ -697,10 +698,11 @@ function DrawingController:_submitStrokeIntent(semanticPixelPoints: { Vector2 })
 		end
 	end)
 
-	self._submitStroke:FireServer({
+	local payload: SubmitStrokePayload = {
 		sequence = sequence,
 		points = semanticPoints,
-	})
+	}
+	self._submitStroke:FireServer(payload)
 	print(("[DrawRacers][B12] stroke submitted sequence=%d points=%d"):format(sequence, #semanticPoints))
 end
 
