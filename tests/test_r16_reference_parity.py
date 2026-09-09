@@ -31,9 +31,11 @@ def test_r16_2_hub_offsets_have_one_numeric_owner() -> None:
     ]:
         assert token in config
 
-    assert "PhysicsConfig.LegGeometry.HubOffsetX" in runtime
-    assert "PhysicsConfig.LegGeometry.HubOffsetY" in runtime
-    assert "PhysicsConfig.LegGeometry.HubOffsetZAbs" in runtime
+    assert "local geometry = PhysicsConfig.LegGeometry" in runtime
+    assert "geometry.HubOffsetX" in runtime
+    assert "geometry.HubOffsetY" in runtime
+    assert "geometry.HubOffsetZAbs" in runtime
     assert "Vector3.new(0, -0.75, -1.62)" not in runtime
     assert "Vector3.new(0, -0.75, 1.62)" not in runtime
-    assert "PhysicsConfig.LegGeometry.HubOffsetY" in b06
+    assert "local geometry = PhysicsConfig.LegGeometry" in b06
+    assert "geometry.HubOffsetY" in b06
