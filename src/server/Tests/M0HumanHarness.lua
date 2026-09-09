@@ -4,8 +4,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local shared = ReplicatedStorage:WaitForChild("Shared")
+local RemoteNames = require(shared:WaitForChild("Net"):WaitForChild("RemoteNames"))
 local M0SceneConfig = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("M0SceneConfig")
+	shared:WaitForChild("Config"):WaitForChild("M0SceneConfig")
 )
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 local StrokeRemoteTransport = require(script.Parent.Parent.Services:WaitForChild("StrokeRemoteTransport"))
@@ -178,8 +180,8 @@ function M0HumanHarness.start()
 	started = true
 
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
-	local submitStroke = remotes:WaitForChild("SubmitStroke")
-	local strokeResult = remotes:WaitForChild("StrokeResult")
+	local submitStroke = remotes:WaitForChild(RemoteNames.SubmitStroke)
+	local strokeResult = remotes:WaitForChild(RemoteNames.StrokeResult)
 
 	transportConnection = StrokeRemoteTransport.Bind({
 		submitStroke = submitStroke,
