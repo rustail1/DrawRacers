@@ -1,11 +1,15 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local DebugTelemetry = require(script.Parent:WaitForChild("Runtime"):WaitForChild("DebugTelemetry"))
 
 DebugTelemetry.start()
 
 if RunService:IsStudio() then
+	local StudioHarnessConfig = require(
+		ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("StudioHarnessConfig")
+	)
 	local M0TestScene = require(script.Parent.M0TestScene)
 	M0TestScene.build()
 
@@ -49,14 +53,22 @@ if RunService:IsStudio() then
 	local B16DebugTuningSpec = require(testsFolder:WaitForChild("B16DebugTuningSpec"))
 	B16DebugTuningSpec.run()
 
-	local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
-	B08OneHingeMotorHarness.start()
-
-	local B09TwoLegPhaseHarness = require(testsFolder:WaitForChild("B09TwoLegPhaseHarness"))
-	B09TwoLegPhaseHarness.start()
-
-	local B10StabilizationHarness = require(testsFolder:WaitForChild("B10StabilizationHarness"))
-	B10StabilizationHarness.start()
+	local harnessMode = StudioHarnessConfig.Mode
+	if harnessMode == "G0" then
+		local M0HumanHarness = require(testsFolder:WaitForChild("M0HumanHarness"))
+		M0HumanHarness.start()
+	elseif harnessMode == "B08" then
+		local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
+		B08OneHingeMotorHarness.start()
+	elseif harnessMode == "B09" then
+		local B09TwoLegPhaseHarness = require(testsFolder:WaitForChild("B09TwoLegPhaseHarness"))
+		B09TwoLegPhaseHarness.start()
+	elseif harnessMode == "B10" then
+		local B10StabilizationHarness = require(testsFolder:WaitForChild("B10StabilizationHarness"))
+		B10StabilizationHarness.start()
+	elseif harnessMode ~= "NONE" then
+		error(string.format("unknown StudioHarnessConfig.Mode %s", tostring(harnessMode)))
+	end
 end
 
 print("[DrawRacers] server bootstrap ready")
