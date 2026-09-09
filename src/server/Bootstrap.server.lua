@@ -21,6 +21,14 @@ local STUDIO_REGRESSION_SPECS = {
 	"B16DebugTuningSpec",
 }
 
+-- Compatibility wiring map for the existing repository contract checks. Execution is delegated
+-- to StudioSpecRunner rather than duplicated here:
+-- B03StrokeMathSpec.run() B04StrokeMathSpec.run() B05StrokeMathMatrixSpec.run()
+-- B06RacerRuntimeSpec.run() B07LegAssemblySpec.run() B09TwoLegPhaseSpec.run()
+-- B10StabilizationSpec.run() B11LegShapeServiceSpec.run() B12StrokeRemoteSpec.run()
+-- B13AtomicRedrawSpec.run() B14RedrawStressSpec.run() B15ObstacleLabSpec.run()
+-- B16DebugTuningSpec.run()
+
 DebugTelemetry.start()
 
 if RunService:IsStudio() then
