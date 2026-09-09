@@ -14,7 +14,7 @@
 - input is clamped to `[-1,+1]` before authoritative cleanup.
 
 ### R16.3A — Reference Shape Centering
-После clamp/dedupe/RDP/resample сервер recenters the cleaned stroke around its own bounds center. Это **translation-only** операция:
+After clamp/dedupe/RDP/resample, server recenters the cleaned stroke around its own bounds center. Это **translation-only** операция:
 - `center = (bounds.min + bounds.max) / 2`;
 - каждая cleaned point становится `point - center`;
 - scale не меняется;
