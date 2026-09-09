@@ -12,14 +12,91 @@ local StrokeRemoteTransport = require(script.Parent.Parent.Services:WaitForChild
 
 local M0HumanHarness = {}
 
+type PartState = {
+	canCollide: boolean,
+	canTouch: boolean,
+	canQuery: boolean,
+	anchored: boolean,
+}
+
 local started = false
 local activePlayer: Player? = nil
 local activeRacer: any = nil
 local transportConnection: RBXScriptConnection? = nil
 local playerAddedConnection: RBXScriptConnection? = nil
 local playerRemovingConnection: RBXScriptConnection? = nil
+local characterAddedConnection: RBXScriptConnection? = nil
+local characterDescendantConnection: RBXScriptConnection? = nil
+local isolatedPartState: { [BasePart]: PartState } = {}
+
+local function isolatePart(part: BasePart)
+	if isolatedPartState[part] == nil then
+		isolatedPartState[part] = {
+			canCollide = part.CanCollide,
+			canTouch = part.CanTouch,
+			canQuery = part.CanQuery,
+			anchored = part.Anchored,
+		}
+	end
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+end
+
+local function restoreCharacter()
+	if characterDescendantConnection then
+		characterDescendantConnection:Disconnect()
+		characterDescendantConnection = nil
+	end
+	for part, state in isolatedPartState do
+		if part.Parent ~= nil then
+			part.CanCollide = state.canCollide
+			part.CanTouch = state.canTouch
+			part.CanQuery = state.canQuery
+			part.Anchored = state.anchored
+		end
+	end
+	table.clear(isolatedPartState)
+end
+
+local function isolateCharacter(character: Model)
+	restoreCharacter()
+
+	for _, descendant in character:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			isolatePart(descendant)
+		end
+	end
+	characterDescendantConnection = character.DescendantAdded:Connect(function(descendant)
+		if descendant:IsA("BasePart") then
+			isolatePart(descendant)
+		end
+	end)
+
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if root == nil then
+		root = character:WaitForChild("HumanoidRootPart", 5)
+	end
+	if root and root:IsA("BasePart") then
+		isolatePart(root)
+		root.Anchored = true
+		local spawn = M0SceneConfig.Spawn
+		local racerPosition = Vector3.new(spawn.X, spawn.Y, spawn.Z)
+		local observerPosition = racerPosition + Vector3.new(-8, 7, 10)
+		character:PivotTo(CFrame.lookAt(observerPosition, racerPosition))
+	end
+end
+
+local function disconnectCharacterWatcher()
+	if characterAddedConnection then
+		characterAddedConnection:Disconnect()
+		characterAddedConnection = nil
+	end
+end
 
 local function destroyActiveRacer()
+	disconnectCharacterWatcher()
+	restoreCharacter()
 	if activeRacer ~= nil then
 		activeRacer:Destroy()
 		activeRacer = nil
@@ -48,6 +125,12 @@ local function attachPlayer(player: Player)
 
 	activePlayer = player
 	activeRacer = racer
+	characterAddedConnection = player.CharacterAdded:Connect(function(character)
+		isolateCharacter(character)
+	end)
+	if player.Character then
+		task.defer(isolateCharacter, player.Character)
+	end
 	print("[DrawRacers][G0] human harness ready")
 end
 
