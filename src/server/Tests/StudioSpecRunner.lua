@@ -2,26 +2,10 @@
 
 local StudioSpecRunner = {}
 
-local SPEC_NAMES = {
-	"B03StrokeMathSpec",
-	"B04StrokeMathSpec",
-	"B05StrokeMathMatrixSpec",
-	"B06RacerRuntimeSpec",
-	"B07LegAssemblySpec",
-	"B09TwoLegPhaseSpec",
-	"B10StabilizationSpec",
-	"B11LegShapeServiceSpec",
-	"B12StrokeRemoteSpec",
-	"B13AtomicRedrawSpec",
-	"B14RedrawStressSpec",
-	"B15ObstacleLabSpec",
-	"B16DebugTuningSpec",
-}
-
-function StudioSpecRunner.run(testsFolder: Instance): (boolean, { string })
+function StudioSpecRunner.run(testsFolder: Instance, specNames: { string }): (boolean, { string })
 	local failures = {}
 
-	for _, specName in SPEC_NAMES do
+	for _, specName in specNames do
 		local ok, failure = xpcall(function()
 			local module = testsFolder:WaitForChild(specName)
 			local spec = require(module)
@@ -40,7 +24,7 @@ function StudioSpecRunner.run(testsFolder: Instance): (boolean, { string })
 
 	print(string.format(
 		"[DrawRacers][StudioGate] TOTAL %d PASS / %d FAIL",
-		#SPEC_NAMES - #failures,
+		#specNames - #failures,
 		#failures
 	))
 	return #failures == 0, failures
