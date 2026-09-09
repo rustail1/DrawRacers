@@ -23,6 +23,19 @@ local function validPayload(sequence: number)
 	}
 end
 
+local function assertAcceptedPointsMatchCurrentShape(racer: any, accepted: any)
+	local currentShape = racer:GetCurrentShapeSpec()
+	assert(currentShape ~= nil, "accepted result requires current ShapeSpec")
+	assert(type(accepted.acceptedPoints) == "table", "accepted result missing authoritative acceptedPoints")
+	assert(#accepted.acceptedPoints == #currentShape.normalizedPoints, "acceptedPoints count must match ShapeSpec")
+	for index, point in currentShape.normalizedPoints do
+		local resultPoint = accepted.acceptedPoints[index]
+		assert(type(resultPoint) == "table", "acceptedPoints entry must be semantic point")
+		assert(math.abs(resultPoint.x - point.X) <= 1e-6, "acceptedPoints X drifted from ShapeSpec")
+		assert(math.abs(resultPoint.y - point.Y) <= 1e-6, "acceptedPoints Y drifted from ShapeSpec")
+	end
+end
+
 function B12StrokeRemoteSpec.run()
 	assert(type(StrokeRemoteTransport.Bind) == "function", "B12 transport helper must expose Bind")
 
@@ -61,6 +74,7 @@ function B12StrokeRemoteSpec.run()
 	local accepted = processor:Handle(TEST_PLAYER, validPayload(1))
 	assert(accepted ~= nil and accepted.sequence == 1 and accepted.accepted == true, "valid B12 submit must accept")
 	assert(accepted.shapeVersion == 1 and racer:GetShapeVersion() == 1, "accepted submit must advance ShapeVersion exactly once")
+	assertAcceptedPointsMatchCurrentShape(racer, accepted)
 
 	local stale = processor:Handle(TEST_PLAYER, validPayload(1))
 	assert(stale ~= nil and stale.accepted == false and stale.rejectReasonCode == "STALE_SEQUENCE", "duplicate sequence must be stale")
@@ -136,6 +150,7 @@ function B12StrokeRemoteSpec.run()
 	local second = processor:Handle(TEST_PLAYER, validPayload(2))
 	assert(second ~= nil and second.accepted == true and second.sequence == 2, "new valid sequence after cooldown must accept")
 	assert(second.shapeVersion == 2 and racer:GetShapeVersion() == 2, "second accepted submit must advance ShapeVersion to 2")
+	assertAcceptedPointsMatchCurrentShape(racer, second)
 
 	assert(processor:Handle(TEST_PLAYER, { points = {} }) == nil, "missing sequence must not fabricate echo result")
 	assert(processor:Handle(TEST_PLAYER, { sequence = 2.5, points = {} }) == nil, "non-integer sequence must fail closed without echo")
