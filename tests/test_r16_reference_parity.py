@@ -19,6 +19,17 @@ def test_r16_1_body_orientation_is_upright_not_free_about_z() -> None:
     assert "in-plane rotation around Z must remain unconstrained" not in b10
 
 
+def test_r16_1_upright_attachment_uses_identity_basis_for_all_axes() -> None:
+    stabilizer = read("src/server/Runtime/RacerStabilizer.lua")
+    b10 = read("src/server/Tests/B10StabilizationSpec.lua")
+
+    assert "orientationAttachment.Axis = Vector3.xAxis" in stabilizer
+    assert "orientationAttachment.SecondaryAxis = Vector3.yAxis" in stabilizer
+    assert "orientationAttachment.Axis = Vector3.zAxis" not in stabilizer
+    assert "orientation attachment X axis must stay canonical" in b10
+    assert "orientation attachment Y axis must stay canonical" in b10
+
+
 def test_r16_2_hub_offsets_have_one_numeric_owner() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
