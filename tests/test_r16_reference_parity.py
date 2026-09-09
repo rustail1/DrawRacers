@@ -71,6 +71,22 @@ def test_r16_3_one_shape_builds_two_same_xy_legs_about_fixed_pivot() -> None:
     assert "shapeSpec.normalizedPoints" not in apply_shape_spec
 
 
+def test_r16_3a_server_centers_shape_by_bounds_without_resizing() -> None:
+    stroke_math = read("src/shared/Math/StrokeMath.lua")
+    service = read("src/server/Services/LegShapeService.lua")
+    b11 = read("src/server/Tests/B11LegShapeServiceSpec.lua")
+
+    assert "function StrokeMath.CenterOnBounds" in stroke_math
+    assert "local center = (bounds.min + bounds.max) * 0.5" in stroke_math
+    assert "point - center" in stroke_math
+    assert "local centered = StrokeMath.CenterOnBounds(cleaned)" in service
+    assert "GeometryMath.BuildSegmentPlan(centered, PhysicsConfig.LegGeometry)" in service
+    assert "normalizedPoints = centered" in service
+    assert "shifted shape must center to same normalized geometry" in b11
+    assert "centering must preserve shape width" in b11
+    assert "centering must preserve shape height" in b11
+
+
 def test_r16_4_phase_is_180_and_redraw_retains_each_side() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
