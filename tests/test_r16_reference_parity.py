@@ -106,19 +106,23 @@ def test_r16_status_docs_track_current_stage_a_contract_without_passing_human_ga
     features = read("docs/FEATURE_LIST.md")
 
     for doc in [session, features]:
-        assert "R16" in doc
+        assert "R16 Stage A" in doc
+        assert "R16.1–R16.4" in doc
         assert "HUMAN STUDIO PENDING" in doc
-        assert "rotation about world Z" in doc
-        assert "locked/corrected" in doc
-        assert "rotation around world Z remains physical/free" not in doc
-        assert "PrimaryAxisParallel" not in doc
+        assert "rotation about world Z: locked/corrected" in doc
         assert "R16.3A" in doc
-        assert "shape" in doc.lower() and "center" in doc.lower()
+        assert "centered authoritative shape" in doc
 
-    assert "R16 Stage A" in session
-    assert "R16.1–R16.4" in session
-    assert "Next permitted task\n**B17 — G0 HUMAN_GATE only.**" not in session
-    assert "R16 Stage A" in features
+    current_session = session.split("## Current implementation/evidence cursor", 1)[1]
+    assert "R16 Stage A" in current_session
+    assert "Studio Gate A" in current_session
+    assert "B17 — G0 HUMAN_GATE only" not in current_session
+
+    current_features = features.split("## M0 — Physics Lab", 1)[1].split(
+        "### R01–R12 implementation-integrity record", 1
+    )[0]
+    assert "R16 Stage A" in current_features
+    assert "HUMAN STUDIO PENDING" in current_features
 
 
 def test_r16_4_phase_is_180_and_redraw_retains_each_side() -> None:
