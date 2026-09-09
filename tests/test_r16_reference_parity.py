@@ -101,6 +101,26 @@ def test_r16_3a_docs_supersede_raw_canvas_offset_semantics() -> None:
     assert "no auto-centering by stroke bounds" not in design
 
 
+def test_r16_status_docs_track_current_stage_a_contract_without_passing_human_gate() -> None:
+    session = read("docs/SESSION.md")
+    features = read("docs/FEATURE_LIST.md")
+
+    for doc in [session, features]:
+        assert "R16" in doc
+        assert "HUMAN STUDIO PENDING" in doc
+        assert "rotation about world Z" in doc
+        assert "locked/corrected" in doc
+        assert "rotation around world Z remains physical/free" not in doc
+        assert "PrimaryAxisParallel" not in doc
+        assert "R16.3A" in doc
+        assert "shape" in doc.lower() and "center" in doc.lower()
+
+    assert "R16 Stage A" in session
+    assert "R16.1–R16.4" in session
+    assert "Next permitted task\n**B17 — G0 HUMAN_GATE only.**" not in session
+    assert "R16 Stage A" in features
+
+
 def test_r16_4_phase_is_180_and_redraw_retains_each_side() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
