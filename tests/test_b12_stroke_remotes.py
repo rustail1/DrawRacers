@@ -114,8 +114,9 @@ def test_b12_drawing_controller_request_result_semantics() -> None:
         assert token in drawing, f"missing B12 DrawingController token: {token}"
 
     bootstrap = (ROOT / "src" / "client" / "Bootstrap.client.lua").read_text(encoding="utf-8")
-    assert 'WaitForChild("SubmitStroke")' in bootstrap
-    assert 'WaitForChild("StrokeResult")' in bootstrap
+    assert 'WaitForChild("RemoteNames")' in bootstrap
+    assert "RemoteNames.SubmitStroke" in bootstrap
+    assert "RemoteNames.StrokeResult" in bootstrap
     assert "DrawingController.new(inputController, drawHud, submitStroke, strokeResult)" in bootstrap
 
 
