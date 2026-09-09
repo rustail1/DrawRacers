@@ -1,7 +1,11 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local PhysicsConfig = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
+)
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 
 local B06RacerRuntimeSpec = {}
@@ -37,8 +41,11 @@ function B06RacerRuntimeSpec.run()
 	assert(leftHub:FindFirstChild("MotorAttachment") and leftHub.MotorAttachment:IsA("Attachment"), "LeftHub missing MotorAttachment")
 	assert(rightHub:FindFirstChild("MotorAttachment") and rightHub.MotorAttachment:IsA("Attachment"), "RightHub missing MotorAttachment")
 
-	assertVectorClose(body.CFrame:PointToObjectSpace(leftHub.Position), Vector3.new(0, -0.75, -1.62), 1e-4, "LeftHub offset")
-	assertVectorClose(body.CFrame:PointToObjectSpace(rightHub.Position), Vector3.new(0, -0.75, 1.62), 1e-4, "RightHub offset")
+	local geometry = PhysicsConfig.LegGeometry
+	local expectedLeft = Vector3.new(geometry.HubOffsetX, geometry.HubOffsetY, -geometry.HubOffsetZAbs)
+	local expectedRight = Vector3.new(geometry.HubOffsetX, geometry.HubOffsetY, geometry.HubOffsetZAbs)
+	assertVectorClose(body.CFrame:PointToObjectSpace(leftHub.Position), expectedLeft, 1e-4, "LeftHub offset")
+	assertVectorClose(body.CFrame:PointToObjectSpace(rightHub.Position), expectedRight, 1e-4, "RightHub offset")
 
 	local runtimeAttachments = template:FindFirstChild("RuntimeAttachments")
 	assert(runtimeAttachments and runtimeAttachments:IsA("Folder"), "RacerTemplate missing RuntimeAttachments")
