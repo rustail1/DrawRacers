@@ -1,7 +1,7 @@
 # R16 — Draw Climber Reference Parity Design
 
 Date: 2026-09-10
-Status: DESIGN APPROVED IN CHAT / WRITTEN SPEC AWAITING FINAL USER REVIEW
+Status: DESIGN APPROVED IN CHAT / R16.3A AMENDMENT APPROVED IN CHAT
 Repository: `rustail1/DrawRacers`
 Base before this spec: `e18fef29a613f8796b445b8b4c8964fa99162441`
 
@@ -11,7 +11,7 @@ Bring the M0 core locomotion feel materially closer to the observable behavior o
 
 Target player-facing loop:
 
-`one drawing -> one authoritative ShapeSpec -> two identical physical legs -> fixed pivots on the cube -> motor-driven leg rotation -> upright body moves physically in X/Y -> redraw changes both legs atomically`.
+`one drawing -> one authoritative centered ShapeSpec -> two identical physical legs -> fixed pivots on the cube -> motor-driven leg rotation -> upright body moves physically in X/Y -> redraw changes both legs atomically`.
 
 R16 is a bounded pre-G0 correction inside the existing B03–B16/B17 scope. It does not authorize multiplayer/meta/economy/release work.
 
@@ -33,9 +33,24 @@ Therefore:
 
 The player draws exactly one continuous shape.
 
-One accepted stroke creates exactly one authoritative ShapeSpec. The same XY ShapeSpec is duplicated to both physical legs. It is not mirrored, recentered to its bounding box, or resized to a standard radius.
+One accepted stroke creates exactly one authoritative ShapeSpec. The same XY ShapeSpec is duplicated to both physical legs. It is not mirrored or resized to a standard radius.
 
-The DrawInputRect center `(0,0)` is the physical rotation pivot. The visible center marker is presentation of the actual mechanical pivot, not decoration.
+### R16.3A — Reference Shape Centering
+
+The absolute location where the player drew the shape inside DrawInputRect is not gameplay input. After clamp/dedupe/RDP/resample, the server computes the cleaned stroke bounds, subtracts that bounds center from every point, and only then creates the authoritative ShapeSpec.
+
+This centering is translation-only:
+- preserve width and height;
+- preserve polyline length;
+- preserve proportions;
+- preserve point order and open/closed character;
+- do not rotate;
+- do not mirror;
+- do not scale to a canonical radius.
+
+Therefore an otherwise identical shape drawn near the top, middle, or bottom of DrawInputRect produces equivalent authoritative normalized geometry and the same physical leg. A small shape remains small; a large shape remains large.
+
+Mechanical pivot `(0,0)` is the bounds-center of the **authoritative centered ShapeSpec**, not the raw pointer-space center of the player's stroke. The visible center marker is a target/reference hub marker. After acceptance the preview uses server-returned `acceptedPoints`, so the accepted UI shape and physical shape share the same centered geometry.
 
 ### 3.2 Body translation
 
@@ -93,7 +108,7 @@ Canonical starting values for R16 implementation:
 - LeftHub = `(HubOffsetX, HubOffsetY, -HubOffsetZAbs)`;
 - RightHub = `(HubOffsetX, HubOffsetY, +HubOffsetZAbs)`.
 
-`-0.35` is an explicit project starting decision for reference parity, not a claim about the original game's hidden numeric value. It replaces the old hardcoded `-0.75` only after RED tests record the old contract. Any later change to `HubOffsetY` requires Studio evidence from the fixed test protocol below and a separate config/test commit; it may not be silently hand-tuned.
+`-0.35` is an explicit project starting decision for reference parity, not a claim about the original game's hidden numeric value. It replaces the old hardcoded `-0.75`. Any later change to `HubOffsetY` requires Studio evidence from the fixed test protocol below and a separate config/test commit; it may not be silently hand-tuned.
 
 Hub calibration Studio protocol:
 - use ROUND_01 on FlatShort for 8 seconds after first accepted contact;
@@ -102,26 +117,27 @@ Hub calibration Studio protocol:
 - at least one of HOOK_01/ASYM_01 must gain >= 8 studs of +X progress through/over the SmallSteps segment within the 10-second window;
 - hubs remain symmetric in Z and fixed relative to BodyCollider before/after redraw.
 
-If `HubOffsetY=-0.35` fails this protocol while all other R16.1 mechanics are correct, only then may the next experiment compare `-0.75`, `-0.35`, and `0.0`; the selected value becomes canonical in section 11 docs before motor tuning continues.
+If `HubOffsetY=-0.35` fails this protocol while all other Stage-A mechanics are correct, only then may the next experiment compare `-0.75`, `-0.35`, and `0.0`; the selected value becomes canonical before motor tuning continues.
 
-## 5. Shape/pivot contract retained
+## 5. Shape/pivot contract amended by R16.3A
 
-R16 does not redesign GeometryMath.
+R16.3A changes the former raw-canvas-offset semantics without redesigning GeometryMath itself.
 
 Required invariants:
-- normalized `(0,0)` maps to exact hub pivot;
+- server cleanup recenters cleaned points by subtracting the cleaned bounds midpoint;
+- authoritative centered bounds midpoint is `(0,0)` and maps to the exact hub pivot;
 - `MapPoint` remains isotropic in X/Y;
-- no auto-centering by stroke bounds;
+- centering is translation-only and does not resize the shape;
 - no auto-spoke from hub to first stroke point;
 - open strokes remain open;
 - one ShapeSpec produces equivalent left/right XY segment plans;
-- physical radius still depends on what the player drew.
+- physical radius still depends on what the player drew, not where inside the input square it was drawn.
 
-If a new regression exposes a violation, fix only that violation inside the existing GeometryMath/LegAssembly ownership model.
+`StrokeMath` may own the pure bounds-centering utility. `LegShapeService` owns **when** centering happens in the authoritative pipeline and must apply it after clean/resample and before GeometryMath/ShapeSpec construction.
 
 ## 6. Motor, grip, mass tuning order
 
-Do not tune multiple physics families simultaneously. After upright body, plane lock, pivot, hub and phase are mechanically correct and the Stage-A Studio gate passes, tune in this order only:
+Do not tune multiple physics families simultaneously. After upright body, plane lock, centered shape/pivot, hub and phase are mechanically correct and the Stage-A Studio gate passes, tune in this order only:
 
 1. `Motor.AngularVelocity`;
 2. `Motor.MotorMaxTorque` / `MotorMaxAcceleration` only if required;
@@ -141,7 +157,7 @@ The canonical wall/steps/tunnel matrix must also prevent ROUND_01 from trivially
 
 ## 7. Reference shape behavior matrix
 
-Use the existing canonical presets in doc 73 and route all presets through the normal authoritative geometry path. Each comparison starts from the same canonical spawn/checkpoint, zeroed body linear/angular velocity, the same current physics config, and no hidden obstacle changes.
+Use the existing canonical presets in doc 73 and route all presets through the normal authoritative R16.3A centered geometry path. Each comparison starts from the same canonical spawn/checkpoint, zeroed body linear/angular velocity, the same current physics config, and no hidden obstacle changes.
 
 Required measurable matrix:
 - `ROUND_01` FlatShort: meets the 4.0–7.0 studs/s protocol in section 6;
@@ -162,7 +178,7 @@ Acceptance for one accepted redraw while moving:
 - old/staged/retiring physical leg models do not remain active;
 - BodyCollider CFrame is not reset solely because of redraw;
 - BodyCollider linear velocity is not zeroed solely because of redraw;
-- both legs switch to the same new ShapeSpec in one protected transaction;
+- both legs switch to the same new centered ShapeSpec in one protected transaction;
 - each side's post-redraw phase is within 5 degrees of its captured pre-redraw phase modulo 360.
 
 Stress acceptance: 10 accepted redraws during movement without runtime error, leaked leg assemblies, body teleport, velocity reset, or repeated phase reset to launch.
@@ -207,6 +223,8 @@ Expected production/config files:
 - `src/server/Runtime/RacerRuntime.lua` — consume canonical hub offsets; preserve existing runtime ownership;
 - `src/server/Runtime/LegAssembly.lua` — only if phase/motor regression exposes a real issue;
 - `src/shared/Config/PhysicsConfig.lua` — single numeric owner for hub offsets and physics tuning numbers;
+- `src/shared/Math/StrokeMath.lua` — pure translation-only bounds centering utility for R16.3A;
+- `src/server/Services/LegShapeService.lua` — authoritative R16.3A centering point in the shape pipeline;
 - `src/client/Dev/M0G0PresentationHarness.lua` — Studio-only side presentation;
 - `src/server/Tests/M0HumanHarness.lua` — only to keep observer out of presentation if needed, not to alter racer physics.
 
@@ -215,6 +233,7 @@ Expected tests:
 - `src/server/Tests/B07LegAssemblySpec.lua` — pivot/geometry invariants if needed;
 - `src/server/Tests/B09TwoLegPhaseSpec.lua` — same XY + 180-degree phase + redraw phase retention;
 - `src/server/Tests/B10StabilizationSpec.lua` — real upright body + real lateral impulse + no propulsion/lift;
+- `src/server/Tests/B11LegShapeServiceSpec.lua` — shifted-shape centering equivalence and no-resize regression;
 - `src/server/Tests/B13AtomicRedrawSpec.lua` / B14 stress — redraw parity;
 - Python regression files under `tests/` mirroring each repaired owner;
 - one dedicated R16 regression file may aggregate cross-owner static contracts, but it must not replace the Studio physics specs.
@@ -227,11 +246,11 @@ Owner/status docs after behavior is proven:
 - `docs/FEATURE_LIST.md`;
 - `docs/DECISION_LOG_R16_DRAW_CLIMBER_REFERENCE_PARITY_2026-09-10.md`.
 
-Do not touch network contracts, StrokeMath, economy/meta, race services, DataStore, multiplayer services, or later milestone systems unless a failing regression proves a direct dependency.
+Do not touch economy/meta, race services, DataStore, multiplayer services, or later milestone systems unless a failing regression proves a direct dependency. Network protocol shape remains unchanged; `acceptedPoints` already carries authoritative ShapeSpec normalized points.
 
 ## 12. Ordered implementation stages and mandatory gates
 
-### Stage A — mechanical parity: R16.1–R16.4
+### Stage A — mechanical parity: R16.1–R16.4 plus R16.3A
 
 #### R16.1 — Upright Body
 
@@ -255,14 +274,33 @@ RED first:
 GREEN:
 - replace hardcoded hub offsets with canonical config consumption.
 
-#### R16.3 — Pivot / one stroke -> two legs
-
-Prefer verification-only. Add regressions first. Change production only on demonstrated failure.
+#### R16.3 — One stroke -> two legs
 
 Acceptance:
 - one accepted stroke = one ShapeSpec = exactly two same-XY legs;
-- center marker = hub pivot;
-- no mirror/recenter/spoke.
+- no mirror;
+- no automatic spoke;
+- identical authoritative XY geometry on both sides.
+
+#### R16.3A — Reference Shape Centering
+
+RED first:
+- same valid shape translated inside the normalized input square must currently produce different authoritative normalized points;
+- new regression requires identical centered normalized points within `1e-5` tolerance;
+- bounds width/height must remain equal within `1e-5` tolerance;
+- accepted preview must continue to consume server `acceptedPoints`.
+
+GREEN:
+- add pure `StrokeMath.CenterOnBounds` translation helper;
+- `LegShapeService` calls it after clean/resample and minimum-length validation, before authoritative bounds/GeometryMath/ShapeSpec construction;
+- use centered points for `ShapeSpec.normalizedPoints`, bounds, mapped geometry and debug ID;
+- do not scale or rotate.
+
+Studio acceptance:
+- draw approximately the same bar/arc near the top of DrawInputRect, then redraw it near the bottom at the same size;
+- after each accept, the accepted preview recenters around the hub marker;
+- physical leg occupies the same place relative to LeftHub/RightHub;
+- size difference is allowed only when the actual drawn size differs.
 
 #### R16.4 — Twin-leg phase
 
@@ -282,6 +320,7 @@ Do not begin R16.5 tuning until current-main Studio evidence shows:
 - body still rises/falls in Y from physics;
 - hub protocol in section 4 executed;
 - one stroke visibly produces two matching physical legs;
+- same-sized top-vs-bottom drawings center to equivalent accepted/physical leg geometry;
 - right/left phase behavior is visually consistent with the recorded 180-degree contract.
 
 If HubOffsetY=-0.35 fails only the hub calibration while mechanical parity passes, run the explicit three-value hub experiment from section 4 before proceeding.
@@ -361,7 +400,9 @@ Before returning to B17 external testing, all of these must be true in one curre
 - X/Y body translation remains physical/free;
 - no scripted Y locomotion;
 - one accepted drawing creates exactly two same-XY legs;
-- physical pivot equals DrawCanvas center `(0,0)`;
+- authoritative centered ShapeSpec bounds midpoint equals `(0,0)` and maps to the physical hub;
+- same-sized translated drawings yield equivalent authoritative centered geometry;
+- drawn size still changes physical radius;
 - right leg initial phase equals left +180 degrees +/-1 degree;
 - each side's accepted-redraw phase delta <=5 degrees modulo 360;
 - ROUND FlatShort average speed over the fixed measurement window is 4.0–7.0 studs/s with antiStallActive false;
