@@ -57,7 +57,10 @@ function RacerStabilizer.new(params: Params)
 
 	local laneAttachment = takeAttachment(runtimeAttachments, body, "LaneAlignAttachment")
 	local orientationAttachment = takeAttachment(runtimeAttachments, body, "OrientationAttachment")
-	orientationAttachment.Axis = Vector3.zAxis
+	-- AllAxes upright alignment requires the attachment itself to use the canonical
+	-- identity basis. The previous zAxis/yAxis basis belonged to the old
+	-- PrimaryAxisParallel contract and would rotate the goal frame relative to BodyCollider.
+	orientationAttachment.Axis = Vector3.xAxis
 	orientationAttachment.SecondaryAxis = Vector3.yAxis
 	-- RuntimeAttachments is a template staging container only. Once the attachments
 	-- are owned by BodyCollider, remove the empty helper so spawned racers match doc 65.
