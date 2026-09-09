@@ -35,5 +35,5 @@ def test_r01_draw_input_rect_is_square_semantic_surface():
     assert "UIAspectRatioConstraint" in drawing
     assert "SemanticSquareConstraint" in drawing
     assert "Enum.DominantAxis.Height" in drawing
-    assert "strokePreview.Parent = drawInputRect" in drawing
+    assert 'makeFrame("StrokePreview", drawInputRect)' in drawing
     assert "strokePreview.Size = UDim2.fromScale(1, 1)" in drawing
