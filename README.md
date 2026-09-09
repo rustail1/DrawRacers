@@ -14,22 +14,30 @@ Before implementation, read:
 6. only the owner specs named by that row
 
 ## Current state
-**R01–R05 CORE audit repair is implemented in `main`; the next permitted item is B17/G0 HUMAN_GATE.**
+**R01–R09 bounded CORE/pre-G0 integrity repair is implemented in `main`; the next permitted item remains B17/G0 HUMAN_GATE.**
 
-The pre-R06 full automated baseline on GitHub Actions run `34336175789` is **66 passed, 0 failed**. This proves the repository contract suite only; it does not substitute for Roblox Studio/physics/human evidence.
+Historical evidence is preserved: the pre-R06 full automated baseline on GitHub Actions run `34336175789` was **66 passed, 0 failed**. R08 then closed the touch-first/G0-character/minimum-extent/bounded-anti-stall gaps; commit `3a0a32ce90f2cfcd2f37e3be430758dacc86d6d3` passed run `34349254516` at **77 passed, 0 failed**.
 
-A01–A04 and B01–B02 remain recorded ACCEPTED. B03–B16 implementation and regression specs exist in `main`, but required Studio evidence remains pending. **B17/G0 is a hard stop before C01/M0.5.**
+R09 performed another pre-G0 repository review. Its RED commit `35c4df76dd4d663e4785bcb295fda357b8c48ef9` intentionally exposed three concrete gaps and failed run `34351760319` at **77 passed, 3 failed**. The bounded repair commit `3d414556677577af6b07ff253b97041c0eb59c30` passed run `34352130204` at **80 passed, 0 failed**.
 
-## CORE audit repair
-The bounded repair did not add a new product feature or pull later race/meta systems forward:
+These checks are repository/static contract evidence only. The workflow currently runs `python verify.py`; it does not prove Roblox Studio physics, touch feel, or the external-tester G0 product gate.
+
+A01–A04 and B01–B02 remain recorded ACCEPTED. B03–B16 implementation and regression specs exist in `main`, but required Studio/human evidence remains pending. **B17/G0 is a hard stop before C01/M0.5.**
+
+## CORE / pre-G0 integrity repair
+The repair series did not add a new product feature or pull later race/meta systems forward:
 
 - **R01 — Geometry Authority:** one pure `GeometryMath` owner builds mapped points and the physical segment plan. Server ShapeSpec carries that authoritative plan into `LegAssembly`. The wide player-facing DrawCanvas contains a square semantic DrawInputRect so screen aspect ratio cannot stretch physical X/Y shape semantics.
 - **R02 — Drawing/Network Correctness:** visual preview is independent from bounded semantic sampling; obvious too-short strokes are rejected before remote submission; accepted-result ordering tracks server truth even when a newer request is pending/rejected.
 - **R03 — Physics Contract:** complete collision matrix, soft/free-tilt stabilization with no hidden +X propulsion, M0 lab under `Workspace.Runtime.Tracks`, and TopY-relative tunnel geometry.
 - **R04 — Debug Correctness:** real collider and cleaned-point telemetry, documented +X progress-window stuck state, and explicit/human debug target selection.
 - **R05 — Studio/G0 Integration:** exactly one selectable Studio interactive harness. `StudioHarnessConfig.Mode` defaults to `G0`. `M0HumanHarness` binds the existing `SubmitStroke`/`StrokeResult` path to one Studio test racer through an injected resolver; D05 `RacerService` is intentionally not implemented early.
+- **R06 — Documentation consistency:** repository status docs were reconciled at the G0 hard stop without promoting Studio acceptance.
+- **R07 — Core review fixes:** strict outer network payload validation/rate-ordering, complete debug metrics/environment gating, and square semantic input ownership were tightened.
+- **R08 — Final core closure:** touch layout is selected safely between strokes, the normal Roblox Character is isolated from G0 racer physics, minimum useful leg extent is enforced server-side, and bounded anti-stall uses canonical contact/tag semantics with G0 telemetry.
+- **R09 — Pre-G0 consistency review:** accepted-shape presentation now stores semantic coordinates so responsive layout changes cannot distort the accepted preview; exact touch ValidationToast/DrawHint layout tokens are applied; an obstacle `RequirementTag` overrides recovery assist; spawned racers remove the empty template-only `RuntimeAttachments` helper after its attachments move to `BodyCollider`.
 
-Decision record: `docs/DECISION_LOG_CORE_AUDIT_REPAIR_2026-09-09.md`.
+Decision records: `docs/DECISION_LOG_CORE_AUDIT_REPAIR_2026-09-09.md` and `docs/DECISION_LOG_PRE_G0_REVIEW_R07_R09_2026-09-09.md`.
 
 ## Toolchain
 Rokit manages Rojo. From the repository root:
@@ -58,23 +66,25 @@ Canonical 3×3×3 racer body, physical leg assemblies at canonical hubs, hinge m
 Replacement legs stage before commit; invalid/failed redraw preserves the previous accepted physical shape; repeated malformed/stale/rate/size abuse is covered by regressions.
 
 ### B15–B16 — Canonical lab/debug
-The M0 lab contains the canonical flat/steps/wall/gap/tunnel representatives. DEV/STAGING/Studio debug telemetry exposes shape/segment/speed/motor/stuck/lane/checkpoint/progress information.
+The M0 lab contains the canonical flat/steps/wall/gap/tunnel representatives. DEV/STAGING/Studio debug telemetry exposes shape/segment/speed/motor/stuck/anti-stall/lane/checkpoint/progress information.
 
 ## B17/G0 local Studio gate
 Default Studio mode is `G0`. After current `main` is synced, a Play session should run the synchronous B03–B16 specs and then leave one interactive human G0 racer.
 
-Expected evidence includes:
+Expected local evidence includes:
 - no red DrawRacers runtime error;
 - `[DrawRacers][B16] debug tuning panel tests PASS`;
 - `[DrawRacers][G0] human harness ready`;
 - drawing in DrawInputRect produces server-accepted physical legs and locomotion;
 - redraw while moving swaps the accepted shape without body teleport/velocity reset;
+- accepted preview remains semantically identical after between-stroke desktop/touch reflow;
 - debug cleaned-point/collider values update from the actual accepted shape;
+- `antiStallActive` is bounded to flat/recovery contact and is false on obstacle/airborne cases;
 - M0 lab is under `Workspace.Runtime.Tracks`.
 
-Do not mark B17/G0 PASS from CI alone. No C01, multiplayer slice, meta, economy, shop or later phase begins before recorded human-gate evidence.
+After local technical Studio smoke, empirical G0 still follows `docs/55_EMPIRICAL_PRODUCT_GATE_PROTOCOL.md`: six unique external testers and all fixed PASS criteria. Do not mark B17/G0 PASS from CI alone.
 
 ## Working loop
-`ChatGPT/GitHub change → git pull --ff-only → Rojo → Studio playtest → PASS/FAIL evidence → next allowed item`
+`ChatGPT/GitHub change → git pull --ff-only → Rojo build/serve → Studio playtest → PASS/FAIL evidence → next allowed item`
 
 Before pulling remote changes, run `git status` and do not overwrite uncommitted local work.

@@ -4,7 +4,7 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
 **Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle lab → debug/tuning pipeline, implementation items **B03–B16**.  
-**Current implementation integrity:** bounded CORE audit repair **R01–R05** is implemented in `main`; fresh pre-R06 automated baseline is **66 passed, 0 failed**.  
+**Current implementation integrity:** bounded CORE/pre-G0 repair **R01–R09** is implemented in `main`. Historical pre-R06 baseline was **66 passed, 0 failed**; R08 closed at **77 passed, 0 failed**; R09 bounded repair is verified at **80 passed, 0 failed** on commit `3d414556677577af6b07ff253b97041c0eb59c30` / run `34352130204`.  
 **Current gate:** **B17/G0 HUMAN_GATE**. Studio/human evidence is pending; implementation/CI alone does not promote B03–B16 to ACCEPTED.  
 **Acceptance note:** A01–A04 and B01–B02 remain recorded ACCEPTED.  
 **Rule:** only one gameplay feature may be ACTIVE at a time. `SESSION.md` owns the evidence cursor; `25` owns implementation order. No C01 or later work may start without recorded G0 PASS or an explicit Product Owner gate decision.
@@ -18,15 +18,21 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 ## M0 — Physics Lab
 - ACCEPTED — DrawCanvas input + stroke preview (`59` layout; B01+B02)
 - ACTIVE / IMPLEMENTED — B03–B16 core locomotion/redraw/obstacle/debug pipeline.
-- ACTIVE / REPAIR COMPLETE, STUDIO EVIDENCE PENDING — R01 Geometry Authority, R02 Drawing/Network Correctness, R03 Physics Contract, R04 Debug Correctness, R05 Studio/G0 Integration.
+- ACTIVE / REPAIR COMPLETE, STUDIO EVIDENCE PENDING — R01–R09 implementation-integrity repair series.
 - BACKLOG / HUMAN_GATE — B17 G0 record; **hard stop before M0.5**.
 
-### R01–R05 implementation-integrity record
+### R01–R09 implementation-integrity record
 - **R01** — one `GeometryMath` plan owner + authoritative ShapeSpec→LegAssembly path; square semantic drawing surface prevents aspect-ratio physics distortion.
 - **R02** — bounded semantic sampling independent of input event rate; local minimum validation; server-truth accepted-result ordering.
 - **R03** — full collision matrix, soft/free-tilt stabilization contract, canonical runtime track root, TopY-relative tunnel geometry.
 - **R04** — real collider/simplified-point telemetry, progress-window stuck semantics, deterministic debug target selection.
 - **R05** — one selectable Studio interactive harness; default `G0`; Studio-only injected Player→RacerRuntime mapping uses existing stroke transport and does not implement D05 RacerService.
+- **R06** — status/README/decision evidence reconciled to the G0 hard stop without promoting Studio acceptance.
+- **R07** — strict B12 outer payload validation/rate work-ordering; complete B16 raw/physics/motor telemetry and DEV/STAGING gating; square semantic surface ownership tightened.
+- **R08** — touch layout switches only between strokes; normal Roblox Character isolated before G0 racer spawn; server minimum useful extent `0.7`; bounded actual-contact anti-stall on canonical flat/recovery semantics with `antiStallActive` telemetry.
+- **R09** — accepted preview stores semantic coordinates so responsive changes cannot distort it; exact touch ValidationToast/DrawHint tokens from `59`; obstacle RequirementTag overrides recovery assist; spawned racer removes empty template-only `RuntimeAttachments` after attachment transfer.
+
+Repository audit conclusion at this gate: no new top-level gameplay service/controller family is justified. CI remains static-contract evidence and does not replace Rojo/Studio/external-tester G0 evidence.
 
 ## M0.5 — Adaptation Acceptance
 - BACKLOG — Mixed adaptation test track using `60` geometry
