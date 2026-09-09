@@ -35,6 +35,10 @@ type SemanticPoint = {
 	y: number,
 }
 
+local function isFiniteNumber(value: any): boolean
+	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+end
+
 local function inputTypeFamily(inputType: Enum.UserInputType): string?
 	if inputType == Enum.UserInputType.Touch then
 		return "touch"
@@ -128,6 +132,40 @@ local function copySemanticPoints(points: { SemanticPoint }): { SemanticPoint }
 		result[index] = { x = point.x, y = point.y }
 	end
 	return result
+end
+
+local function validServerSemanticPoints(points: any): boolean
+	if type(points) ~= "table" then
+		return false
+	end
+	local config = PhysicsConfig.StrokeProcessing
+	local count = 0
+	local maxIndex = 0
+	for key, _ in points do
+		if type(key) ~= "number" or key < 1 or math.floor(key) ~= key then
+			return false
+		end
+		count += 1
+		if count > config.MaxCleanedPoints or key > config.MaxCleanedPoints then
+			return false
+		end
+		maxIndex = math.max(maxIndex, key)
+	end
+	if count < 2 or maxIndex ~= count then
+		return false
+	end
+	for index = 1, count do
+		local point = points[index]
+		if type(point) ~= "table" or not isFiniteNumber(point.x) or not isFiniteNumber(point.y) then
+			return false
+		end
+		if point.x < config.NormalizedMin or point.x > config.NormalizedMax
+			or point.y < config.NormalizedMin or point.y > config.NormalizedMax
+		then
+			return false
+		end
+	end
+	return true
 end
 
 local function semanticPointsToPixels(points: { SemanticPoint }, size: Vector2): { Vector2 }
@@ -629,9 +667,16 @@ function DrawingController:_onStrokeResult(result: any)
 	self._pendingStrokes[sequence] = nil
 
 	if result.accepted == true then
+		if not validServerSemanticPoints(result.acceptedPoints) then
+			warn(("[DrawRacers][R14.1] malformed authoritative acceptedPoints sequence=%d"):format(sequence))
+			if sequence == self._latestSubmittedSequence then
+				self:_setValidation("INVALID_SERVER_RESULT")
+			end
+			return
+		end
 		if sequence > self._lastAcceptedSequence then
 			self._lastAcceptedSequence = sequence
-			self._acceptedSemanticPoints = copySemanticPoints(pending)
+			self._acceptedSemanticPoints = copySemanticPoints(result.acceptedPoints)
 			self:_renderAcceptedStroke()
 			self:_renderThumbnail()
 			self._ui.emptyGhost.Visible = not self._hasStartedStroke
