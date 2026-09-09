@@ -27,6 +27,7 @@ local playerAddedConnection: RBXScriptConnection? = nil
 local playerRemovingConnection: RBXScriptConnection? = nil
 local characterAddedConnection: RBXScriptConnection? = nil
 local characterDescendantConnection: RBXScriptConnection? = nil
+local recoveryConnection: RBXScriptConnection? = nil
 local isolatedPartState: { [BasePart]: PartState } = {}
 
 local function isolatePart(part: BasePart)
@@ -101,6 +102,37 @@ local function disconnectCharacterWatcher()
 	end
 end
 
+local function createActiveRacer(player: Player)
+	local spawn = M0SceneConfig.Spawn
+	local racer = RacerRuntime.new({
+		raceId = "G0_HUMAN",
+		slotIndex = 1,
+		laneIndex = 1,
+		isBot = false,
+		trackId = "M0_G0",
+		spawnCFrame = CFrame.new(spawn.X, spawn.Y, spawn.Z),
+		laneCenterZ = spawn.Z,
+	})
+	local model = racer:GetModel()
+	model:SetAttribute("DebugTarget", true)
+	model:SetAttribute("OwnerUserId", player.UserId)
+	activeRacer = racer
+	return racer
+end
+
+local function respawnActiveRacer()
+	local player = activePlayer
+	if player == nil then
+		return
+	end
+	if activeRacer ~= nil then
+		activeRacer:Destroy()
+		activeRacer = nil
+	end
+	createActiveRacer(player)
+	print("[DrawRacers][R14.6] G0 racer recovered at canonical spawn")
+end
+
 local function destroyActiveRacer()
 	disconnectCharacterWatcher()
 	restoreCharacter()
@@ -124,21 +156,7 @@ local function attachPlayer(player: Player)
 		isolateCharacter(player.Character)
 	end
 
-	local spawn = M0SceneConfig.Spawn
-	local racer = RacerRuntime.new({
-		raceId = "G0_HUMAN",
-		slotIndex = 1,
-		laneIndex = 1,
-		isBot = false,
-		trackId = "M0_G0",
-		spawnCFrame = CFrame.new(spawn.X, spawn.Y, spawn.Z),
-		laneCenterZ = spawn.Z,
-	})
-	local model = racer:GetModel()
-	model:SetAttribute("DebugTarget", true)
-	model:SetAttribute("OwnerUserId", player.UserId)
-
-	activeRacer = racer
+	createActiveRacer(player)
 	print("[DrawRacers][G0] human harness ready")
 end
 
@@ -184,10 +202,27 @@ function M0HumanHarness.start()
 		end
 	end)
 
+	recoveryConnection = RunService.Heartbeat:Connect(function()
+		local racer = activeRacer
+		if racer == nil then
+			return
+		end
+		local ok, body = pcall(function()
+			return racer:GetBody()
+		end)
+		if ok and body ~= nil and body.Position.Y < M0SceneConfig.RecoveryKillY then
+			respawnActiveRacer()
+		end
+	end)
+
 	attachNextAvailablePlayer()
 end
 
 function M0HumanHarness.stop()
+	if recoveryConnection then
+		recoveryConnection:Disconnect()
+		recoveryConnection = nil
+	end
 	if transportConnection then
 		transportConnection:Disconnect()
 		transportConnection = nil
