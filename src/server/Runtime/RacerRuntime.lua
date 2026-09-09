@@ -8,6 +8,9 @@ local Workspace = game:GetService("Workspace")
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
 )
+local GeometryMath = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("GeometryMath")
+)
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
 local LegAssembly = require(script.Parent:WaitForChild("LegAssembly"))
 local RacerStabilizer = require(script.Parent:WaitForChild("RacerStabilizer"))
@@ -129,6 +132,18 @@ local function captureLegPhaseDegrees(leg: any, hub: Part, fallbackDegrees: numb
 	return math.deg(z)
 end
 
+local function makeInternalShapeSpec(normalizedPoints: { Vector2 })
+	local plan = GeometryMath.BuildSegmentPlan(normalizedPoints, PhysicsConfig.LegGeometry)
+	assert(#plan.segmentPlan > 0, "internal shape produced no legal physical segments")
+	return {
+		version = 0,
+		normalizedPoints = normalizedPoints,
+		mappedPoints = plan.mappedPoints,
+		segmentPlan = plan.segmentPlan,
+		extent = plan.extent,
+	}
+end
+
 function RacerRuntime.new(params: SpawnParams)
 	assert(params.slotIndex >= 1 and params.slotIndex <= 8, "slotIndex must be 1..8")
 	assert(params.laneIndex >= 1 and params.laneIndex <= 8, "laneIndex must be 1..8")
@@ -158,6 +173,7 @@ function RacerRuntime.new(params: SpawnParams)
 	model:SetAttribute("ShapeVersion", 0)
 	model:SetAttribute("TrackId", params.trackId)
 	model:SetAttribute("Finished", false)
+	model:SetAttribute("LaneCenterZ", params.laneCenterZ or params.spawnCFrame.Position.Z)
 
 	model:PivotTo(params.spawnCFrame)
 	model.Parent = racersRoot
@@ -210,11 +226,10 @@ function RacerRuntime:GetCurrentShapeSpec()
 	return self.currentShapeSpec
 end
 
--- Server-internal physical builder retained for geometry/harness tests. Remote/client paths
--- must route through LegShapeService and ApplyValidatedShape so ShapeVersion remains authoritative.
-function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: boolean?)
+function RacerRuntime:_ApplyShapeSpec(shapeSpec: any, motorEnabled: boolean?)
 	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
-	assert(#normalizedPoints >= 2, "ApplyShape requires at least two normalized points")
+	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table", "shapeSpec missing segmentPlan")
+	assert(#shapeSpec.segmentPlan > 0, "shapeSpec requires physical segments")
 
 	local model = self.model
 	local leftHub = model:FindFirstChild("LeftHub")
@@ -239,7 +254,7 @@ function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: bo
 		stagedLeftLeg = LegAssembly.new({
 			racerModel = model,
 			side = "Left",
-			normalizedPoints = normalizedPoints,
+			shapeSpec = shapeSpec,
 			motorEnabled = false,
 			initialPhaseDegrees = leftPhaseDegrees,
 			staged = true,
@@ -248,7 +263,7 @@ function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: bo
 		stagedRightLeg = LegAssembly.new({
 			racerModel = model,
 			side = "Right",
-			normalizedPoints = normalizedPoints,
+			shapeSpec = shapeSpec,
 			motorEnabled = false,
 			initialPhaseDegrees = rightPhaseDegrees,
 			staged = true,
@@ -296,14 +311,22 @@ function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: bo
 	return stagedLeftLeg, stagedRightLeg
 end
 
+-- Server-internal convenience path retained for geometry/harness tests. It still routes through
+-- the one shared GeometryMath owner; client/remote paths must use ApplyValidatedShape.
+function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: boolean?)
+	assert(#normalizedPoints >= 2, "ApplyShape requires at least two normalized points")
+	return self:_ApplyShapeSpec(makeInternalShapeSpec(normalizedPoints), motorEnabled)
+end
+
 function RacerRuntime:ApplyValidatedShape(shapeSpec: any, motorEnabled: boolean?)
 	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
 	assert(type(shapeSpec) == "table", "ApplyValidatedShape requires ShapeSpec")
 	assert(type(shapeSpec.version) == "number", "ShapeSpec missing numeric version")
 	assert(type(shapeSpec.normalizedPoints) == "table", "ShapeSpec missing normalizedPoints")
+	assert(type(shapeSpec.segmentPlan) == "table", "ShapeSpec missing segmentPlan")
 	assert(shapeSpec.version == self:GetShapeVersion() + 1, "ShapeSpec version must increment by exactly one")
 
-	local leftLeg, rightLeg = self:ApplyShape(shapeSpec.normalizedPoints, motorEnabled)
+	local leftLeg, rightLeg = self:_ApplyShapeSpec(shapeSpec, motorEnabled)
 	self.currentShapeSpec = shapeSpec
 	self.model:SetAttribute("ShapeVersion", shapeSpec.version)
 	return leftLeg, rightLeg

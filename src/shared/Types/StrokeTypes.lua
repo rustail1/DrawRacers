@@ -23,11 +23,13 @@ export type ShapeSegmentPlanEntry = {
 	index: number,
 	a: Vector2,
 	b: Vector2,
+	canCollide: boolean,
 }
 
 export type ShapeSpec = {
 	version: number,
 	normalizedPoints: { Vector2 },
+	mappedPoints: { Vector2 },
 	bounds: ShapeBounds,
 	extent: number,
 	segmentPlan: { ShapeSegmentPlanEntry },

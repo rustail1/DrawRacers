@@ -121,10 +121,19 @@ local function createUi(drawHud: ScreenGui)
 	drawInputRect.ClipsDescendants = true
 	drawInputRect.ZIndex = 21
 
-	local strokePreview = makeFrame("StrokePreview", drawCanvas)
-	strokePreview.AnchorPoint = Vector2.new(0.5, 0.5)
-	strokePreview.Position = UDim2.fromScale(0.5, 0.5)
-	strokePreview.Size = DRAW_INPUT_SIZE
+	-- R01 audit repair: the semantic coordinate surface is square in pixels so one
+	-- screen-space unit on X means the same physical distance as one unit on Y.
+	-- The outer DrawCanvas remains the wide HUD panel from spec 59.
+	local semanticSquareConstraint = Instance.new("UIAspectRatioConstraint")
+	semanticSquareConstraint.Name = "SemanticSquareConstraint"
+	semanticSquareConstraint.AspectRatio = 1
+	semanticSquareConstraint.DominantAxis = Enum.DominantAxis.Height
+	semanticSquareConstraint.Parent = drawInputRect
+
+	local strokePreview = makeFrame("StrokePreview", drawInputRect)
+	strokePreview.AnchorPoint = Vector2.new(0, 0)
+	strokePreview.Position = UDim2.fromScale(0, 0)
+	strokePreview.Size = UDim2.fromScale(1, 1)
 	strokePreview.ClipsDescendants = true
 	strokePreview.ZIndex = 23
 

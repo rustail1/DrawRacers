@@ -5,6 +5,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
 )
+local GeometryMath = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("GeometryMath")
+)
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 local LegAssembly = require(script.Parent.Parent.Runtime:WaitForChild("LegAssembly"))
 
@@ -40,10 +43,16 @@ function B08OneHingeMotorHarness.start()
 	body.Color = Color3.fromRGB(255, 145, 65)
 	body.Material = Enum.Material.SmoothPlastic
 
+	local geometryPlan = GeometryMath.BuildSegmentPlan(ROUND_01, PhysicsConfig.LegGeometry)
 	local leg = LegAssembly.new({
 		racerModel = racer:GetModel(),
 		side = "Left",
-		normalizedPoints = ROUND_01,
+		shapeSpec = {
+			normalizedPoints = ROUND_01,
+			mappedPoints = geometryPlan.mappedPoints,
+			segmentPlan = geometryPlan.segmentPlan,
+			extent = geometryPlan.extent,
+		},
 		motorEnabled = true,
 	})
 

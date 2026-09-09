@@ -16,33 +16,11 @@ LegAssembly.__index = LegAssembly
 export type BuildParams = {
 	racerModel: Model,
 	side: string,
-	normalizedPoints: { Vector2 },
+	shapeSpec: any,
 	motorEnabled: boolean?,
 	initialPhaseDegrees: number?,
 	staged: boolean?,
 }
-
-local function mapPoint(point: Vector2): Vector2
-	local geometry = PhysicsConfig.LegGeometry
-	local clamped = Vector2.new(math.clamp(point.X, -1, 1), math.clamp(point.Y, -1, 1))
-	local mapped = clamped * geometry.LegCanvasHalfSpan
-	local magnitude = mapped.Magnitude
-	if magnitude > geometry.MaxLegExtentFromHub and magnitude > 0 then
-		mapped *= geometry.MaxLegExtentFromHub / magnitude
-	end
-	return mapped
-end
-
-local function distanceFromOriginToSegment(a: Vector2, b: Vector2): number
-	local ab = b - a
-	local lengthSquared = ab:Dot(ab)
-	if lengthSquared <= 0 then
-		return a.Magnitude
-	end
-
-	local t = math.clamp((-a):Dot(ab) / lengthSquared, 0, 1)
-	return (a + ab * t).Magnitude
-end
 
 local function makeSegmentCFrame(rootCFrame: CFrame, a: Vector2, b: Vector2): CFrame
 	local delta = b - a
@@ -57,7 +35,10 @@ end
 
 function LegAssembly.new(params: BuildParams)
 	assert(params.side == "Left" or params.side == "Right", "LegAssembly side must be Left or Right")
-	assert(#params.normalizedPoints >= 2, "LegAssembly requires at least two normalized points")
+	assert(type(params.shapeSpec) == "table", "LegAssembly requires authoritative shapeSpec")
+	assert(type(params.shapeSpec.segmentPlan) == "table", "shapeSpec missing segmentPlan")
+	assert(#params.shapeSpec.segmentPlan > 0, "LegAssembly requires at least one planned segment")
+	assert(#params.shapeSpec.segmentPlan <= PhysicsConfig.LegGeometry.MaxColliderSegmentsPerLeg, "shapeSpec segmentPlan exceeds collider cap")
 
 	CollisionGroups.ensure()
 
@@ -133,60 +114,50 @@ function LegAssembly.new(params: BuildParams)
 	visualFolder.Name = "Visual"
 	visualFolder.Parent = model
 
-	local mappedPoints = table.create(#params.normalizedPoints)
-	for index, point in params.normalizedPoints do
-		mappedPoints[index] = mapPoint(point)
-	end
-
 	local segments = {}
-	local segmentIndex = 0
-	for index = 2, #mappedPoints do
-		if segmentIndex >= geometry.MaxColliderSegmentsPerLeg then
-			break
-		end
-
-		local a = mappedPoints[index - 1]
-		local b = mappedPoints[index]
+	for _, planned in params.shapeSpec.segmentPlan do
+		local a = planned.a
+		local b = planned.b
+		assert(typeof(a) == "Vector2" and typeof(b) == "Vector2", "shapeSpec segmentPlan contains invalid endpoints")
 		local mappedLength = (b - a).Magnitude
-		if mappedLength >= geometry.MinimumMappedSegmentLength then
-			segmentIndex += 1
+		assert(mappedLength >= geometry.MinimumMappedSegmentLength, "shapeSpec contains sub-minimum segment")
 
-			local segment = Instance.new("Part")
-			segment.Name = string.format("Segment_%02d", segmentIndex)
-			segment.Size = Vector3.new(
-				mappedLength + geometry.SegmentOverlapAllowance,
-				geometry.PhysicalLegSegmentThickness,
-				geometry.PhysicalLegSegmentThickness
-			)
-			segment.CFrame = makeSegmentCFrame(root.CFrame, a, b)
-			segment.Anchored = false
-			segment.CanCollide = distanceFromOriginToSegment(a, b) >= geometry.InnerHubNoCollisionRadius
-			segment.CanTouch = true
-			segment.CanQuery = true
-			segment.Massless = false
-			segment.CollisionGroup = RACER_LEG_GROUP
-			segment.CustomPhysicalProperties = PhysicalProperties.new(1.0, 1.0, 0.02, 100, 100)
-			if RunService:IsStudio() then
-				segment.Transparency = 0.08
-				segment.Color = if side == "Left" then Color3.fromRGB(60, 205, 255) else Color3.fromRGB(110, 235, 255)
-				segment.Material = Enum.Material.Neon
-			else
-				segment.Transparency = 1
-			end
-			segment.Parent = segmentsFolder
-
-			local weld = Instance.new("WeldConstraint")
-			weld.Name = "RootWeld"
-			weld.Part0 = root
-			weld.Part1 = segment
-			weld.Parent = segment
-
-			table.insert(segments, segment)
+		local segment = Instance.new("Part")
+		segment.Name = string.format("Segment_%02d", planned.index)
+		segment.Size = Vector3.new(
+			mappedLength + geometry.SegmentOverlapAllowance,
+			geometry.PhysicalLegSegmentThickness,
+			geometry.PhysicalLegSegmentThickness
+		)
+		segment.CFrame = makeSegmentCFrame(root.CFrame, a, b)
+		segment.Anchored = false
+		segment.CanCollide = planned.canCollide == true
+		segment.CanTouch = true
+		segment.CanQuery = true
+		segment.Massless = false
+		segment.CollisionGroup = RACER_LEG_GROUP
+		segment.CustomPhysicalProperties = PhysicalProperties.new(1.0, 1.0, 0.02, 100, 100)
+		if RunService:IsStudio() then
+			segment.Transparency = 0.08
+			segment.Color = if side == "Left" then Color3.fromRGB(60, 205, 255) else Color3.fromRGB(110, 235, 255)
+			segment.Material = Enum.Material.Neon
+		else
+			segment.Transparency = 1
 		end
+		segment.Parent = segmentsFolder
+
+		local weld = Instance.new("WeldConstraint")
+		weld.Name = "RootWeld"
+		weld.Part0 = root
+		weld.Part1 = segment
+		weld.Parent = segment
+
+		table.insert(segments, segment)
 	end
 
 	assert(#segments > 0, "LegAssembly produced no legal physical segments")
 
+	local mappedPoints = params.shapeSpec.mappedPoints or {}
 	local self = setmetatable({
 		model = model,
 		root = root,

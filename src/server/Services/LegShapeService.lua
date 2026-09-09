@@ -9,6 +9,9 @@ local PhysicsConfig = require(
 local StrokeMath = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("StrokeMath")
 )
+local GeometryMath = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("GeometryMath")
+)
 
 local LegShapeService = {}
 
@@ -66,44 +69,6 @@ local function validateRawPointArray(rawPoints: any): ({ Vector2 }?, string?)
 		points[index] = point
 	end
 	return points, nil
-end
-
-local function mapPointToLegSpace(point: Vector2): Vector2
-	local geometry = PhysicsConfig.LegGeometry
-	local mapped = point * geometry.LegCanvasHalfSpan
-	local magnitude = mapped.Magnitude
-	if magnitude > geometry.MaxLegExtentFromHub and magnitude > 0 then
-		mapped *= geometry.MaxLegExtentFromHub / magnitude
-	end
-	return mapped
-end
-
-local function buildSegmentPlan(normalizedPoints: { Vector2 })
-	local geometry = PhysicsConfig.LegGeometry
-	local mappedPoints = table.create(#normalizedPoints)
-	local extent = 0
-	for index, point in normalizedPoints do
-		local mapped = mapPointToLegSpace(point)
-		mappedPoints[index] = mapped
-		extent = math.max(extent, mapped.Magnitude)
-	end
-
-	local segmentPlan = {}
-	for index = 2, #mappedPoints do
-		if #segmentPlan >= geometry.MaxColliderSegmentsPerLeg then
-			break
-		end
-		local a = mappedPoints[index - 1]
-		local b = mappedPoints[index]
-		if (b - a).Magnitude >= geometry.MinimumMappedSegmentLength then
-			table.insert(segmentPlan, {
-				index = #segmentPlan + 1,
-				a = a,
-				b = b,
-			})
-		end
-	end
-	return segmentPlan, extent
 end
 
 local function buildDebugId(version: number, points: { Vector2 }, length: number): string
@@ -172,8 +137,8 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 		return reject("TOO_SHORT")
 	end
 
-	local segmentPlan, extent = buildSegmentPlan(cleaned)
-	if #segmentPlan == 0 then
+	local geometryPlan = GeometryMath.BuildSegmentPlan(cleaned, PhysicsConfig.LegGeometry)
+	if #geometryPlan.segmentPlan == 0 then
 		return reject("TOO_SHORT")
 	end
 
@@ -181,9 +146,10 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 	local shapeSpec = {
 		version = nextVersion,
 		normalizedPoints = cleaned,
+		mappedPoints = geometryPlan.mappedPoints,
 		bounds = bounds,
-		extent = extent,
-		segmentPlan = segmentPlan,
+		extent = geometryPlan.extent,
+		segmentPlan = geometryPlan.segmentPlan,
 		debugId = buildDebugId(nextVersion, cleaned, cleanedLength),
 	}
 

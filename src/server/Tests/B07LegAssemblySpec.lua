@@ -1,5 +1,13 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local PhysicsConfig = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
+)
+local GeometryMath = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("GeometryMath")
+)
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 local LegAssembly = require(script.Parent.Parent.Runtime:WaitForChild("LegAssembly"))
 
@@ -25,14 +33,23 @@ function B07LegAssemblySpec.run()
 	local leftHub = model:FindFirstChild("LeftHub")
 	assert(leftHub and leftHub:IsA("Part"), "B07 racer missing LeftHub")
 
+	local sourcePoints = {
+		Vector2.new(0, 0),
+		Vector2.new(0.40, 0.30),
+		Vector2.new(1, 1),
+	}
+	local geometryPlan = GeometryMath.BuildSegmentPlan(sourcePoints, PhysicsConfig.LegGeometry)
+	local shapeSpec = {
+		normalizedPoints = sourcePoints,
+		mappedPoints = geometryPlan.mappedPoints,
+		segmentPlan = geometryPlan.segmentPlan,
+		extent = geometryPlan.extent,
+	}
+
 	local leg = LegAssembly.new({
 		racerModel = model,
 		side = "Left",
-		normalizedPoints = {
-			Vector2.new(0, 0),
-			Vector2.new(0.40, 0.30),
-			Vector2.new(1, 1),
-		},
+		shapeSpec = shapeSpec,
 		motorEnabled = false,
 	})
 

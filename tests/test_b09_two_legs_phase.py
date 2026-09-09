@@ -21,7 +21,6 @@ def test_b09_two_leg_same_xy_phase_contract() -> None:
     ]:
         assert token in leg, f"missing B09 side/phase implementation token: {token}"
 
-    # Both sides must keep the exact same local XY mapping. Side-specific mirroring is forbidden.
     for forbidden in [
         "-point.X",
         "-point.Y",
@@ -35,7 +34,8 @@ def test_b09_two_leg_same_xy_phase_contract() -> None:
     assert "function RacerRuntime:ApplyShape" in racer
     assert 'side = "Left"' in racer
     assert 'side = "Right"' in racer
-    assert racer.count("normalizedPoints = normalizedPoints") >= 2
+    assert racer.count("shapeSpec = shapeSpec") >= 2
+    assert "GeometryMath.BuildSegmentPlan" in racer
     assert "RightPhaseOffsetDegrees" in racer
 
 
