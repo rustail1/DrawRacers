@@ -71,7 +71,20 @@ function B07LegAssemblySpec.run()
 	assertClose(mapped[1].Magnitude, 0, 1e-6, "center maps to hub pivot")
 	assertClose(mapped[2].X, 1.26, 1e-6, "isotropic X scale")
 	assertClose(mapped[2].Y, 0.945, 1e-6, "isotropic Y scale")
-	assertClose(mapped[3].Magnitude, 4.5, 1e-5, "radial hard cap")
+	local expectedCornerMagnitude = math.min(
+		PhysicsConfig.LegGeometry.LegCanvasHalfSpan * math.sqrt(2),
+		PhysicsConfig.LegGeometry.MaxLegExtentFromHub
+	)
+	assertClose(mapped[3].Magnitude, expectedCornerMagnitude, 1e-5, "corner mapping respects radial hard cap")
+	assert(
+		mapped[3].Magnitude <= PhysicsConfig.LegGeometry.MaxLegExtentFromHub + 1e-5,
+		"corner mapping exceeded radial hard cap"
+	)
+
+	local hardCapGeometry = table.clone(PhysicsConfig.LegGeometry)
+	hardCapGeometry.LegCanvasHalfSpan = 4.0
+	local hardCapped = GeometryMath.MapPoint(Vector2.new(1, 1), hardCapGeometry)
+	assertClose(hardCapped.Magnitude, hardCapGeometry.MaxLegExtentFromHub, 1e-5, "radial hard cap")
 
 	local segments = leg:GetSegments()
 	assert(#segments == 2, "expected exactly two legal consecutive segments")
