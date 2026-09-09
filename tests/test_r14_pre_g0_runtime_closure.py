@@ -102,3 +102,36 @@ def test_r14_3_client_does_not_start_studio_drawing_before_ready() -> None:
     assert "drawingController:Start()" in ready_branch
     assert 'G0 BLOCKED — SERVER TEST FAILED' in bootstrap
     assert 'G0 TESTS RUNNING' in bootstrap
+
+
+def test_r14_5_pending_strokes_are_count_and_time_bounded() -> None:
+    config = read("src/shared/Config/PhysicsConfig.lua")
+    drawing = read("src/client/Controllers/DrawingController.lua")
+    assert "StrokeResultTimeout = 3.0" in config
+    assert "MaxPendingStrokes = 4" in config
+    assert "_pendingStrokeCount" in drawing
+    assert "config.MaxPendingStrokes" in drawing
+    assert "task.delay(config.StrokeResultTimeout" in drawing
+    assert "NETWORK_TIMEOUT" in drawing
+    assert "CLIENT_PENDING_LIMIT" in drawing
+
+
+def test_r14_5_late_authoritative_accept_can_still_replace_timed_out_preview() -> None:
+    drawing = read("src/client/Controllers/DrawingController.lua")
+    result_start = drawing.index("function DrawingController:_onStrokeResult")
+    result_end = drawing.index("function DrawingController:_onPointer", result_start)
+    result_body = drawing[result_start:result_end]
+    assert "if result.accepted == true then" in result_body
+    assert "sequence > self._lastAcceptedSequence" in result_body
+    pending_guard = 'if pending == nil then\n\t\treturn\n\tend'
+    assert pending_guard not in result_body, "late trusted server ACCEPT must not be discarded only because local timeout evicted pending state"
+
+
+def test_r14_5_transport_contains_processor_exception_and_returns_generic_error() -> None:
+    transport = read("src/server/Services/StrokeRemoteTransport.lua")
+    service = read("src/server/Services/LegShapeService.lua")
+    assert "xpcall" in transport
+    assert "debug.traceback" in transport
+    assert '"SERVER_ERROR"' in transport
+    assert "ExtractSafeSequence" in transport
+    assert "function LegShapeService.ExtractSafeSequence" in service
