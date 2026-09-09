@@ -56,6 +56,10 @@ function B10StabilizationSpec.run()
 	assert(orientationAlign.Responsiveness == config.OrientationResponsiveness)
 	assert(orientationAlign.RigidityEnabled == false)
 	assert(orientationAlign.Enabled == true, "upright orientation correction must remain continuously enabled")
+	local orientationAttachment = orientationAlign.Attachment0
+	assert(orientationAttachment ~= nil, "orientation align requires Attachment0")
+	assert(orientationAttachment.Axis == Vector3.xAxis, "orientation attachment X axis must stay canonical")
+	assert(orientationAttachment.SecondaryAxis == Vector3.yAxis, "orientation attachment Y axis must stay canonical")
 
 	-- Real physics regression for the Studio lateral failure that escaped the old property-only B10.
 	body.CFrame = CFrame.new(-18, 8, laneCenterZ)
