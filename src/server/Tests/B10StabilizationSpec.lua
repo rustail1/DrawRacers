@@ -2,6 +2,7 @@
 
 local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
@@ -12,14 +13,15 @@ local B10StabilizationSpec = {}
 
 function B10StabilizationSpec.run()
 	local config = PhysicsConfig.Stabilization
+	local laneCenterZ = 2.5
 	local racer = RacerRuntime.new({
 		raceId = "B10_TEST",
 		slotIndex = 3,
 		laneIndex = 3,
 		isBot = true,
 		trackId = "B10_FLAT",
-		spawnCFrame = CFrame.new(-18, 8, 2.5),
-		laneCenterZ = 2.5,
+		spawnCFrame = CFrame.new(-18, 8, laneCenterZ),
+		laneCenterZ = laneCenterZ,
 	})
 
 	assert(PhysicsService:CollisionGroupsAreCollidable("Default", "RacerBody") == false, "Default must not collide with RacerBody")
@@ -31,17 +33,17 @@ function B10StabilizationSpec.run()
 	body.Anchored = true
 	local model = racer:GetModel()
 	local stabilizer = racer:GetStabilizer()
-	local laneAlign = stabilizer:GetLaneAlign()
+	local lanePlane = stabilizer:GetLaneConstraint()
 	local orientationAlign = stabilizer:GetOrientationAlign()
 
-	assert(laneAlign.Mode == Enum.PositionAlignmentMode.OneAttachment)
-	assert(laneAlign.ForceLimitMode == Enum.ForceLimitMode.PerAxis)
-	assert(laneAlign.ForceRelativeTo == Enum.ActuatorRelativeTo.World)
-	assert(laneAlign.MaxAxesForce.X == 0, "B10 planar lock must apply zero X force")
-	assert(laneAlign.MaxAxesForce.Y == 0, "B10 planar lock must apply zero Y force")
-	assert(laneAlign.MaxAxesForce.Z == config.LaneMaxForceZ, "B10 planar lock must apply only configured Z force")
-	assert(laneAlign.Enabled == true, "lane constraint must remain continuously enabled")
-	assert(math.abs(laneAlign.Position.Z - 2.5) <= 1e-6, "planar Z target must equal canonical lane center")
+	assert(lanePlane:IsA("PlaneConstraint"), "B10 lane lock must use a mechanical PlaneConstraint")
+	assert(lanePlane.Enabled == true, "lane plane must remain continuously enabled")
+	assert(lanePlane.Attachment0 ~= nil and lanePlane.Attachment1 ~= nil, "lane plane requires both attachments")
+	local laneReference = lanePlane.Attachment0.Parent
+	assert(laneReference ~= nil and laneReference:IsA("BasePart"), "lane plane Attachment0 must live on an anchored reference")
+	assert(laneReference.Anchored == true, "lane plane reference must be anchored")
+	assert(laneReference.CanCollide == false and laneReference.CanTouch == false and laneReference.CanQuery == false, "lane plane reference must be non-physical")
+	assert(math.abs(lanePlane.Attachment0.WorldPosition.Z - laneCenterZ) <= 1e-6, "lane plane reference must stay on canonical lane center Z")
 
 	assert(orientationAlign.Mode == Enum.OrientationAlignmentMode.OneAttachment)
 	assert(orientationAlign.AlignType == Enum.AlignType.PrimaryAxisParallel)
@@ -60,17 +62,25 @@ function B10StabilizationSpec.run()
 	assert(orientationAlign.Enabled == true, "out-of-plane disturbance must keep planar correction active")
 	assert(orientationAlign.AlignType == Enum.AlignType.PrimaryAxisParallel)
 
-	body.CFrame = CFrame.new(body.Position.X, body.Position.Y, 2.5 + config.LaneNormalError + 0.005)
-	stabilizer:Step()
-	assert(laneAlign.Enabled == true)
-	assert(math.abs(laneAlign.Position.Z - 2.5) <= 1e-6, "planar Z target drifted from lane center")
-	assert(model:GetAttribute("LaneNormalBoundExceeded") == true)
-	assert(model:GetAttribute("LaneHardBoundExceeded") == false)
+	-- Real physics regression for the Studio failure that escaped the old property-only B10.
+	body.CFrame = CFrame.new(-18, 8, laneCenterZ)
+	body.AssemblyLinearVelocity = Vector3.zero
+	body.AssemblyAngularVelocity = Vector3.zero
+	body.Anchored = false
+	RunService.Heartbeat:Wait()
+	body:ApplyImpulse(Vector3.new(0, 0, body.AssemblyMass * 120))
+	local maxObservedLaneDeviation = 0
+	for _ = 1, 6 do
+		RunService.Heartbeat:Wait()
+		maxObservedLaneDeviation = math.max(maxObservedLaneDeviation, math.abs(body.Position.Z - laneCenterZ))
+	end
+	assert(
+		maxObservedLaneDeviation <= config.LaneHardBound,
+		string.format("lateral impulse escaped the hard gameplay plane: %.6f", maxObservedLaneDeviation)
+	)
 
-	body.CFrame = CFrame.new(body.Position.X, body.Position.Y, 2.5 + config.LaneHardBound + 0.005)
 	stabilizer:Step()
-	assert(laneAlign.Enabled == true)
-	assert(model:GetAttribute("LaneHardBoundExceeded") == true)
+	assert(model:GetAttribute("LaneHardBoundExceeded") == false, "mechanical plane lock must recover within the hard lane bound")
 
 	racer:Destroy()
 	assert(model.Parent == nil, "B10 RacerRuntime destroy left stabilized model behind")
