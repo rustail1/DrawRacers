@@ -37,6 +37,7 @@ return {
 		LaneMaxForceZ = 12000,
 		LaneResponsiveness = 6,
 		LaneMaxVelocity = 8,
+		OrientationFreeTiltDegrees = 25,
 		OrientationResponsiveness = 8,
 		OrientationMaxTorque = 18000,
 		OrientationMaxAngularVelocity = 8,

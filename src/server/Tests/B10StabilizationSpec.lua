@@ -37,7 +37,15 @@ function B10StabilizationSpec.run()
 	assert(orientationAlign.Mode == Enum.OrientationAlignmentMode.OneAttachment)
 	assert(orientationAlign.Responsiveness == config.OrientationResponsiveness)
 	assert(orientationAlign.RigidityEnabled == false)
-	assert(orientationAlign.Enabled == true)
+	assert(orientationAlign.Enabled == false, "orientation correction must not snap an upright racer")
+
+	body.CFrame = CFrame.new(body.Position) * CFrame.Angles(math.rad(config.OrientationFreeTiltDegrees - 5), 0, 0)
+	stabilizer:Step()
+	assert(orientationAlign.Enabled == false, "transient tilt inside free-tilt envelope must remain physical")
+
+	body.CFrame = CFrame.new(body.Position) * CFrame.Angles(math.rad(config.OrientationFreeTiltDegrees + 5), 0, 0)
+	stabilizer:Step()
+	assert(orientationAlign.Enabled == true, "orientation correction must activate beyond free-tilt envelope")
 
 	body.CFrame = CFrame.new(body.Position.X, body.Position.Y, 2.5 + config.LaneCorrectionDeadzone * 0.5)
 	stabilizer:Step()

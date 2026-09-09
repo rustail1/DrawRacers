@@ -59,7 +59,7 @@ function RacerStabilizer.new(params: Params)
 	orientationAlign.MaxTorque = config.OrientationMaxTorque
 	orientationAlign.MaxAngularVelocity = config.OrientationMaxAngularVelocity
 	orientationAlign.CFrame = CFrame.identity
-	orientationAlign.Enabled = true
+	orientationAlign.Enabled = false
 	orientationAlign.Parent = body
 
 	model:SetAttribute("LaneHardBoundExceeded", false)
@@ -96,6 +96,10 @@ function RacerStabilizer:Step()
 	self.laneAlign.Enabled = absoluteError > config.LaneCorrectionDeadzone
 	self.model:SetAttribute("LaneNormalBoundExceeded", absoluteError > config.LaneNormalError)
 	self.model:SetAttribute("LaneHardBoundExceeded", absoluteError > config.LaneHardBound)
+
+	local pitch, yaw, roll = body.CFrame:ToOrientation()
+	local orientationErrorDegrees = math.deg(math.max(math.abs(pitch), math.abs(yaw), math.abs(roll)))
+	self.orientationAlign.Enabled = orientationErrorDegrees > config.OrientationFreeTiltDegrees
 end
 
 function RacerStabilizer:GetLaneAlign(): AlignPosition

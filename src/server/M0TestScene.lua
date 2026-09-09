@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local shared = ReplicatedStorage:WaitForChild("Shared")
 local configFolder = shared:WaitForChild("Config")
@@ -126,7 +127,7 @@ local function buildLowTunnelWide(piece: PieceConfig, parent: Instance)
 	local ceiling = makePart(
 		"TunnelCeiling",
 		Vector3.new(ceilingX1 - ceilingX0, ceilingThickness, config.Lane.Width),
-		Vector3.new((ceilingX0 + ceilingX1) / 2, clearance + ceilingThickness / 2, 0),
+		Vector3.new((ceilingX0 + ceilingX1) / 2, config.Lane.TopY + clearance + ceilingThickness / 2, 0),
 		parent
 	)
 	ceiling.CanCollide = true
@@ -148,20 +149,20 @@ local BUILDERS = {
 function M0TestScene.build()
 	CollisionGroups.ensure()
 
-	local existing = workspace:FindFirstChild(config.SceneName)
+	local tracksRoot = Workspace:WaitForChild("Runtime"):WaitForChild("Tracks")
+	local existing = tracksRoot:FindFirstChild(config.SceneName)
 	if existing then
 		existing:Destroy()
 	end
 
 	local scene = Instance.new("Folder")
 	scene.Name = config.SceneName
-	scene.Parent = workspace
+	scene.Parent = tracksRoot
 
 	local obstacleLab = Instance.new("Folder")
 	obstacleLab.Name = "ObstacleLab"
 	obstacleLab.Parent = scene
 
-	-- Safe entry before the first canonical piece.
 	makeTrackPart("EntryFloor", 0, config.Pieces[1].StartX, config.Lane.TopY, config.Lane.Thickness, obstacleLab)
 
 	for index, rawPiece in ipairs(config.Pieces) do

@@ -25,17 +25,16 @@ local function assertPartX(parent: Instance, name: string, x0: number, x1: numbe
 end
 
 function B15ObstacleLabSpec.run()
-	local scene = workspace:FindFirstChild("M0TestScene")
-	assert(scene and scene:IsA("Folder"), "B15 requires M0TestScene")
+	local runtime = workspace:WaitForChild("Runtime")
+	local tracks = runtime:WaitForChild("Tracks")
+	local scene = tracks:FindFirstChild("M0TestScene")
+	assert(scene and scene:IsA("Folder"), "B15 requires Runtime.Tracks.M0TestScene")
 	local lab = scene:FindFirstChild("ObstacleLab")
 	assert(lab and lab:IsA("Folder"), "B15 requires ObstacleLab")
 
-	-- FlatShort + recovery.
 	assertPartX(lab, "FlatFloor", 10, 28, 0)
 	assertPartX(lab, "RecoveryAfterFlatShort", 28, 38, 0)
 
-	-- SmallSteps: canonical discrete intervals, not an ascending stair.
-	assertPartX(lab, "StepsFloor", 38, 66, 0)
 	local stepIntervals = {
 		{ 40, 44 },
 		{ 45, 49 },
@@ -43,6 +42,7 @@ function B15ObstacleLabSpec.run()
 		{ 55, 59 },
 		{ 60, 64 },
 	}
+	assertPartX(lab, "StepsFloor", 38, 66, 0)
 	for index, interval in ipairs(stepIntervals) do
 		local name = string.format("Step%d", index)
 		assertPartX(lab, name, interval[1], interval[2], 1.5)
@@ -50,7 +50,6 @@ function B15ObstacleLabSpec.run()
 	end
 	assert(requirePart(lab, "Step5") ~= nil, "SmallSteps must contain all five canonical blocks")
 
-	-- SingleWallLow: wall interval X=85..87 and top=2.6.
 	assertPartX(lab, "WallFloor", 76, 96, 0)
 	local wall = requirePart(lab, "Wall")
 	approx(wall.Position.X, 86, "Wall.Position.X")
@@ -58,7 +57,6 @@ function B15ObstacleLabSpec.run()
 	approx(wall.Size.Y, 2.6, "Wall.Size.Y")
 	approx(wall.Position.Y + wall.Size.Y / 2, 2.6, "Wall.TopY")
 
-	-- GapSmall: no collidable geometry may bridge the exact 116.4..119.6 opening.
 	assertPartX(lab, "GapApproach", 106, 116.4, 0)
 	assertPartX(lab, "GapLanding", 119.6, 130, 0)
 	for _, child in lab:GetChildren() do
@@ -70,7 +68,6 @@ function B15ObstacleLabSpec.run()
 		end
 	end
 
-	-- LowTunnelWide: full floor and 16-stud roof with bottom clearance=4.25.
 	assertPartX(lab, "TunnelFloor", 140, 168, 0)
 	local ceiling = requirePart(lab, "TunnelCeiling")
 	approx(ceiling.Position.X, 154, "TunnelCeiling.Position.X")

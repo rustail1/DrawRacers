@@ -42,7 +42,8 @@ def test_a03_bootstrap_invokes_studio_scene_builder():
 def test_a03_builder_creates_reproducible_non_colliding_markers():
     text = BUILDER.read_text(encoding="utf-8")
     for token in [
-        'workspace:FindFirstChild(config.SceneName)',
+        'WaitForChild("Runtime"):WaitForChild("Tracks")',
+        'tracksRoot:FindFirstChild(config.SceneName)',
         ':Destroy()',
         'Instance.new("Folder")',
         'Instance.new("Part")',
