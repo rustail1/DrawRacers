@@ -4,6 +4,27 @@ local LegShapeService = require(script.Parent:WaitForChild("LegShapeService"))
 
 local StrokeRemoteTransport = {}
 
+function StrokeRemoteTransport.ProcessSafely(processor: any, player: any, payload: any)
+	local ok, resultOrError = xpcall(function()
+		return processor:Handle(player, payload)
+	end, debug.traceback)
+
+	if not ok then
+		warn("[DrawRacers][R14.5] SubmitStroke processor failure: " .. tostring(resultOrError))
+		local sequence = LegShapeService.ExtractSafeSequence(payload)
+		if sequence ~= nil then
+			return {
+				sequence = sequence,
+				accepted = false,
+				rejectReasonCode = "SERVER_ERROR",
+			}
+		end
+		return nil
+	end
+
+	return resultOrError
+end
+
 function StrokeRemoteTransport.Bind(deps: any)
 	assert(type(deps) == "table", "StrokeRemoteTransport.Bind requires deps")
 	assert(type(deps.resolveRacer) == "function", "StrokeRemoteTransport.Bind requires resolveRacer")
@@ -19,24 +40,7 @@ function StrokeRemoteTransport.Bind(deps: any)
 	})
 
 	local connection = submitStroke.OnServerEvent:Connect(function(player, payload)
-		local ok, resultOrError = xpcall(function()
-			return processor:Handle(player, payload)
-		end, debug.traceback)
-
-		if not ok then
-			warn("[DrawRacers][R14.5] SubmitStroke processor failure: " .. tostring(resultOrError))
-			local sequence = LegShapeService.ExtractSafeSequence(payload)
-			if sequence ~= nil then
-				strokeResult:FireClient(player, {
-					sequence = sequence,
-					accepted = false,
-					rejectReasonCode = "SERVER_ERROR",
-				})
-			end
-			return
-		end
-
-		local result = resultOrError
+		local result = StrokeRemoteTransport.ProcessSafely(processor, player, payload)
 		if result ~= nil then
 			strokeResult:FireClient(player, result)
 		end
