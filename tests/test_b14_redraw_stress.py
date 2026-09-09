@@ -51,3 +51,21 @@ def test_b14_studio_stress_spec_is_wired() -> None:
     bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
     assert "B14RedrawStressSpec" in bootstrap
     assert "B14RedrawStressSpec.run()" in bootstrap
+
+
+def test_b14_expensive_invalid_payload_cases_run_outside_submit_cooldown() -> None:
+    spec = (ROOT / "src" / "server" / "Tests" / "B14RedrawStressSpec.lua").read_text(encoding="utf-8")
+    cooldown_advance = "now += PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown + 0.01"
+
+    for marker in [
+        "local malformed = processor:Handle",
+        "local nonFinite = processor:Handle",
+        "local tooMany = processor:Handle",
+        "local oversized = processor:Handle",
+    ]:
+        marker_index = spec.index(marker)
+        prior_window = spec[max(0, marker_index - 180):marker_index]
+        assert cooldown_advance in prior_window, (
+            f"{marker} must advance fake server time past StrokeSubmitCooldown so the Studio spec "
+            "tests that payload guard instead of correctly receiving RATE_LIMITED"
+        )
