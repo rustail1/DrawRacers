@@ -4,6 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local DebugTelemetry = require(script.Parent:WaitForChild("Runtime"):WaitForChild("DebugTelemetry"))
 
+local STUDIO_GATE_ATTRIBUTE = "DrawRacersStudioGateState"
+
 DebugTelemetry.start()
 
 if RunService:IsStudio() then
@@ -11,63 +13,48 @@ if RunService:IsStudio() then
 		ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("StudioHarnessConfig")
 	)
 	local M0TestScene = require(script.Parent.M0TestScene)
-	M0TestScene.build()
-
 	local testsFolder = script.Parent:WaitForChild("Tests")
-	local B03StrokeMathSpec = require(testsFolder:WaitForChild("B03StrokeMathSpec"))
-	B03StrokeMathSpec.run()
+	local StudioSpecRunner = require(testsFolder:WaitForChild("StudioSpecRunner"))
 
-	local B04StrokeMathSpec = require(testsFolder:WaitForChild("B04StrokeMathSpec"))
-	B04StrokeMathSpec.run()
+	ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "TESTING")
 
-	local B05StrokeMathMatrixSpec = require(testsFolder:WaitForChild("B05StrokeMathMatrixSpec"))
-	B05StrokeMathMatrixSpec.run()
+	local sceneOk, sceneError = xpcall(function()
+		M0TestScene.build()
+	end, debug.traceback)
+	if not sceneOk then
+		warn("[DrawRacers][StudioGate] scene build failed: " .. tostring(sceneError))
+	end
 
-	local B06RacerRuntimeSpec = require(testsFolder:WaitForChild("B06RacerRuntimeSpec"))
-	B06RacerRuntimeSpec.run()
+	local specsPassed = false
+	if sceneOk then
+		local passed = StudioSpecRunner.run(testsFolder)
+		specsPassed = passed == true
+	end
 
-	local B07LegAssemblySpec = require(testsFolder:WaitForChild("B07LegAssemblySpec"))
-	B07LegAssemblySpec.run()
+	if specsPassed then
+		ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "READY")
+		print("[DrawRacers][StudioGate] READY")
 
-	local B09TwoLegPhaseSpec = require(testsFolder:WaitForChild("B09TwoLegPhaseSpec"))
-	B09TwoLegPhaseSpec.run()
-
-	local B10StabilizationSpec = require(testsFolder:WaitForChild("B10StabilizationSpec"))
-	B10StabilizationSpec.run()
-
-	local B11LegShapeServiceSpec = require(testsFolder:WaitForChild("B11LegShapeServiceSpec"))
-	B11LegShapeServiceSpec.run()
-
-	local B12StrokeRemoteSpec = require(testsFolder:WaitForChild("B12StrokeRemoteSpec"))
-	B12StrokeRemoteSpec.run()
-
-	local B13AtomicRedrawSpec = require(testsFolder:WaitForChild("B13AtomicRedrawSpec"))
-	B13AtomicRedrawSpec.run()
-
-	local B14RedrawStressSpec = require(testsFolder:WaitForChild("B14RedrawStressSpec"))
-	B14RedrawStressSpec.run()
-
-	local B15ObstacleLabSpec = require(testsFolder:WaitForChild("B15ObstacleLabSpec"))
-	B15ObstacleLabSpec.run()
-
-	local B16DebugTuningSpec = require(testsFolder:WaitForChild("B16DebugTuningSpec"))
-	B16DebugTuningSpec.run()
-
-	local harnessMode = StudioHarnessConfig.Mode
-	if harnessMode == "G0" then
-		local M0HumanHarness = require(testsFolder:WaitForChild("M0HumanHarness"))
-		M0HumanHarness.start()
-	elseif harnessMode == "B08" then
-		local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
-		B08OneHingeMotorHarness.start()
-	elseif harnessMode == "B09" then
-		local B09TwoLegPhaseHarness = require(testsFolder:WaitForChild("B09TwoLegPhaseHarness"))
-		B09TwoLegPhaseHarness.start()
-	elseif harnessMode == "B10" then
-		local B10StabilizationHarness = require(testsFolder:WaitForChild("B10StabilizationHarness"))
-		B10StabilizationHarness.start()
-	elseif harnessMode ~= "NONE" then
-		error(string.format("unknown StudioHarnessConfig.Mode %s", tostring(harnessMode)))
+		local harnessMode = StudioHarnessConfig.Mode
+		if harnessMode == "G0" then
+			local M0HumanHarness = require(testsFolder:WaitForChild("M0HumanHarness"))
+			M0HumanHarness.start()
+		elseif harnessMode == "B08" then
+			local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
+			B08OneHingeMotorHarness.start()
+		elseif harnessMode == "B09" then
+			local B09TwoLegPhaseHarness = require(testsFolder:WaitForChild("B09TwoLegPhaseHarness"))
+			B09TwoLegPhaseHarness.start()
+		elseif harnessMode == "B10" then
+			local B10StabilizationHarness = require(testsFolder:WaitForChild("B10StabilizationHarness"))
+			B10StabilizationHarness.start()
+		elseif harnessMode ~= "NONE" then
+			ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "BLOCKED")
+			error(string.format("unknown StudioHarnessConfig.Mode %s", tostring(harnessMode)))
+		end
+	else
+		ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "BLOCKED")
+		warn("[DrawRacers][StudioGate] BLOCKED — one or more server regression specs failed")
 	end
 end
 
