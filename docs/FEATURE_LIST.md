@@ -4,7 +4,7 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
 **Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle lab → debug/tuning pipeline, implementation items **B03–B16**.  
-**Current implementation integrity:** bounded CORE/pre-G0 repair **R01–R12** plus runtime/evidence closure **R14.1–R14.11** are implemented in `main`. Historical pre-R06 baseline was **66 passed, 0 failed**; R08 closed at **77 passed, 0 failed**; R09 bounded repair verified **80 passed, 0 failed**; final R10–R12 code head `e2bedd34696bb99da43878c19d7984c9134c8bef` / run `34363706915` verified **88 passed, 0 failed**. Final R14 code/tooling head `8a6a05a31427346d2a1437820ffa759f21fca90c` / run `34387618626` verified **120 passed, 0 failed** plus successful **Rojo build**. R14.11 reconciles status/evidence owners to that verified head. The known R09–R12 and R14 implementation/documentation findings are **CLOSED at repository level**.  
+**Current implementation integrity:** bounded CORE/pre-G0 repair **R01–R12**, runtime/evidence closure **R14.1–R14.11**, and planar-physics correction **R15** are implemented in `main`. Historical pre-R06 baseline was **66 passed, 0 failed**; R08 closed at **77 passed, 0 failed**; R09 bounded repair verified **80 passed, 0 failed**; final R10–R12 code head `e2bedd34696bb99da43878c19d7984c9134c8bef` / run `34363706915` verified **88 passed, 0 failed**. Final R14 code/tooling head `8a6a05a31427346d2a1437820ffa759f21fca90c` / run `34387618626` verified **120 passed, 0 failed** plus successful **Rojo build**. R15 production head `f0e943b5d6e8c48c2eb144cec43d2e5531dbcc48` / run `34393130544` verified **124 passed, 0 failed** plus successful **Rojo build**.  
 **Current gate:** **B17/G0 HUMAN_GATE**. **Studio checkpoints: HUMAN PENDING.** Implementation/CI/Rojo build alone do not promote B03–B16 to ACCEPTED.  
 **Acceptance note:** A01–A04 and B01–B02 remain recorded ACCEPTED.  
 **Rule:** only one gameplay feature may be ACTIVE at a time. `SESSION.md` owns the evidence cursor; `25` owns implementation order. No C01 or later work may start without recorded G0 PASS or an explicit Product Owner gate decision.
@@ -21,12 +21,13 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - ACTIVE / REPAIR COMPLETE, STUDIO EVIDENCE PENDING — R01–R08 implementation-integrity repair series.
 - CLOSED / IMPLEMENTATION-REGRESSION — R09–R12 pre-G0 findings; retained in B17 only as runtime verification points.
 - CLOSED / IMPLEMENTATION-REGRESSION-CI-DOCS — R14.1–R14.11 pre-G0 runtime/tooling/evidence closure; Studio checkpoints remain HUMAN PENDING.
+- ACTIVE / IMPLEMENTED-AUTOMATED GREEN, HUMAN STUDIO PENDING — R15 hard 2.5D planar racer physics.
 - BACKLOG / HUMAN_GATE — B17 G0 record; **hard stop before M0.5**.
 
 ### R01–R12 implementation-integrity record
 - **R01** — one `GeometryMath` plan owner + authoritative ShapeSpec→LegAssembly path; square semantic drawing surface prevents aspect-ratio physics distortion.
 - **R02** — bounded semantic sampling independent of input event rate; local minimum validation; server-truth accepted-result ordering.
-- **R03** — full collision matrix, soft/free-tilt stabilization contract, canonical runtime track root, TopY-relative tunnel geometry.
+- **R03** — full collision matrix, no forward propulsion from stabilization, canonical runtime track root, TopY-relative tunnel geometry. The original soft/free-tilt stabilization detail is superseded by R15 hard planar physics.
 - **R04** — real collider/simplified-point telemetry, progress-window stuck semantics, deterministic debug target selection.
 - **R05** — one selectable Studio interactive harness; default `G0`; Studio-only injected Player→RacerRuntime mapping uses existing stroke transport and does not implement D05 RacerService.
 - **R06** — status/README/decision evidence reconciled to the G0 hard stop without promoting Studio acceptance.
@@ -48,7 +49,14 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - **R14.8 Validation UX — CLOSED code/contract** — geometry errors map to `DRAW A DIFFERENT SHAPE`; transport/technical failures map to `TRY AGAIN`; final Studio visual/timing acceptance remains HUMAN PENDING.
 - **R14.9 CI Rojo build — CLOSED CI** — GitHub Actions installs the pinned toolchain and executes a real Rojo build after contract checks.
 - **R14.10 Types/RemoteNames — CLOSED code/contract** — shared StrokeTypes are consumed on active network/ShapeSpec runtime boundaries; active remote consumers and B12 Studio coverage use shared RemoteNames.
-- **R14.11 Docs/evidence reconciliation — CLOSED repository** — root/status/decision docs point to final code/tooling head `8a6a05a31427346d2a1437820ffa759f21fca90c`, run `34387618626`, **120 passed, 0 failed**, successful **Rojo build**, while preserving **Studio checkpoints: HUMAN PENDING** and **B17/G0 HUMAN_GATE**.
+- **R14.11 Docs/evidence reconciliation — CLOSED repository** — root/status/decision docs retain final code/tooling head `8a6a05a31427346d2a1437820ffa759f21fca90c`, run `34387618626`, **120 passed, 0 failed**, successful **Rojo build**, while preserving **Studio checkpoints: HUMAN PENDING** and **B17/G0 HUMAN_GATE**.
+
+### R15 hard 2.5D planar racer physics
+- **R15 — IMPLEMENTED/AUTOMATED GREEN; HUMAN STUDIO PENDING** — X/Y remain the physical gameplay plane; Z translation is locked to lane center; rotation around world Z remains physical/free; out-of-plane X/Y rotation is constrained.
+- Owner remains `RacerStabilizer`: always-on Z-only `AlignPosition` plus `PrimaryAxisParallel` `AlignOrientation`; no side walls, no new movement service, no normal-operation CFrame teleport, and no stabilizer +X propulsion.
+- Starting diagnostics/tuning: `LaneNormalError = 0.03`, `LaneHardBound = 0.08`, `LaneMaxForceZ = 60000`, `LaneResponsiveness = 40`, `LaneMaxVelocity = 30`, `OrientationResponsiveness = 40`, `OrientationMaxTorque = 60000`, `OrientationMaxAngularVelocity = 30`.
+- Trigger evidence: local G0 reached `13 PASS / 0 FAIL` and READY, but debug showed `laneDeviation 0.418` and side-edge falls before R14.6 kill-Y recovery.
+- Automated code evidence: `f0e943b5d6e8c48c2eb144cec43d2e5531dbcc48`, run `34393130544`, **124 passed, 0 failed**, successful **Rojo build**. Human solver/physics acceptance remains pending.
 
 Repository audit conclusion at this gate: no new top-level gameplay service/controller family is justified. CI includes Rojo buildability but does not replace Studio/external-tester G0 evidence.
 
