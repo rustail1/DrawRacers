@@ -34,6 +34,17 @@ local function networkReject(sequence: number, reasonCode: string)
 	}
 end
 
+local function serializeSemanticPoints(points: { Vector2 }): { any }
+	local result = table.create(#points)
+	for index, point in points do
+		result[index] = {
+			x = point.X,
+			y = point.Y,
+		}
+	end
+	return result
+end
+
 local function validateRawPointArray(rawPoints: any): ({ Vector2 }?, string?)
 	local config = PhysicsConfig.StrokeProcessing
 	if type(rawPoints) ~= "table" then
@@ -348,10 +359,13 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 		state.pendingSequence = nil
 		if buildResult.accepted == true then
 			state.lastAcceptedSequence = sequence
+			local shapeSpec = buildResult.shapeSpec
+			assert(type(shapeSpec) == "table" and type(shapeSpec.normalizedPoints) == "table", "accepted build missing ShapeSpec")
 			return {
 				sequence = sequence,
 				accepted = true,
 				shapeVersion = buildResult.shapeVersion,
+				acceptedPoints = serializeSemanticPoints(shapeSpec.normalizedPoints),
 			}
 		end
 		return networkReject(sequence, buildResult.rejectReasonCode or "INVALID_STROKE")
