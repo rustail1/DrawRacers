@@ -26,8 +26,9 @@ def test_r04_stuck_uses_documented_horizontal_progress_window():
     assert "ProgressSampleWindow = 2.5" in config
     assert "MeaningfulHorizontalProgress = 0.35" in config
     assert "body.Position.X" in telemetry
-    assert "PhysicsConfig.Recovery.ProgressSampleWindow" in telemetry
-    assert "PhysicsConfig.Recovery.MeaningfulHorizontalProgress" in telemetry
+    assert "local recovery = PhysicsConfig.Recovery" in telemetry
+    assert "recovery.ProgressSampleWindow" in telemetry
+    assert "recovery.MeaningfulHorizontalProgress" in telemetry
     assert "bodySpeed < 0.5" not in telemetry
 
 
