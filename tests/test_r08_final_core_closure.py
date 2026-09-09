@@ -36,6 +36,10 @@ def test_r08_g0_isolates_roblox_character_from_racer_physics() -> None:
     ]:
         assert token in harness, f"missing G0 character isolation token: {token}"
 
+    attach_block = harness[harness.index("local function attachPlayer"):harness.index("local function attachNextAvailablePlayer")]
+    assert "isolateCharacter(player.Character)" in attach_block
+    assert attach_block.index("isolateCharacter(player.Character)") < attach_block.index("RacerRuntime.new")
+
 
 def test_r08_minimum_useful_leg_extent_is_configured_and_server_enforced() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
