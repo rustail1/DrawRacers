@@ -45,3 +45,11 @@ def test_b02_bootstrap_keeps_drawing_controller_and_allows_later_dependencies() 
     assert "DrawingController.new(inputController, drawHud" in bootstrap
     assert "drawingController:Start()" in bootstrap
     assert "B01InputHarness" not in bootstrap
+
+
+def test_b02_drawhud_wait_is_bounded_and_fails_closed() -> None:
+    bootstrap = (ROOT / "src" / "client" / "Bootstrap.client.lua").read_text(encoding="utf-8")
+    assert "DRAW_HUD_WAIT_TIMEOUT" in bootstrap
+    assert 'WaitForChild("DrawHUD", DRAW_HUD_WAIT_TIMEOUT)' in bootstrap
+    assert 'assert(drawHudInstance and drawHudInstance:IsA("ScreenGui")' in bootstrap
+    assert 'WaitForChild("DrawHUD") :: ScreenGui' not in bootstrap
