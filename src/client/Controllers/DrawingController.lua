@@ -48,9 +48,6 @@ local function validationMessageForReason(reasonCode: string): string
 	if reasonCode == "TOO_FEW_POINTS"
 		or reasonCode == "TOO_SHORT"
 		or reasonCode == "INVALID_STROKE"
-		or reasonCode == "TOO_MANY_POINTS"
-		or reasonCode == "TOO_MANY_CLEANED_POINTS"
-		or reasonCode == "PAYLOAD_TOO_LARGE"
 	then
 		return "DRAW A DIFFERENT SHAPE"
 	end
