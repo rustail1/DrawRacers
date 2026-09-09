@@ -174,3 +174,36 @@ def test_r14_8_player_toast_maps_internal_reason_codes_to_copy() -> None:
     assert 'self:_setValidation(rejectReasonCode)' not in drawing
     assert 'self:_setValidation("TOO_FEW_POINTS")' not in drawing
     assert 'self:_setValidation("NETWORK_NOT_READY")' not in drawing
+
+
+def test_r14_9_ci_builds_the_rojo_project_after_contract_checks() -> None:
+    workflow = read(".github/workflows/contract-verify.yml")
+    assert "paradoxum-games/setup-rokit@v3" in workflow
+    assert "version: 1.1.0" in workflow
+    assert "rokit install" in workflow
+    assert "rojo build default.project.json -o /tmp/DrawRacersDev.rbxlx" in workflow
+    assert workflow.index("python verify.py") < workflow.index("rojo build default.project.json -o /tmp/DrawRacersDev.rbxlx")
+
+
+def test_r14_10_stroke_types_own_network_payloads_and_runtime_debug_fields() -> None:
+    stroke_types = read("src/shared/Types/StrokeTypes.lua")
+    for token in [
+        "export type SemanticPoint",
+        "export type SemanticPoints",
+        "export type SubmitStrokePayload",
+        "export type StrokeResultPayload",
+        "acceptedPoints",
+        "rejectReasonCode",
+        "debugRawPointCount",
+        "debugPhysicsPointCount",
+    ]:
+        assert token in stroke_types, f"missing R14.10 StrokeTypes token: {token}"
+
+
+def test_r14_10_active_remote_consumers_use_remote_names_registry() -> None:
+    bootstrap = read("src/client/Bootstrap.client.lua")
+    harness = read("src/server/Tests/M0HumanHarness.lua")
+    for source in [bootstrap, harness]:
+        assert 'WaitForChild("RemoteNames")' in source
+        assert "RemoteNames.SubmitStroke" in source
+        assert "RemoteNames.StrokeResult" in source
