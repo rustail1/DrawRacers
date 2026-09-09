@@ -25,12 +25,17 @@ def test_r14_4_default_group_cannot_push_racer_geometry():
     assert "CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.Track, true)" in collision
 
 
-def test_r03_stabilizer_has_free_tilt_deadzone_without_forward_force():
+def test_r03_stabilizer_has_planar_lock_without_forward_force():
     config = read("src/shared/Config/PhysicsConfig.lua")
     stabilizer = read("src/server/Runtime/RacerStabilizer.lua")
-    assert "OrientationFreeTiltDegrees = 25" in config
-    assert "OrientationFreeTiltDegrees" in stabilizer
-    assert "orientationAlign.Enabled = orientationErrorDegrees > config.OrientationFreeTiltDegrees" in stabilizer
+    assert "OrientationFreeTiltDegrees" not in config
+    assert "OrientationFreeTiltDegrees" not in stabilizer
+    assert "LaneCorrectionDeadzone" not in config
+    assert "LaneCorrectionDeadzone" not in stabilizer
+    assert "orientationAlign.AlignType = Enum.AlignType.PrimaryAxisParallel" in stabilizer
+    assert "orientationAlign.PrimaryAxis = Vector3.zAxis" in stabilizer
+    assert "orientationAlign.Enabled = true" in stabilizer
+    assert "laneAlign.Enabled = true" in stabilizer
     assert "MaxAxesForce = Vector3.new(0, 0, config.LaneMaxForceZ)" in stabilizer
 
 
