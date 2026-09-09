@@ -474,6 +474,52 @@ function DrawingController:_tryAppendSemanticPoint(point: Vector2, forceFinal: b
 	end
 end
 
+function DrawingController:_compactLivePoints()
+	local points = self._livePoints
+	if #points <= 2 then
+		return
+	end
+
+	local compacted = table.create(math.ceil(#points / 2) + 1)
+	table.insert(compacted, points[1])
+	for index = 3, #points - 1, 2 do
+		table.insert(compacted, points[index])
+	end
+	local finalPoint = points[#points]
+	if compacted[#compacted] ~= finalPoint then
+		table.insert(compacted, finalPoint)
+	end
+
+	table.clear(self._livePoints)
+	for _, point in compacted do
+		table.insert(self._livePoints, point)
+	end
+	renderPolyline(self._ui.liveLayer, self._livePoints, self:_strokeThickness(), 0)
+end
+
+function DrawingController:_appendLivePoint(point: Vector2, _forceFinal: boolean)
+	local points = self._livePoints
+	local previous = points[#points]
+	if previous == nil then
+		table.insert(points, point)
+		return
+	end
+	if (point - previous).Magnitude <= 0 then
+		return
+	end
+
+	local maxPoints = PhysicsConfig.StrokeProcessing.MaxRawPoints
+	if #points >= maxPoints then
+		self:_compactLivePoints()
+		previous = points[#points]
+	end
+
+	table.insert(points, point)
+	if previous ~= nil then
+		drawSegment(self._ui.liveLayer, previous, point, self:_strokeThickness(), 0)
+	end
+end
+
 function DrawingController:_prepareSemanticPoints(pixelPoints: { Vector2 }): ({ SemanticPoint }?, string?)
 	local inputSize = self._ui.drawInputRect.AbsoluteSize
 	if inputSize.X <= 0 or inputSize.Y <= 0 then
@@ -610,7 +656,7 @@ function DrawingController:_onPointer(event)
 		self:_clearLiveStroke()
 
 		local point = self:_toLocal(event.position)
-		table.insert(self._livePoints, point)
+		self:_appendLivePoint(point, false)
 		self:_tryAppendSemanticPoint(point, false)
 	elseif event.phase == "move" then
 		if not self._drawing then
@@ -618,11 +664,7 @@ function DrawingController:_onPointer(event)
 		end
 
 		local point = self:_toLocal(event.position)
-		local previous = self._livePoints[#self._livePoints]
-		table.insert(self._livePoints, point)
-		if previous then
-			drawSegment(self._ui.liveLayer, previous, point, self:_strokeThickness(), 0)
-		end
+		self:_appendLivePoint(point, false)
 		self:_tryAppendSemanticPoint(point, false)
 	elseif event.phase == "end" then
 		if not self._drawing then
@@ -630,11 +672,7 @@ function DrawingController:_onPointer(event)
 		end
 
 		local point = self:_toLocal(event.position)
-		local previous = self._livePoints[#self._livePoints]
-		if previous and (point - previous).Magnitude > 0 then
-			table.insert(self._livePoints, point)
-			drawSegment(self._ui.liveLayer, previous, point, self:_strokeThickness(), 0)
-		end
+		self:_appendLivePoint(point, true)
 		self:_tryAppendSemanticPoint(point, true)
 
 		local pendingPixels = copyPoints(self._livePoints)
@@ -687,14 +725,13 @@ function DrawingController:Start()
 		if family == nil then
 			return
 		end
+		if self._drawing then
+			return
+		end
 		if family == self._layoutFamily then
 			return
 		end
-		if self._drawing then
-			self._pendingLayoutFamily = family
-		else
-			self:_applyLayout(family)
-		end
+		self:_applyLayout(family)
 	end)
 
 	if self._strokeResult ~= nil and self._resultConnection == nil then
