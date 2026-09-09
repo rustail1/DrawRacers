@@ -14,6 +14,8 @@ return {
 		NormalizedMax = 1,
 		StrokeSubmitCooldown = 0.20,
 		MaxStrokePayloadBytes = 4096,
+		StrokeResultTimeout = 3.0,
+		MaxPendingStrokes = 4,
 	},
 	LegGeometry = {
 		LegCanvasHalfSpan = 3.15,
