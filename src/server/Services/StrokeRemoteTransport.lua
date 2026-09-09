@@ -19,7 +19,24 @@ function StrokeRemoteTransport.Bind(deps: any)
 	})
 
 	local connection = submitStroke.OnServerEvent:Connect(function(player, payload)
-		local result = processor:Handle(player, payload)
+		local ok, resultOrError = xpcall(function()
+			return processor:Handle(player, payload)
+		end, debug.traceback)
+
+		if not ok then
+			warn("[DrawRacers][R14.5] SubmitStroke processor failure: " .. tostring(resultOrError))
+			local sequence = LegShapeService.ExtractSafeSequence(payload)
+			if sequence ~= nil then
+				strokeResult:FireClient(player, {
+					sequence = sequence,
+					accepted = false,
+					rejectReasonCode = "SERVER_ERROR",
+				})
+			end
+			return
+		end
+
+		local result = resultOrError
 		if result ~= nil then
 			strokeResult:FireClient(player, result)
 		end
