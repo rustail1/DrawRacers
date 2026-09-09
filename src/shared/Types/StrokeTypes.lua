@@ -3,6 +3,27 @@
 export type StrokePoint = Vector2
 export type StrokePoints = { Vector2 }
 
+-- Network-safe semantic representation. Remote payloads never send Vector2 values directly;
+-- they use explicit x/y fields so the server can validate the outer schema and every point.
+export type SemanticPoint = {
+	x: number,
+	y: number,
+}
+export type SemanticPoints = { SemanticPoint }
+
+export type SubmitStrokePayload = {
+	sequence: number,
+	points: SemanticPoints,
+}
+
+export type StrokeResultPayload = {
+	sequence: number,
+	accepted: boolean,
+	shapeVersion: number?,
+	acceptedPoints: SemanticPoints?,
+	rejectReasonCode: string?,
+}
+
 export type ClampOptions = {
 	minCoordinate: number,
 	maxCoordinate: number,
@@ -33,6 +54,8 @@ export type ShapeSpec = {
 	bounds: ShapeBounds,
 	extent: number,
 	segmentPlan: { ShapeSegmentPlanEntry },
+	debugRawPointCount: number,
+	debugPhysicsPointCount: number,
 	debugId: string,
 }
 
