@@ -4,7 +4,7 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
 **Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle lab → debug/tuning pipeline, implementation items **B03–B16**.  
-**Current implementation integrity:** bounded CORE/pre-G0 repair **R01–R09** is implemented in `main`. Historical pre-R06 baseline was **66 passed, 0 failed**; R08 closed at **77 passed, 0 failed**; R09 bounded repair is verified at **80 passed, 0 failed** on commit `3d414556677577af6b07ff253b97041c0eb59c30` / run `34352130204`. The three concrete R09 findings are **CLOSED at implementation/regression level**.  
+**Current implementation integrity:** bounded CORE/pre-G0 repair **R01–R12** is implemented in `main`. Historical pre-R06 baseline was **66 passed, 0 failed**; R08 closed at **77 passed, 0 failed**; R09 bounded repair verified **80 passed, 0 failed**; final R10–R12 code head `e2bedd34696bb99da43878c19d7984c9134c8bef` / run `34363706915` verified **88 passed, 0 failed**. The known R09–R12 findings are **CLOSED at implementation/regression level**.  
 **Current gate:** **B17/G0 HUMAN_GATE**. Studio/human evidence is pending; implementation/CI alone does not promote B03–B16 to ACCEPTED.  
 **Acceptance note:** A01–A04 and B01–B02 remain recorded ACCEPTED.  
 **Rule:** only one gameplay feature may be ACTIVE at a time. `SESSION.md` owns the evidence cursor; `25` owns implementation order. No C01 or later work may start without recorded G0 PASS or an explicit Product Owner gate decision.
@@ -19,10 +19,10 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - ACCEPTED — DrawCanvas input + stroke preview (`59` layout; B01+B02)
 - ACTIVE / IMPLEMENTED — B03–B16 core locomotion/redraw/obstacle/debug pipeline.
 - ACTIVE / REPAIR COMPLETE, STUDIO EVIDENCE PENDING — R01–R08 implementation-integrity repair series.
-- CLOSED / IMPLEMENTATION-REGRESSION — R09 three pre-G0 findings; retained in B17 only as runtime verification points.
+- CLOSED / IMPLEMENTATION-REGRESSION — R09–R12 pre-G0 findings; retained in B17 only as runtime verification points.
 - BACKLOG / HUMAN_GATE — B17 G0 record; **hard stop before M0.5**.
 
-### R01–R09 implementation-integrity record
+### R01–R12 implementation-integrity record
 - **R01** — one `GeometryMath` plan owner + authoritative ShapeSpec→LegAssembly path; square semantic drawing surface prevents aspect-ratio physics distortion.
 - **R02** — bounded semantic sampling independent of input event rate; local minimum validation; server-truth accepted-result ordering.
 - **R03** — full collision matrix, soft/free-tilt stabilization contract, canonical runtime track root, TopY-relative tunnel geometry.
@@ -32,6 +32,9 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - **R07** — strict B12 outer payload validation/rate work-ordering; complete B16 raw/physics/motor telemetry and DEV/STAGING gating; square semantic surface ownership tightened.
 - **R08** — touch layout switches only between strokes; normal Roblox Character isolated before G0 racer spawn; server minimum useful extent `0.7`; bounded actual-contact anti-stall on canonical flat/recovery semantics with `antiStallActive` telemetry.
 - **R09 — CLOSED** — accepted preview stores semantic coordinates so responsive changes cannot distort it; exact touch ValidationToast/DrawHint tokens from `59`; obstacle RequirementTag overrides recovery assist; spawned racer removes empty template-only `RuntimeAttachments` after attachment transfer.
+- **R10 — CLOSED** — accepted preview thickness follows active pointer only during drawing and the current layout otherwise; `EmptyGhost` stays hidden after first pointer-down; `ValidationToast` is mutually exclusive with `DrawHint` and auto-hides within 2.0 s; unsupported LastInputType values cannot force desktop layout.
+- **R11 — CLOSED** — hybrid LastInputType changes do not overwrite live-stroke layout intent; live preview points/Frames stay bounded by the existing stroke budget via compaction.
+- **R12 — CLOSED** — long/noisy semantic strokes compact at the cap instead of freezing so later geometry still contributes; G0 Character respawn isolation does not re-enable retired Character collision/query/touch.
 
 Repository audit conclusion at this gate: no new top-level gameplay service/controller family is justified. CI remains static-contract evidence and does not replace Rojo/Studio/external-tester G0 evidence.
 
