@@ -87,6 +87,18 @@ def test_r16_3a_server_centers_shape_by_bounds_without_resizing() -> None:
     assert "centering must preserve shape height" in b11
 
 
+def test_r16_3a_internal_apply_shape_cannot_bypass_centering() -> None:
+    runtime = read("src/server/Runtime/RacerRuntime.lua")
+
+    internal_shape = runtime.split("local function makeInternalShapeSpec", 1)[1].split(
+        "function RacerRuntime.new", 1
+    )[0]
+    assert "StrokeMath.CenterOnBounds(normalizedPoints)" in internal_shape
+    assert "GeometryMath.BuildSegmentPlan(centeredPoints, PhysicsConfig.LegGeometry)" in internal_shape
+    assert "normalizedPoints = centeredPoints" in internal_shape
+    assert "StrokeMath.ComputeBounds(centeredPoints)" in internal_shape
+
+
 def test_r16_3a_docs_supersede_raw_canvas_offset_semantics() -> None:
     shape_doc = read("docs/73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md")
     design = read("docs/superpowers/specs/2026-09-10-r16-draw-climber-reference-parity-design.md")
