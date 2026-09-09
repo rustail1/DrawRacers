@@ -13,10 +13,13 @@ local shared = ReplicatedStorage:WaitForChild("Shared")
 local RemoteNames = require(shared:WaitForChild("Net"):WaitForChild("RemoteNames"))
 
 local STUDIO_GATE_ATTRIBUTE = "DrawRacersStudioGateState"
+local DRAW_HUD_WAIT_TIMEOUT = 10
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-local drawHud = playerGui:WaitForChild("DrawHUD") :: ScreenGui
+local drawHudInstance = playerGui:WaitForChild("DrawHUD", DRAW_HUD_WAIT_TIMEOUT)
+assert(drawHudInstance and drawHudInstance:IsA("ScreenGui"), "DrawHUD missing from PlayerGui after bounded bootstrap wait")
+local drawHud = drawHudInstance :: ScreenGui
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local submitStroke = remotes:WaitForChild(RemoteNames.SubmitStroke)
