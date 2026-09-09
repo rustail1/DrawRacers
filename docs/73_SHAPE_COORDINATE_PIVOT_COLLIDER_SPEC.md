@@ -1,31 +1,42 @@
 # 73 — SHAPE COORDINATE, PIVOT & COLLIDER SPEC
-Статус: **EXACT CORE GEOMETRY CONTRACT v1.3.4**.
+Статус: **EXACT CORE GEOMETRY CONTRACT v1.4.0 / R16.3A**.
 
-Цель: убрать последнюю неоднозначность между экранным stroke и физической leg assembly. Этот файл владеет точным mapping `DrawCanvas → ShapeSpec → collider segments → hinge assembly`. `03` владеет игровым поведением, `16` — tuneable constants, `65` — Studio instance tree, `22` — network payload.
+Цель: убрать неоднозначность между экранным stroke и физической leg assembly. Этот файл владеет точным mapping `DrawCanvas → authoritative ShapeSpec → collider segments → hinge assembly`. `03` владеет игровым поведением, `16` — tuneable constants, `65` — Studio instance tree, `22` — network payload.
 
-> Это project starting decision, а не скрытая формула референса. Если G0/G1 показывает плохой feel, меняются только явно tuneable числа через `16/55`; семантика pivot/coordinate mapping меняется только Decision Log.
+> Это project starting decision, а не скрытая формула референса. R16.3A сознательно меняет прежнюю offset-семантику: положение одинаковой фигуры внутри DrawInputRect больше не должно менять физическую ногу.
 
 ## 1. Canonical 2D coordinate system
-`DrawInputRect` использует normalized coordinates `[-1,+1]` по обеим осям:
+`DrawInputRect` использует normalized input coordinates `[-1,+1]` по обеим осям:
 - center of DrawInputRect = `(0,0)`;
 - screen right = `+Xshape`;
 - screen up = `+Yshape`;
 - screen down therefore produces negative Yshape;
-- input is clamped to `[-1,+1]` before submit.
+- input is clamped to `[-1,+1]` before authoritative cleanup.
 
-**Pivot = DrawInputRect center `(0,0)`**, not the stroke bounding-box center. The server MUST NOT recenter the stroke around its own bounds and MUST NOT normalize every submitted stroke to the same radius. Size and offset relative to the hub are meaningful player input.
+### R16.3A — Reference Shape Centering
+После clamp/dedupe/RDP/resample сервер recenters the cleaned stroke around its own bounds center. Это **translation-only** операция:
+- `center = (bounds.min + bounds.max) / 2`;
+- каждая cleaned point становится `point - center`;
+- scale не меняется;
+- aspect/proportions не меняются;
+- rotation/mirror не добавляются;
+- open stroke не закрывается автоматически.
+
+Следствие: одна и та же фигура, нарисованная сверху, по центру или снизу DrawInputRect, после authoritative accept должна дать одинаковые `ShapeSpec.normalizedPoints`, одинаковый mapped segment plan и одинаковую физическую ногу. При этом маленькая фигура остаётся маленькой, большая — большой.
+
+Механический pivot — `(0,0)` уже **центрированного authoritative ShapeSpec**. Сырая позиция рисунка внутри DrawInputRect не является gameplay-параметром. Центр-маркер в UI показывает целевой hub/reference center accepted shape; live stroke до server accept может находиться в любом месте квадрата, а accepted preview обязан отображать authoritative centered points, возвращённые сервером.
 
 ## 2. Canvas-to-world scale
-Starting mapping:
+Starting mapping после R16.3A centering:
 - `LegCanvasHalfSpan = 3.15 studs`;
 - world-local point = `(Xshape * 3.15, Yshape * 3.15, 0)` inside each leg plane;
-- hard radial extent from hub = `4.50 studs` after server clamp;
-- corner input near `(±1,±1)` therefore naturally approaches the radial hard cap and is clamped radially if needed.
+- hard radial extent from hub = `4.50 studs` after server mapping;
+- mapped point beyond the hard radial extent is clamped radially if needed.
 
 The mapping is isotropic: one normalized unit is the same number of studs on X and Y. Do not stretch the shape based on viewport aspect or DrawCanvas pixel aspect.
 
 ## 3. Cleanup order
-Canonical order on client preview and repeated server-side for authority:
+Canonical authoritative order:
 1. clamp raw points to normalized square;
 2. reject non-finite values;
 3. dedupe using `16.DedupeDistance`;
@@ -33,11 +44,15 @@ Canonical order on client preview and repeated server-side for authority:
 5. resample along polyline arc length toward `16.ResampleTargetPoints` without inventing a closing segment;
 6. enforce max cleaned points;
 7. validate minimum cleaned polyline length;
-8. map normalized points to leg-local studs;
-9. radial-clamp any mapped point to `MaxLegExtentFromHub`;
-10. build segments.
+8. compute cleaned bounds and translate all cleaned points by `-boundsCenter` (**R16.3A**);
+9. recompute authoritative centered bounds;
+10. map centered normalized points to leg-local studs;
+11. radial-clamp any mapped point to `MaxLegExtentFromHub`;
+12. build segments.
 
 Open strokes stay open. Closed appearance exists only if the player physically ends close to the first point; the builder never silently closes a stroke.
+
+Client may preprocess for bounded preview/submission, but the server is the sole owner of the final centered ShapeSpec. `StrokeResult.acceptedPoints` must serialize `ShapeSpec.normalizedPoints`, so accepted DrawCanvas preview and physical leg use the same authoritative centered geometry.
 
 ## 4. Exact leg-local frame
 Before lane/world transforms, racer body local axes are:
@@ -47,11 +62,14 @@ Before lane/world transforms, racer body local axes are:
 
 Body collider default is `3×3×3` from `16`.
 
-Hub centers relative to racer body center:
-- LeftHub = `(0, -0.75, -1.62)` studs;
-- RightHub = `(0, -0.75, +1.62)` studs.
+Hub centers relative to racer body center are owned numerically by `PhysicsConfig.LegGeometry`:
+- `HubOffsetX = 0.0`;
+- `HubOffsetY = -0.35`;
+- `HubOffsetZAbs = 1.62`;
+- LeftHub = `(HubOffsetX, HubOffsetY, -HubOffsetZAbs)`;
+- RightHub = `(HubOffsetX, HubOffsetY, +HubOffsetZAbs)`.
 
-Both legs use the **same XY stroke geometry**. They are duplicated only by Z translation; do not mirror/invert the stroke in XY. This makes one visible drawn solution mechanically identical on both sides.
+Both legs use the **same centered XY ShapeSpec geometry**. They are duplicated only by Z translation; do not mirror/invert the stroke in XY. This makes one visible drawn solution mechanically identical on both sides.
 
 ## 5. LegRoot / hinge assembly
 Each side has one non-collidable rotating `LegRoot` Part centered on its hub. **DataModel hierarchy is owned by `65`**; the exact relevant runtime subtree is:
@@ -86,7 +104,7 @@ Hinge rotation axis is local/world `+Z` at neutral racer orientation on both sid
 Right leg starts `180°` phase after Left leg. Phase offset tuning stays in `16`.
 
 ## 6. Segment collider construction
-For each consecutive cleaned point pair `A→B`:
+For each consecutive centered point pair `A→B`:
 - skip segment if mapped length `< 0.08 stud` after cleanup;
 - create one simple rectangular physical Part;
 - segment center = midpoint `(A+B)/2` in LegRoot local XY;
@@ -97,13 +115,13 @@ For each consecutive cleaned point pair `A→B`:
 - no collision between segments in the same assembly;
 - segment visual smoothing/round caps are presentation only and may use `VisualSegmentsPerLeg`.
 
-There is **no automatic collision spoke from hub to the first stroke point**. A player may draw a disconnected-from-center arc; it still rotates rigidly around the hub because it is welded to LegRoot. This is intentional and is part of shape strategy.
+There is **no automatic collision spoke from hub to the first stroke point**. Centering the shape does not invent a connection to the hub; if the centered polyline itself does not pass through `(0,0)`, it still rotates rigidly around the hub because all segments are welded to LegRoot.
 
 Segments whose nearest geometry lies inside `InnerHubNoCollisionRadius` keep visual representation but set physical collision off. Outside that radius, leg colliders may collide with **Track only** (plus non-blocking Trigger query); they never collide with own body/legs or another racer. Global collision ownership = `28/65`.
 
 ## 7. Atomic rebuild
 For accepted redraw:
-1. server validates ShapeSpec;
+1. server validates and centers ShapeSpec;
 2. construct new left/right assemblies off to the side/non-colliding or with collisions disabled;
 3. copy current hinge angle/phase target as closely as implementation allows;
 4. place both new LegRoots at canonical hubs;
@@ -126,7 +144,7 @@ There must never be a frame where both old and new physical legs can push the ra
 `ShapeVersion` is a per-racer server-runtime monotonically increasing integer starting at `0` (no shape). Every accepted shape increments by exactly `1`; rejected submits do not increment. Sequence is reset when the racer runtime object is recreated on a new server session.
 
 ## 10. Canonical reproducible test/bot shapes
-All coordinates below are normalized DrawInputRect coordinates and must go through the same pipeline as human shapes. They are test/bot presets, never a classification shortcut for human movement.
+All coordinates below are normalized input coordinates and must go through the same R16.3A centering pipeline as human shapes. They are test/bot presets, never a classification shortcut for human movement.
 
 ### `ROUND_01`
 12-point open polyline approximating a circle, radius `0.72`, beginning at angle 0° and ending at 330°:
@@ -151,14 +169,19 @@ Safe but intentionally mediocre compact diagonal for bot mistakes:
 Presets are owned here. Bots reference IDs, never duplicate coordinates in `40/75`.
 
 ## 11. UI pivot presentation
-`59/68` must render a subtle non-interactive center hub marker inside DrawInputRect at normalized `(0,0)` so players can infer the physical pivot. It is presentation only, never draggable and never adds a point to the stroke.
+`59/68` render a subtle non-interactive center hub marker inside DrawInputRect at normalized `(0,0)`.
+
+After R16.3A this marker is the **authoritative target/reference hub center**, not a promise that raw pointer coordinates around that pixel are preserved as an offset. Live drawing remains where the pointer moved. After server acceptance, accepted preview is rendered from `StrokeResult.acceptedPoints`, so it recenters to the authoritative shape exactly as the physical legs do.
+
+The marker is never draggable and never adds a point to the stroke.
 
 ## 12. Acceptance
 PASS only if:
-- normalized center maps to the exact physical hub pivot;
-- the same submitted points generate equivalent left/right XY geometry;
-- changing drawn size changes physical radius rather than being normalized away;
-- offset shapes remain offset relative to the hub;
+- server-authoritative cleaned bounds midpoint maps to the exact physical hub pivot `(0,0)`;
+- the same shape translated to different DrawInputRect locations generates equivalent authoritative normalized points and equivalent left/right XY geometry;
+- changing drawn **size** changes physical radius rather than being normalized away;
+- translating an otherwise identical drawing inside the canvas does **not** change physical geometry;
+- no automatic spoke is created from hub to first point;
 - no default wheel/StarterShape appears when no shape exists;
 - ROUND/LONG_BAR/SMALL_ROUND/HOOK/ASYM presets produce repeatable distinct physical behavior in G0/G1;
 - rebuild never double-collides old+new legs;
