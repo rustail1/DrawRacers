@@ -10,8 +10,8 @@ local StudioHarnessConfig = require(
 
 local M0G0PresentationHarness = {}
 
-local CAMERA_OFFSET = Vector3.new(-14, 7, 16)
-local CAMERA_LOOK_AHEAD = Vector3.new(8, 1, 0)
+local CAMERA_OFFSET = Vector3.new(-6, 5, 16)
+local CAMERA_LOOK_AHEAD = Vector3.new(7, 1, 0)
 
 local connection: RBXScriptConnection? = nil
 local debugProxy: Part? = nil
