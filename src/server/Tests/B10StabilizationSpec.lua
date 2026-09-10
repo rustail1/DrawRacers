@@ -79,7 +79,8 @@ function B10StabilizationSpec.run()
 	)
 
 	-- Reference-parity body contract: disturb the cube but keep it upright while the legs
-	-- remain the only rotating locomotion assemblies.
+	-- remain the only rotating locomotion assemblies. Use real Heartbeat dt so low FPS cannot
+	-- silently stretch the quarter-second recovery target.
 	body.Anchored = true
 	body.CFrame = CFrame.new(-18, 8, laneCenterZ) * CFrame.Angles(0, 0, math.rad(2.5))
 	body.AssemblyLinearVelocity = Vector3.zero
@@ -87,10 +88,20 @@ function B10StabilizationSpec.run()
 	body.Anchored = false
 	local peakDeviation = bodyAngularDeviationDegrees(body)
 	assert(peakDeviation <= 3.0, string.format("upright body angular deviation peak %.4f", peakDeviation))
-	for _ = 1, 15 do
-		RunService.Heartbeat:Wait()
+	local recoveryElapsed = 0
+	local recovered = bodyAngularDeviationDegrees(body) <= 1.0
+	while recoveryElapsed < 0.25 and not recovered do
+		recoveryElapsed += RunService.Heartbeat:Wait()
+		recovered = bodyAngularDeviationDegrees(body) <= 1.0
 	end
-	assert(bodyAngularDeviationDegrees(body) <= 1.0, "upright body angular deviation did not recover")
+	assert(
+		recovered and recoveryElapsed <= 0.25,
+		string.format(
+			"upright recovery exceeded 0.25 s: elapsed=%.4f deviation=%.4f",
+			recoveryElapsed,
+			bodyAngularDeviationDegrees(body)
+		)
+	)
 
 	-- Upright correction must not accidentally become an X/Y position lock.
 	local freeStart = body.Position
