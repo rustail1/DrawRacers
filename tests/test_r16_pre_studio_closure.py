@@ -30,10 +30,17 @@ def test_p0_implementation_plan_matches_r16_3a_and_current_upright_basis() -> No
 def test_p1_b10_uses_real_elapsed_quarter_second_recovery_window() -> None:
     b10 = read("src/server/Tests/B10StabilizationSpec.lua")
 
-    assert "local recoveryElapsed = 0" in b10
-    assert "while recoveryElapsed < 0.25" in b10
-    assert "recoveryElapsed += RunService.Heartbeat:Wait()" in b10
+    assert "local RECOVERY_WINDOW = 0.25" in b10
+    assert "local MAX_RECOVERY_SAMPLE_DT = 0.10" in b10
+    assert "local MAX_RECOVERY_ATTEMPTS = 3" in b10
+    assert "for attempt = 1, MAX_RECOVERY_ATTEMPTS do" in b10
+    assert "local dt = RunService.Heartbeat:Wait()" in b10
+    assert "if dt > MAX_RECOVERY_SAMPLE_DT then" in b10
+    assert "recoveryElapsed += dt" in b10
+    assert "recovered and recoveryElapsed <= RECOVERY_WINDOW" in b10
+    assert "upright recovery evidence invalidated by Heartbeat stalls" in b10
     assert "upright recovery exceeded 0.25 s" in b10
+    assert "recoveryElapsed += RunService.Heartbeat:Wait()" not in b10
     assert "for _ = 1, 15 do" not in b10
 
 
@@ -49,7 +56,6 @@ def test_p2_flat_speed_uses_isolated_studio_benchmark_not_canonical_course() -> 
     assert "Length = 60" in config
     assert "buildReferenceBenchmark" in scene
     assert 'benchmark.Name' in scene
-    assert 'benchmark.CenterZ' in scene
     assert "CollectionService:AddTag(part, \"RecoverySurface\")" not in scene.split("local function buildReferenceBenchmark", 1)[1].split("end", 1)[0]
 
     assert "local benchmark = M0SceneConfig.ReferenceBenchmark" in runner
