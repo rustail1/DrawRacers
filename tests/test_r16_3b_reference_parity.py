@@ -158,3 +158,15 @@ def test_r16_3b_preserves_two_leg_phase_and_core_physics_tuning() -> None:
     assert runtime.count("shapeSpec = shapeSpec") >= 2
     assert "initialPhaseDegrees = leftPhaseDegrees" in runtime
     assert "initialPhaseDegrees = rightPhaseDegrees" in runtime
+
+
+def test_r16_3b_b14_separates_physical_and_visual_part_accounting() -> None:
+    b14 = read("src/server/Tests/B14RedrawStressSpec.lua")
+
+    assert "local function countPhysicalLegParts" in b14
+    assert "local function countVisualLegParts" in b14
+    assert "maxPhysicalLegParts" in b14
+    assert "maxVisualLegParts" in b14
+    assert "physicalPartsBeforeBurst" in b14
+    assert "visualPartsBeforeBurst" in b14
+    assert "countLegParts(" not in b14
