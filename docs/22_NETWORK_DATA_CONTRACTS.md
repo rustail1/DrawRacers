@@ -1,6 +1,6 @@
 # 22 — NETWORK & DATA CONTRACTS
 
-Статус: **SECURITY/INTEGRATION CONTRACT v1.3.4 / R16.3A**
+Статус: **SECURITY/INTEGRATION CONTRACT v1.3.4 / R16.3B**
 
 Roblox competitive rule: client is trusted for **input intent**, not for authoritative result.
 
@@ -23,7 +23,9 @@ Payload concept:
 }
 ```
 
-Client may pre-simplify for bandwidth, but server repeats validation/cleanup. The submitted `points` are input intent in normalized DrawInputRect space. R16.3A does not preserve their raw canvas offset as gameplay geometry: after cleanup, the server centers the accepted shape by its cleaned bounds midpoint before building the authoritative `ShapeSpec`.
+**R16.3B payload schema unchanged.** No canvas-aspect, presentation-anchor, pivot or world-space field is added. Client may pre-simplify for bandwidth, but server repeats validation/cleanup. Submitted `points` are input intent in the wide semantic DrawInputRect space: raw X is bounded by `RawSemanticHalfWidth = 1.75`, raw Y by `RawSemanticHalfHeight = 1.0`, using isotropic height-based normalization.
+
+After cleanup the server converts the accepted shape to a **first-point anchored** authoritative shape: the first cleaned point becomes `(0,0)` and every later point is stored relative to it. This supersedes R16.3A bounds-center centering. Raw canvas position is not physical authority; the client may remember the submitted first point locally for presentation only.
 
 Server validates:
 - correct player/race phase;
@@ -31,7 +33,7 @@ Server validates:
 - payload table shape;
 - finite numbers;
 - point count cap;
-- normalized bounds;
+- R16.3B semantic rectangle bounds;
 - minimum useful stroke;
 - sequence newer than last accepted/pending;
 - resulting segment/extent limits.
@@ -61,7 +63,6 @@ Payload:
 ```
 
 Server validates definition, ownership, slot compatibility.
-
 
 ### `CatalogPurchaseRequest`
 M2+ soft-currency purchase intent.
@@ -106,7 +107,9 @@ Server checks canonical eligibility (`45/61`), GuestSafe, configured SKU mapping
 }
 ```
 
-On `accepted=true`, `acceptedPoints` is the authoritative centered `ShapeSpec.normalizedPoints` produced by the server after clamp/dedupe/simplify/resample/R16.3A bounds-centering. It is not an echo of raw submitted coordinates. The client renders `acceptedPoints` as the accepted preview so UI and the physical legs show the same server-owned geometry. On rejection, `acceptedPoints` is omitted.
+On `accepted=true`, `acceptedPoints` are the **first-point anchored** authoritative `ShapeSpec.normalizedPoints` produced by the server after clamp/dedupe/simplify/resample/R16.3B anchoring. The first accepted point is `(0,0)` within tolerance. They are not an echo of raw submitted coordinates and they do not carry a client-authored physical offset.
+
+The **client renders** these authoritative points for accepted-shape presentation. `DrawingController` may add back the sequence-scoped submitted first point only as a local screen presentation anchor, preserving where the player saw the drawing; that local offset never changes ShapeSpec, colliders, motor physics or server authority. On rejection, `acceptedPoints` is omitted.
 
 Reason codes are UI/debug categories, not sensitive internal security details.
 
@@ -115,7 +118,6 @@ Reason codes are UI/debug categories, not sensitive internal security details.
 {requestId?, accepted:boolean, slot?, itemId?, reasonCode?}
 ```
 On accepted equip, UI waits for `ProfileEvent`/confirmed profile presentation state before claiming persistence.
-
 
 ### `CatalogPurchaseResult`
 ```text
@@ -257,7 +259,11 @@ ShapeSpec {
 }
 ```
 
-`normalizedPoints` are the centered authoritative normalized points after R16.3A processing. Their bounds midpoint is `(0,0)` within floating-point tolerance; the raw DrawInputRect offset from the submitted stroke is intentionally not retained as physical shape offset. Shape size/proportions are retained. `segmentPlan` is derived by server from these authoritative points and is not trusted from client.
+Under **R16.3B**, `normalizedPoints` are the first-point anchored authoritative points after server cleanup. `normalizedPoints[1]` is `(0,0)` within tolerance. Shape size/proportions/order are retained and the server does not resize, rotate or mirror the stroke.
+
+The **bounds midpoint is not required** to be `(0,0)` anymore. Bounds remain useful for validation/debug, but R16.3B supersedes the old R16.3A bounds-center pivot rule. `segmentPlan` is derived by the server from these authoritative points and is never trusted from the client. A local client presentation anchor is not part of ShapeSpec.
+
+The `SubmitStroke` / `StrokeResult` **payload schema unchanged** under R16.3B; only the server-owned semantics of accepted geometry changed.
 
 ---
 
@@ -315,7 +321,6 @@ If information affects:
 - race eligibility;
 
 then the authoritative value must be known/validated by the server.
-
 
 # 12. Remote ownership summary
 - `SubmitStroke/StrokeResult` → DrawingController ↔ LegShapeService.
