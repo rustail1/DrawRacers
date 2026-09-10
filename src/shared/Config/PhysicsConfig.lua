@@ -44,13 +44,6 @@ return {
 			FrictionWeight = 100,
 			ElasticityWeight = 100,
 		},
-		Body = {
-			Density = 1.0,
-			Friction = 0.45,
-			Elasticity = 0.05,
-			FrictionWeight = 100,
-			ElasticityWeight = 100,
-		},
 	},
 	Stabilization = {
 		LaneNormalError = 0.03,
