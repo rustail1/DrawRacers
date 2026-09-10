@@ -35,8 +35,10 @@ local function distanceFromOriginToSegment(a: Vector2, b: Vector2): number
 end
 
 function GeometryMath.MapPoint(point: Vector2, geometry: GeometryConfig): Vector2
-	local clamped = Vector2.new(math.clamp(point.X, -1, 1), math.clamp(point.Y, -1, 1))
-	local mapped = clamped * geometry.LegCanvasHalfSpan
+	-- R16.3B: ShapeSpec points are already authoritative leg-local offsets.
+	-- Do not component-clamp them back into the old square; retain direction and
+	-- proportion and enforce only the existing physical radial hard cap.
+	local mapped = point * geometry.LegCanvasHalfSpan
 	local magnitude = mapped.Magnitude
 	if magnitude > geometry.MaxLegExtentFromHub and magnitude > 0 then
 		mapped *= geometry.MaxLegExtentFromHub / magnitude
