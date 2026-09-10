@@ -20,9 +20,11 @@ def test_b02_local_preview_contract() -> None:
     ]:
         assert token in text, f"missing hierarchy token {token}"
 
-    assert "UDim2.fromScale(0.46, 0.255)" in text
-    assert "UDim2.fromScale(0.64, 0.285)" in text
-    assert "UDim2.fromScale(0.92, 0.82)" in text
+    # R16.3B: DrawInputRect is the full visible 1.75:1 semantic drawing surface.
+    assert "UDim2.fromScale(0.46, 0.28)" in text
+    assert "UDim2.fromScale(0.64, 0.34)" in text
+    assert "UDim2.fromScale(1, 1)" in text
+    assert "R16WideDrawSurfaceConstraint" in text
     assert "inputController:Bind(drawInputRect)" in text
 
     for phase in [
