@@ -16,10 +16,13 @@ def test_r16_5_tuning_has_single_leg_material_owner_and_flat_measurement_harness
     session = read("docs/SESSION.md")
 
     harness_path = ROOT / "src/server/Tests/R16StageBHarness.lua"
+    runner_path = ROOT / "src/server/Tests/R16TrialRunner.lua"
     shapes_path = ROOT / "src/server/Tests/R16ReferenceShapes.lua"
     assert harness_path.exists(), "R16.5 requires a Studio-only Stage B measurement harness"
+    assert runner_path.exists(), "R16.5 requires the shared Studio-only measurement runner"
     assert shapes_path.exists(), "R16.5 requires canonical executable reference shapes"
     harness = harness_path.read_text(encoding="utf-8")
+    runner = runner_path.read_text(encoding="utf-8")
     shapes = shapes_path.read_text(encoding="utf-8")
 
     assert "PhysicalMaterials = {" in config
@@ -39,12 +42,13 @@ def test_r16_5_tuning_has_single_leg_material_owner_and_flat_measurement_harness
     assert 'WaitForChild("R16StageBHarness")' in bootstrap
 
     assert "ROUND_01" in shapes
-    assert "waitForTrackContact" in harness
-    assert "FlatIgnoreSeconds" in harness
-    assert "FlatMeasureSeconds" in harness
+    assert "waitForTrackContact" in runner
+    assert "FlatIgnoreSeconds" in runner
+    assert "FlatMeasureSeconds" in runner
+    assert 'GetAttribute("AntiStallActive")' in runner
     assert "FlatSpeedMin" in harness
     assert "FlatSpeedMax" in harness
-    assert 'GetAttribute("AntiStallActive")' in harness
+    assert "R16TrialRunner.RunFlat" in harness
     assert "R16.5" in harness
 
     assert "Stage B implementation authorized by Product Owner" in session
@@ -56,6 +60,7 @@ def test_r16_6_vertical_motion_is_solver_owned_and_measured_in_studio() -> None:
     anti_stall = read("src/server/Runtime/RacerAntiStall.lua")
     scene = read("src/shared/Config/M0SceneConfig.lua")
     harness = read("src/server/Tests/R16StageBHarness.lua")
+    runner = read("src/server/Tests/R16TrialRunner.lua")
     shapes = read("src/server/Tests/R16ReferenceShapes.lua")
 
     stabilizer_step = stabilizer.split("function RacerStabilizer:Step()", 1)[1].split(
@@ -84,14 +89,15 @@ def test_r16_6_vertical_motion_is_solver_owned_and_measured_in_studio() -> None:
     assert "LONG_BAR_01" in shapes
     assert "runStepsVerticalTrial" in harness
     assert "runGapVerticalTrial" in harness
-    assert "maxDeltaY" in harness
-    assert "minDeltaY" in harness
+    assert "maxDeltaY" in harness and "maxDeltaY" in runner
+    assert "minDeltaY" in harness and "minDeltaY" in runner
     assert "[DrawRacers][R16.6]" in harness
 
 
 def test_r16_7_reference_matrix_has_all_shapes_and_exact_comparison_rules() -> None:
     scene = read("src/shared/Config/M0SceneConfig.lua")
     harness = read("src/server/Tests/R16StageBHarness.lua")
+    runner = read("src/server/Tests/R16TrialRunner.lua")
     shapes = read("src/server/Tests/R16ReferenceShapes.lua")
 
     for shape_id in [
@@ -103,6 +109,7 @@ def test_r16_7_reference_matrix_has_all_shapes_and_exact_comparison_rules() -> N
         "SUBOPTIMAL_01",
     ]:
         assert shape_id in shapes
+        assert shape_id in harness
 
     for token in [
         "StepsProgressAdvantage = 4.0",
@@ -113,8 +120,10 @@ def test_r16_7_reference_matrix_has_all_shapes_and_exact_comparison_rules() -> N
     ]:
         assert token in scene
 
-    assert "runProgressTrial" in harness
-    assert "runFlatSpeedTrial" in harness
+    assert "R16TrialRunner.RunPiece" in harness
+    assert "R16TrialRunner.RunFlat" in harness
+    assert "function R16TrialRunner.RunPiece" in runner
+    assert "function R16TrialRunner.RunFlat" in runner
     assert "runShapeMatrix" in harness
     assert "StepsProgressAdvantage" in harness
     assert "GapProgressAdvantage" in harness
@@ -124,6 +133,7 @@ def test_r16_7_reference_matrix_has_all_shapes_and_exact_comparison_rules() -> N
     assert "gapNichePassed" in harness
     assert "tunnelNichePassed" in harness
     assert "suboptimalPassed" in harness
+    assert "intersectWinnerSets" in harness
     assert "noUniversalWinner" in harness
     assert "[DrawRacers][R16.7]" in harness
 
