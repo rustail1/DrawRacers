@@ -68,7 +68,7 @@ function B07LegAssemblySpec.run()
 
 	local mapped = leg:GetMappedPoints()
 	assert(#mapped == 3)
-	assertClose(mapped[1].Magnitude, 0, 1e-6, "center maps to hub pivot")
+	assertClose(mapped[1].Magnitude, 0, 1e-6, "first point maps to hub pivot")
 	assertClose(mapped[2].X, 1.26, 1e-6, "isotropic X scale")
 	assertClose(mapped[2].Y, 0.945, 1e-6, "isotropic Y scale")
 	local expectedCornerMagnitude = math.min(
@@ -83,7 +83,7 @@ function B07LegAssemblySpec.run()
 
 	local hardCapGeometry = table.clone(PhysicsConfig.LegGeometry)
 	hardCapGeometry.LegCanvasHalfSpan = 4.0
-	local hardCapped = GeometryMath.MapPoint(Vector2.new(1, 1), hardCapGeometry)
+	local hardCapped = GeometryMath.MapPoint(Vector2.new(1.5, 1), hardCapGeometry)
 	assertClose(hardCapped.Magnitude, hardCapGeometry.MaxLegExtentFromHub, 1e-5, "radial hard cap")
 
 	local segments = leg:GetSegments()
@@ -95,10 +95,26 @@ function B07LegAssemblySpec.run()
 	for index, segment in segments do
 		assert(segment.Name == string.format("Segment_%02d", index))
 		assert(segment.CollisionGroup == "RacerLeg")
+		assert(segment.Transparency == 1, "physical colliders must stay hidden from presentation")
 		local weld = segment:FindFirstChild("RootWeld")
 		assert(weld and weld:IsA("WeldConstraint"), "segment missing RootWeld")
 		assert(weld.Part0 == leg:GetRoot() and weld.Part1 == segment, "segment weld must rigidly bind to one LegRoot")
 	end
+
+	local physicalCountBeforeVisualCheck = #segments
+	local visualFolder = legModel.Visual
+	local visualPartCount = 0
+	for _, descendant in visualFolder:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			visualPartCount += 1
+			assert(descendant.CanCollide == false, "visual representation must never collide")
+			assert(descendant.CanTouch == false, "visual representation must never touch")
+			assert(descendant.CanQuery == false, "visual representation must never query")
+			assert(descendant.Massless == true, "visual representation must stay massless")
+		end
+	end
+	assert(visualPartCount > 0, "R16.3B visual layer produced no visible geometry")
+	assert(#leg:GetSegments() == physicalCountBeforeVisualCheck, "physical collider count changed by visual layer")
 
 	local joint = leg:GetJoint()
 	assert(joint.Attachment0 == leftHub.MotorAttachment)
@@ -109,7 +125,7 @@ function B07LegAssemblySpec.run()
 	assert(model.Legs:FindFirstChild("LeftLeg") == nil, "LegAssembly destroy left runtime geometry behind")
 	racer:Destroy()
 
-	print("[DrawRacers][B07] one-leg geometry tests PASS")
+	print("[DrawRacers][B07] one-leg geometry + nonphysical visual tests PASS")
 end
 
 return B07LegAssemblySpec
