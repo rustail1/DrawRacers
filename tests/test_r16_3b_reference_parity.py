@@ -74,7 +74,8 @@ def test_r16_3b_draw_ui_uses_full_wide_surface_and_sequence_scoped_presentation_
     assert "presentationAnchor" in drawing
     assert "sequence" in drawing
     assert "StrokeMath.Normalize" in drawing
-    assert "self._inputController:Bind(drawInputRect)" in drawing
+    # The receiver may be a local alias; the contract is that the visible wide DrawInputRect is bound.
+    assert "inputController:Bind(drawInputRect)" in drawing
 
 
 def test_r16_3b_leg_visual_is_nonphysical_and_physical_colliders_are_hidden() -> None:
