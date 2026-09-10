@@ -219,7 +219,7 @@ local function runProgressTrial(
 	return result
 end
 
-local function runFlatRoundTrial()
+local function runFlatRoundTrial(): boolean
 	local acceptance = M0SceneConfig.ReferenceAcceptance
 	local result = runFlatSpeedTrial("ROUND_01")
 	local passed = result.valid
@@ -237,9 +237,10 @@ local function runFlatRoundTrial()
 		tostring(result.motorsEnabled),
 		if passed then "PASS" else "FAIL"
 	))
+	return passed
 end
 
-local function runStepsVerticalTrial()
+local function runStepsVerticalTrial(): boolean
 	local acceptance = M0SceneConfig.ReferenceAcceptance
 	local result = runProgressTrial("SmallSteps", "HOOK_01", acceptance.StepsMeasureSeconds, nil, "Step")
 	local maxDeltaY = result.maxDeltaY
@@ -250,9 +251,10 @@ local function runStepsVerticalTrial()
 		acceptance.StepsRiseMin,
 		if passed then "PASS" else "FAIL"
 	))
+	return passed
 end
 
-local function runGapVerticalTrial()
+local function runGapVerticalTrial(): boolean
 	local acceptance = M0SceneConfig.ReferenceAcceptance
 	local piece = findPiece("GapSmall")
 	local result = runProgressTrial(
@@ -274,9 +276,10 @@ local function runGapVerticalTrial()
 		tostring(crossedRecoveryKillY),
 		if passed then "PASS" else "FAIL"
 	))
+	return passed
 end
 
-local function runShapeMatrix()
+local function runShapeMatrix(): boolean
 	local acceptance = M0SceneConfig.ReferenceAcceptance
 
 	local roundFlat = runFlatSpeedTrial("ROUND_01")
@@ -339,7 +342,7 @@ local function runShapeMatrix()
 		and suboptimalFlat.speed <= roundFlat.speed * (1 - acceptance.SuboptimalWorseRatio)
 
 	-- Distinct winners across flat/steps/gap/tunnel prove that no single tested shape
-	-- wins or ties every measured canonical piece. Wall remains part of later R16.10 full-lab pass.
+	-- wins or ties every measured canonical piece. Wall remains part of R16.10 full-lab pass.
 	local noUniversalWinner = stepsNichePassed and gapNichePassed and tunnelNichePassed and suboptimalPassed
 	local passed = roundFlatPassed
 		and stepsNichePassed
@@ -365,6 +368,16 @@ local function runShapeMatrix()
 		tostring(noUniversalWinner),
 		if passed then "PASS" else "FAIL"
 	))
+	return passed
+end
+
+function R16StageBHarness.RunEvidence(): boolean
+	assert(RunService:IsStudio(), "R16StageBHarness evidence is Studio-only")
+	local flatPassed = runFlatRoundTrial()
+	local stepsPassed = runStepsVerticalTrial()
+	local gapPassed = runGapVerticalTrial()
+	local matrixPassed = runShapeMatrix()
+	return flatPassed and stepsPassed and gapPassed and matrixPassed
 end
 
 function R16StageBHarness.start()
@@ -376,15 +389,14 @@ function R16StageBHarness.start()
 	print("[DrawRacers][R16B] Stage B reference measurement harness ready")
 
 	task.spawn(function()
-		local ok, err = xpcall(function()
-			runFlatRoundTrial()
-			runStepsVerticalTrial()
-			runGapVerticalTrial()
-			runShapeMatrix()
+		local ok, result = xpcall(function()
+			return R16StageBHarness.RunEvidence()
 		end, debug.traceback)
 		if not ok then
-			warn("[DrawRacers][R16B] measurement harness error: " .. tostring(err))
+			warn("[DrawRacers][R16B] measurement harness error: " .. tostring(result))
 			destroyActiveRacer()
+		elseif result ~= true then
+			warn("[DrawRacers][R16B] one or more Stage B evidence checks FAILED")
 		end
 	end)
 end
