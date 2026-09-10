@@ -69,7 +69,8 @@ def test_r16_3_one_shape_builds_two_same_xy_legs_about_fixed_pivot() -> None:
     leg = read("src/server/Runtime/LegAssembly.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
 
-    assert "local mapped = clamped * geometry.LegCanvasHalfSpan" in geometry
+    assert "local mapped = point * geometry.LegCanvasHalfSpan" in geometry
+    assert "MaxLegExtentFromHub" in geometry
     assert "stagedLeftLeg = LegAssembly.new" in runtime
     assert "stagedRightLeg = LegAssembly.new" in runtime
     assert runtime.count("shapeSpec = shapeSpec") >= 2
@@ -82,96 +83,92 @@ def test_r16_3_one_shape_builds_two_same_xy_legs_about_fixed_pivot() -> None:
     assert "shapeSpec.normalizedPoints" not in apply_shape_spec
 
 
-def test_r16_3a_server_centers_shape_by_bounds_without_resizing() -> None:
+def test_r16_3b_server_anchors_shape_to_first_point_without_resizing() -> None:
     stroke_math = read("src/shared/Math/StrokeMath.lua")
     service = read("src/server/Services/LegShapeService.lua")
     b11 = read("src/server/Tests/B11LegShapeServiceSpec.lua")
 
-    assert "function StrokeMath.CenterOnBounds" in stroke_math
-    assert "local center = (bounds.min + bounds.max) * 0.5" in stroke_math
-    assert "point - center" in stroke_math
-    assert "local centered = StrokeMath.CenterOnBounds(cleaned)" in service
-    assert "GeometryMath.BuildSegmentPlan(centered, PhysicsConfig.LegGeometry)" in service
-    assert "normalizedPoints = centered" in service
-    assert "shifted shape must center to same normalized geometry" in b11
-    assert "centering must preserve shape width" in b11
-    assert "centering must preserve shape height" in b11
+    assert "function StrokeMath.AnchorToFirstPoint" in stroke_math
+    assert "local origin = points[1]" in stroke_math
+    assert "point - origin" in stroke_math
+    assert "local anchored = StrokeMath.AnchorToFirstPoint(cleaned)" in service
+    assert "GeometryMath.BuildSegmentPlan(anchored, PhysicsConfig.LegGeometry)" in service
+    assert "normalizedPoints = anchored" in service
+    assert "StrokeMath.CenterOnBounds(cleaned)" not in service
+    assert "shifted shape must anchor to same normalized geometry" in b11
+    assert "anchoring must preserve shape width" in b11
+    assert "anchoring must preserve shape height" in b11
+    assert "first authoritative point must be the hub origin" in b11
 
 
-def test_r16_3a_internal_apply_shape_cannot_bypass_centering() -> None:
+def test_r16_3b_internal_apply_shape_cannot_bypass_first_point_origin() -> None:
     runtime = read("src/server/Runtime/RacerRuntime.lua")
 
     internal_shape = runtime.split("local function makeInternalShapeSpec", 1)[1].split(
         "function RacerRuntime.new", 1
     )[0]
-    assert "StrokeMath.CenterOnBounds(normalizedPoints)" in internal_shape
-    assert "GeometryMath.BuildSegmentPlan(centeredPoints, PhysicsConfig.LegGeometry)" in internal_shape
-    assert "normalizedPoints = centeredPoints" in internal_shape
-    assert "StrokeMath.ComputeBounds(centeredPoints)" in internal_shape
+    assert "StrokeMath.AnchorToFirstPoint(normalizedPoints)" in internal_shape
+    assert "GeometryMath.BuildSegmentPlan(anchoredPoints, PhysicsConfig.LegGeometry)" in internal_shape
+    assert "normalizedPoints = anchoredPoints" in internal_shape
+    assert "StrokeMath.ComputeBounds(anchoredPoints)" in internal_shape
+    assert "CenterOnBounds" not in internal_shape
 
 
-def test_r16_3a_docs_supersede_raw_canvas_offset_semantics() -> None:
+def test_r16_3b_docs_supersede_bounds_center_semantics() -> None:
     shape_doc = read("docs/73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md")
-    design = read("docs/superpowers/specs/2026-09-10-r16-draw-climber-reference-parity-design.md")
+    decision = read("docs/DECISION_LOG_R16_3B_STROKE_ORIGIN_REFERENCE_PARITY_2026-09-10.md")
 
-    assert "R16.3A" in shape_doc
-    assert "server recenters the cleaned stroke around its own bounds center" in shape_doc
-    assert "MUST NOT recenter the stroke around its own bounds" not in shape_doc
-    assert "offset shapes remain offset relative to the hub" not in shape_doc
+    for doc in [shape_doc, decision]:
+        assert "R16.3B" in doc
+        assert "first" in doc.lower() and "point" in doc.lower()
+        assert "supersed" in doc.lower()
+        assert "bounds-center" in doc.lower() or "bounds center" in doc.lower()
+
+    assert "RawSemanticHalfWidth = 1.75" in shape_doc
+    assert "RawSemanticHalfHeight = 1.0" in shape_doc
     assert "HubOffsetY = -0.35" in shape_doc
-    assert "R16.3A — Reference Shape Centering" in design
-    assert "It is not mirrored, recentered to its bounding box" not in design
-    assert "no auto-centering by stroke bounds" not in design
+    assert "server recenters the cleaned stroke around its own bounds center" not in shape_doc
 
 
-def test_r16_3a_network_contract_returns_centered_authoritative_points() -> None:
+def test_r16_3b_network_contract_returns_first_point_anchored_authoritative_points() -> None:
     network = read("docs/22_NETWORK_DATA_CONTRACTS.md")
 
     stroke_result = network.split("### `StrokeResult`", 1)[1].split("### `CosmeticResult`", 1)[0]
     assert "acceptedPoints?" in stroke_result
-    assert "authoritative centered `ShapeSpec.normalizedPoints`" in stroke_result
-    assert "client renders `acceptedPoints`" in stroke_result
+    assert "first-point anchored" in stroke_result.lower() or "first point anchored" in stroke_result.lower()
+    assert "client renders" in stroke_result.lower()
 
     shape_spec = network.split("# 7. ShapeSpec contract", 1)[1].split("# 8. Remote abuse rules", 1)[0]
-    assert "centered authoritative normalized points" in shape_spec
-    assert "raw DrawInputRect offset" in shape_spec
+    assert "first-point" in shape_spec.lower() or "first point" in shape_spec.lower()
+    assert "bounds midpoint" in shape_spec.lower()
+    assert "not required" in shape_spec.lower()
+    assert "payload schema unchanged" in network.lower()
 
 
-def test_r16_status_docs_preserve_stage_a_pending_while_later_stages_are_authorized() -> None:
+def test_r16_status_docs_preserve_all_human_gates_pending_under_r16_3b() -> None:
     session = read("docs/SESSION.md")
     features = read("docs/FEATURE_LIST.md")
 
     for doc in [session, features]:
-        assert "R16 Stage A" in doc
-        assert "R16.1–R16.4" in doc
-        assert "HUMAN STUDIO PENDING" in doc
-        assert "rotation about world Z: locked/corrected" in doc
-        assert "R16.3A" in doc
-        assert "centered authoritative shape" in doc
+        assert "R16.3B" in doc
+        assert "first-point" in doc.lower() or "first point" in doc.lower()
+        assert "Studio Gate A" in doc and "HUMAN STUDIO PENDING" in doc
+        assert "Studio Gate B" in doc and "HUMAN STUDIO PENDING" in doc
+        assert "Studio Gate C" in doc and "HUMAN STUDIO PENDING" in doc
+        assert "B17/G0" in doc and "HUMAN_GATE" in doc
+        assert "R16.11" in doc and "Studio Gate C" in doc
 
-    current_session = session.split("## Current implementation/evidence cursor", 1)[1]
-    assert "R16 Stage C implementation" in current_session
-    assert "Studio Gate A — HUMAN STUDIO PENDING" in current_session
-    assert "Studio Gate B — HUMAN STUDIO PENDING" in current_session
-    assert "Studio Gate C — HUMAN STUDIO PENDING" in current_session
-    assert "Stage B implementation authorized by Product Owner" in session
-    assert "R16 Stage C implementation authorized by Product Owner" in session
-    assert "B17 — G0 HUMAN_GATE only" not in current_session
-
-    current_features = features.split("## M0 — Physics Lab", 1)[1].split(
-        "### R01–R12 implementation-integrity record", 1
-    )[0]
-    assert "R16 Stage A" in current_features
-    assert "R16 Stage C" in current_features
-    assert "HUMAN STUDIO PENDING" in current_features
+    assert "R16.11 must not freeze" in session
+    assert "R16.11 must not freeze" in features
 
 
-def test_r16_owner_docs_match_upright_and_centered_shape_contract() -> None:
+def test_r16_owner_docs_match_upright_and_first_point_shape_contract() -> None:
     core = read("docs/03_CORE_MECHANICS_SPEC.md")
     tuning = read("docs/16_BALANCE_TUNING.md")
 
-    assert "center the cleaned stroke on its own bounds midpoint" in core
-    assert "do **not** recenter/resize by stroke bounds" not in core
+    assert "R16.3B" in core
+    assert "first cleaned point" in core.lower()
+    assert "bounds midpoint" in core.lower()
     assert "rotation about world Z is locked/corrected" in core
     assert "rotation around world Z remains physical and free" not in core
 
@@ -191,18 +188,17 @@ def test_r16_technical_design_does_not_reintroduce_free_body_roll() -> None:
     assert "tuned softly" not in stabilization
 
 
-def test_r16_readme_entrypoint_tracks_current_stage_a_contract() -> None:
+def test_r16_readme_entrypoint_tracks_current_r16_3b_contract() -> None:
     readme = read("README.md")
 
     current_state = readme.split("## Current state", 1)[1].split("## CORE / pre-G0 integrity repair", 1)[0]
-    assert "R16 Stage A" in current_state
+    assert "R16.3B" in current_state
     assert "Studio Gate A" in current_state
     assert "HUMAN STUDIO PENDING" in current_state
-    assert "next permitted item remains B17/G0 HUMAN_GATE" not in current_state
 
     repair = readme.split("## CORE / pre-G0 integrity repair", 1)[1].split("## Toolchain", 1)[0]
     assert "R16.1" in repair
-    assert "R16.3A" in repair
+    assert "R16.3B" in repair
     assert "soft/free-tilt stabilization" not in repair
 
     locomotion = readme.split("### B06–B10 — Physical locomotion foundation", 1)[1].split(
