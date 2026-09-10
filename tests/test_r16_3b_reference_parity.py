@@ -172,3 +172,36 @@ def test_r16_3b_b14_separates_physical_and_visual_part_accounting() -> None:
     assert "leaked physical parts" in b14
     assert "leaked visual parts" in b14
     assert "countLegParts(" not in b14
+
+
+def test_r16_3b_followup_uses_graphite_presentation_and_refreshes_navigation_map() -> None:
+    drawing = read("src/client/Controllers/DrawingController.lua")
+    leg = read("src/server/Runtime/LegAssembly.lua")
+    architecture_map = read("docs/ARCHITECTURE_MAP.md")
+
+    assert "local DEFAULT_GRAPHITE_COLOR = Color3.fromRGB(23, 32, 51)" in drawing
+    assert "local DRAW_SURFACE_COLOR = Color3.fromRGB(243, 240, 232)" in drawing
+    assert "segment.BackgroundColor3 = DEFAULT_GRAPHITE_COLOR" in drawing
+    assert "drawInputRect.BackgroundColor3 = DRAW_SURFACE_COLOR" in drawing
+    assert "acceptedShapeThumbnail.BackgroundColor3 = DRAW_SURFACE_COLOR" in drawing
+    assert "emptyGhost.TextColor3 = DEFAULT_GRAPHITE_COLOR" in drawing
+    assert "Color3.fromRGB(55, 190, 255)" not in drawing
+
+    assert "local FRONT_VISUAL_COLOR = Color3.fromRGB(23, 32, 51)" in leg
+    assert "local BACK_VISUAL_COLOR = Color3.fromRGB(57, 68, 84)" in leg
+    assert 'local visualColor = if side == "Left" then BACK_VISUAL_COLOR else FRONT_VISUAL_COLOR' in leg
+    assert "Color3.fromRGB(45, 155, 205)" not in leg
+    assert "Color3.fromRGB(70, 215, 245)" not in leg
+    assert "segment.Transparency = 1" in leg
+    assert "visual.CanCollide = false" in leg
+    assert "visual.CanTouch = false" in leg
+    assert "visual.CanQuery = false" in leg
+    assert "visual.Massless = true" in leg
+
+    assert "NAVIGATION CACHE — NOT SOURCE OF TRUTH" in architecture_map
+    assert "VisualSegment" in architecture_map
+    assert "VisualJoint" in architecture_map
+    assert "R16FinalHarness" in architecture_map
+    assert "R16FINAL" in architecture_map
+    assert "visible leg/stroke visual" in architecture_map
+    assert "R16FINAL ordering/evidence" in architecture_map
