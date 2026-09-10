@@ -165,8 +165,10 @@ def test_r16_3b_b14_separates_physical_and_visual_part_accounting() -> None:
 
     assert "local function countPhysicalLegParts" in b14
     assert "local function countVisualLegParts" in b14
-    assert "maxPhysicalLegParts" in b14
-    assert "maxVisualLegParts" in b14
+    assert "MAX_PHYSICAL_LEG_PARTS" in b14
+    assert "MAX_VISUAL_LEG_PARTS" in b14
     assert "physicalPartsBeforeBurst" in b14
     assert "visualPartsBeforeBurst" in b14
+    assert "leaked physical parts" in b14
+    assert "leaked visual parts" in b14
     assert "countLegParts(" not in b14
