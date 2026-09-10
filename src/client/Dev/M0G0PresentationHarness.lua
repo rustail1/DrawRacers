@@ -10,12 +10,14 @@ local StudioHarnessConfig = require(
 
 local M0G0PresentationHarness = {}
 
-local CAMERA_OFFSET = Vector3.new(-6, 5, 16)
-local CAMERA_LOOK_AHEAD = Vector3.new(7, 1, 0)
+local CAMERA_OFFSET = Vector3.new(0, 4, 22)
+local CAMERA_LOOK_AHEAD = Vector3.new(6, 0.8, 0)
+local CAMERA_FIELD_OF_VIEW = 40
 
 local connection: RBXScriptConnection? = nil
 local debugProxy: Part? = nil
 local previousCameraType: Enum.CameraType? = nil
+local previousFieldOfView: number? = nil
 
 local function findDebugBody(): BasePart?
 	local runtime = Workspace:FindFirstChild("Runtime")
@@ -47,8 +49,9 @@ local function ensureDebugProxy(body: BasePart): Part
 	proxy.CanQuery = false
 	proxy.Massless = true
 	proxy.Size = body.Size + Vector3.new(0.08, 0.08, 0.08)
-	proxy.Material = Enum.Material.Neon
-	proxy.Transparency = 0.55
+	proxy.Material = Enum.Material.SmoothPlastic
+	proxy.Color = Color3.fromRGB(80, 180, 245)
+	proxy.Transparency = 0
 	proxy.CastShadow = false
 
 	local runtime = Workspace:FindFirstChild("Runtime")
@@ -70,7 +73,7 @@ local function updatePresentation()
 	local proxy = ensureDebugProxy(body)
 	proxy.Size = body.Size + Vector3.new(0.08, 0.08, 0.08)
 	proxy.CFrame = body.CFrame
-	proxy.Transparency = 0.55
+	proxy.Transparency = 0
 
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
@@ -79,7 +82,11 @@ local function updatePresentation()
 	if previousCameraType == nil then
 		previousCameraType = camera.CameraType
 	end
+	if previousFieldOfView == nil then
+		previousFieldOfView = camera.FieldOfView
+	end
 	camera.CameraType = Enum.CameraType.Scriptable
+	camera.FieldOfView = CAMERA_FIELD_OF_VIEW
 	local target = body.Position + CAMERA_LOOK_AHEAD
 	local cameraPosition = body.Position + CAMERA_OFFSET
 	camera.CFrame = CFrame.lookAt(cameraPosition, target)
@@ -89,7 +96,7 @@ function M0G0PresentationHarness.start()
 	if not RunService:IsStudio() then
 		return
 	end
-	if StudioHarnessConfig.Mode ~= "G0" then
+	if StudioHarnessConfig.Mode ~= "G0" and StudioHarnessConfig.Mode ~= "R16FINAL" then
 		return
 	end
 	if connection ~= nil then
@@ -98,7 +105,7 @@ function M0G0PresentationHarness.start()
 
 	connection = RunService.RenderStepped:Connect(updatePresentation)
 	updatePresentation()
-	print("[DrawRacers][R14.2] G0 presentation harness ready")
+	print("[DrawRacers][R16.3B] G0 side presentation harness ready")
 end
 
 function M0G0PresentationHarness.stop()
@@ -111,10 +118,16 @@ function M0G0PresentationHarness.stop()
 		debugProxy = nil
 	end
 	local camera = Workspace.CurrentCamera
-	if camera ~= nil and previousCameraType ~= nil then
-		camera.CameraType = previousCameraType
+	if camera ~= nil then
+		if previousCameraType ~= nil then
+			camera.CameraType = previousCameraType
+		end
+		if previousFieldOfView ~= nil then
+			camera.FieldOfView = previousFieldOfView
+		end
 	end
 	previousCameraType = nil
+	previousFieldOfView = nil
 end
 
 return M0G0PresentationHarness
