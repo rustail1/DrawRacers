@@ -57,6 +57,17 @@ local function waitForTrackContact(racer: any, timeoutSeconds: number, namePrefi
 	return false
 end
 
+local function waitForContinuousTrackContact(racer: any, durationSeconds: number, namePrefix: string?): boolean
+	local elapsed = 0
+	while elapsed < durationSeconds do
+		if not hasTrackContact(racer:GetModel(), namePrefix) then
+			return false
+		end
+		elapsed += RunService.Heartbeat:Wait()
+	end
+	return true
+end
+
 local function allMotorsEnabled(model: Model): boolean
 	local legs = model:FindFirstChild("Legs")
 	if legs == nil then
@@ -82,6 +93,17 @@ local function destroyActiveRacer()
 	end
 end
 
+local function finishSpawnedRacer(racer: any, shapeId: string)
+	activeRacer = racer
+	local model = racer:GetModel()
+	model:SetAttribute("R16StageBTrial", true)
+	racer:ApplyShape(R16ReferenceShapes.Get(shapeId), true)
+	-- Internal Studio/test shapes do not advance player ShapeVersion. Keep anti-stall
+	-- semantics equivalent to a racer that already has one accepted authoritative shape.
+	model:SetAttribute("ShapeVersion", 1)
+	return racer
+end
+
 local function spawnTrialRacer(pieceId: string, shapeId: string, spawnX: number?): any
 	destroyActiveRacer()
 	local piece = findPiece(pieceId)
@@ -94,15 +116,22 @@ local function spawnTrialRacer(pieceId: string, shapeId: string, spawnX: number?
 		spawnCFrame = CFrame.new(spawnX or (piece.StartX + 1), 3.3, 0),
 		laneCenterZ = 0,
 	})
-	activeRacer = racer
-	local model = racer:GetModel()
-	model:SetAttribute("R16StageBTrial", true)
-	racer:ApplyShape(R16ReferenceShapes.Get(shapeId), true)
-	-- ApplyShape is an internal Studio/test path and intentionally does not advance
-	-- authoritative player ShapeVersion. Set a positive version so anti-stall behaves
-	-- exactly as it would for an accepted player shape during this measurement.
-	model:SetAttribute("ShapeVersion", 1)
-	return racer
+	return finishSpawnedRacer(racer, shapeId)
+end
+
+local function spawnBenchmarkRacer(shapeId: string): any
+	destroyActiveRacer()
+	local benchmark = M0SceneConfig.ReferenceBenchmark
+	local racer = RacerRuntime.new({
+		raceId = "R16_STAGE_B_FLAT",
+		slotIndex = 6,
+		laneIndex = 1,
+		isBot = true,
+		trackId = "M0_R16_REFERENCE_BENCHMARK",
+		spawnCFrame = CFrame.new(benchmark.SpawnX, benchmark.SpawnY, benchmark.CenterZ),
+		laneCenterZ = benchmark.CenterZ,
+	})
+	return finishSpawnedRacer(racer, shapeId)
 end
 
 local function gapTrialSpawnX(piece: any): number
@@ -113,38 +142,49 @@ end
 
 local function runFlatSpeedTrial(shapeId: string): any
 	local acceptance = M0SceneConfig.ReferenceAcceptance
-	-- Start on EntryFloor so the full 2 s settle + 3 s measure window remains on
-	-- baseline flat/recovery surface even at the top of the accepted speed range.
-	local racer = spawnTrialRacer("FlatShort", shapeId, M0SceneConfig.Spawn.X)
+	local benchmark = M0SceneConfig.ReferenceBenchmark
+	local racer = spawnBenchmarkRacer(shapeId)
 	local model = racer:GetModel()
 	local body = racer:GetBody()
+	local result = {
+		valid = true,
+		speed = 0,
+		antiStallSeen = false,
+		motorsEnabled = false,
+	}
 
-	if not waitForTrackContact(racer, acceptance.TrackContactTimeout, nil) then
+	if not waitForTrackContact(racer, acceptance.TrackContactTimeout, benchmark.Name) then
+		result.valid = false
 		destroyActiveRacer()
-		return { valid = false, speed = 0, antiStallSeen = false, motorsEnabled = false }
+		return result
 	end
 
-	task.wait(acceptance.FlatIgnoreSeconds)
+	-- The entire settle window must stay on the isolated benchmark. Losing benchmark
+	-- contact invalidates the sample instead of silently measuring another obstacle.
+	if not waitForContinuousTrackContact(racer, acceptance.FlatIgnoreSeconds, benchmark.Name) then
+		result.valid = false
+		destroyActiveRacer()
+		return result
+	end
+
 	local startX = body.Position.X
 	local elapsed = 0
-	local antiStallSeen = false
 	while elapsed < acceptance.FlatMeasureSeconds do
 		local dt = RunService.Heartbeat:Wait()
 		elapsed += dt
+		if not hasTrackContact(model, benchmark.Name) then
+			result.valid = false
+			break
+		end
 		if model:GetAttribute("AntiStallActive") == true then
-			antiStallSeen = true
+			result.antiStallSeen = true
 		end
 	end
 
-	local averageSpeedX = (body.Position.X - startX) / math.max(elapsed, 1e-6)
-	local motorsEnabled = allMotorsEnabled(model)
+	result.speed = (body.Position.X - startX) / math.max(elapsed, 1e-6)
+	result.motorsEnabled = allMotorsEnabled(model)
 	destroyActiveRacer()
-	return {
-		valid = true,
-		speed = averageSpeedX,
-		antiStallSeen = antiStallSeen,
-		motorsEnabled = motorsEnabled,
-	}
+	return result
 end
 
 local function runProgressTrial(
@@ -341,8 +381,6 @@ local function runShapeMatrix(): boolean
 		and roundFlat.speed > 0
 		and suboptimalFlat.speed <= roundFlat.speed * (1 - acceptance.SuboptimalWorseRatio)
 
-	-- Distinct winners across flat/steps/gap/tunnel prove that no single tested shape
-	-- wins or ties every measured canonical piece. Wall remains part of R16.10 full-lab pass.
 	local noUniversalWinner = stepsNichePassed and gapNichePassed and tunnelNichePassed and suboptimalPassed
 	local passed = roundFlatPassed
 		and stepsNichePassed
