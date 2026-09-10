@@ -289,9 +289,9 @@ local function runLiveMovingRedrawTrial(): boolean
 		end
 		local leftPhaseAfterRedraw = phaseDegrees(leftHub, leftRootAfter)
 		local rightPhaseAfterRedraw = phaseDegrees(rightHub, rightRootAfter)
-		if angularDistanceDegrees(leftPhaseAfterRedraw, leftPhaseBeforeRedraw) > 5.0
-			or angularDistanceDegrees(rightPhaseAfterRedraw, rightPhaseBeforeRedraw) > 5.0
-		then
+		local leftPhaseOk = angularDistanceDegrees(leftPhaseAfterRedraw, leftPhaseBeforeRedraw) <= 5.0
+		local rightPhaseOk = angularDistanceDegrees(rightPhaseAfterRedraw, rightPhaseBeforeRedraw) <= 5.0
+		if not leftPhaseOk or not rightPhaseOk then
 			movingRedrawPassed = false
 			break
 		end
