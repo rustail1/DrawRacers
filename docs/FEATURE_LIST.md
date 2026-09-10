@@ -1,13 +1,13 @@
-# FEATURE LIST — SCOPE SOURCE OF TRUTH v1.4.0
+# FEATURE LIST — SCOPE SOURCE OF TRUTH v1.4.1
 
 Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 **Current milestone:** M0 — Physics Lab  
 **Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle lab → debug/tuning pipeline, implementation items **B03–B16**.  
-**Current implementation integrity:** bounded CORE/pre-G0 repair **R01–R12**, runtime/evidence closure **R14.1–R14.11**, planar correction **R15/R15.1**, and reference mechanical parity **R16 Stage A / R16.1–R16.4** are implemented in `main` at repository level. R16 Stage A is **HUMAN STUDIO PENDING** and therefore does not authorize R16.5 or later feel tuning yet.  
-**Current R16 contract:** X/Y translation remains physical, Z translation remains mechanically lane-locked, and body rotation about world X/Y/Z is upright constrained; specifically **rotation about world Z: locked/corrected**. R16.2 owns hub offsets in `PhysicsConfig.LegGeometry`. R16.3A converts cleaned input to a **centered authoritative shape** by bounds translation only (no resize/mirror/rotation), and one ShapeSpec is duplicated to both legs; R16.4 retains the 180° twin-leg phase contract.  
-**Historical evidence retained:** pre-R06 **66 passed, 0 failed**; R09 repair **80 passed, 0 failed**; final R10–R12 code head `e2bedd34696bb99da43878c19d7984c9134c8bef` / run `34363706915` verified **88 passed, 0 failed**. Final R14 code/tooling head `8a6a05a31427346d2a1437820ffa759f21fca90c` / run `34387618626` verified **120 passed, 0 failed** plus successful **Rojo build**. The first R15 force-based implementation passed automation but failed real Studio with `laneDeviation 5.199`. R15.1 mechanical-plane production head `be44304bf00391e05c7d7750609730a7368ebc87` / run `34394991926` verified **125 passed, 0 failed** plus successful **Rojo build**. Latest pre-status-sync R16 code/docs head `d039e0084937962b2a023204b8375e9503b2f46c` / run `34404787484` verified **132 passed, 0 failed** plus successful **Rojo build**.  
-**Current gate:** **R16 Stage A — Studio Gate A — HUMAN STUDIO PENDING**. Historical B17/G0 remains the downstream **HUMAN_GATE** after R16 completes; implementation/CI/Rojo build alone do not promote B03–B16 to ACCEPTED.  
+**Current implementation integrity:** bounded CORE/pre-G0 repair **R01–R12**, runtime/evidence closure **R14.1–R14.11**, planar correction **R15/R15.1**, R16 Stage A **R16.1–R16.4**, and Stage B **R16.5–R16.7** are implemented in `main` at repository level. R16.5–R16.7 are **IMPLEMENTED/AUTOMATED GREEN**, while live Roblox solver evidence remains **HUMAN STUDIO PENDING**. Studio Gate A was not retroactively passed; the Product Owner explicitly authorized bounded Stage-B implementation while Gate A remains pending.  
+**Current R16 contract:** X/Y translation remains physical, Z translation remains mechanically lane-locked, and body rotation about world X/Y/Z is upright constrained; specifically **rotation about world Z: locked/corrected**. R16.2 owns hub offsets in `PhysicsConfig.LegGeometry`. R16.3A converts cleaned input to a **centered authoritative shape** by bounds translation only (no resize/mirror/rotation), and one ShapeSpec is duplicated to both legs; R16.4 retains the 180° twin-leg phase contract. Stage B adds solver measurement only: canonical ROUND flat speed, vertical rise/fall evidence, and the six-shape comparative matrix; it does not fabricate solver PASS.  
+**Historical evidence retained:** pre-R06 **66 passed, 0 failed**; R09 repair **80 passed, 0 failed**; final R10–R12 code head `e2bedd34696bb99da43878c19d7984c9134c8bef` / run `34363706915` verified **88 passed, 0 failed**. Final R14 code/tooling head `8a6a05a31427346d2e0ffa759f21fca90c` / run `34387618626` verified **120 passed, 0 failed** plus successful **Rojo build**. The first R15 force-based implementation passed automation but failed real Studio with `laneDeviation 5.199`. R15.1 mechanical-plane production head `be44304bf00391e05c7d7750609730a7368ebc87` / run `34394991926` verified **125 passed, 0 failed** plus successful **Rojo build**. Stage-A repository head `81c7d84c542160f07fc4fe986df89e5aa69f8f73` / run `34448666472` verified **142 passed, 0 failed**. Stage-B implementation head before this status sync `2197882e4c641e7c1d17a6dfc538f23fd1a521e6` / run `34451426807` verified **145 passed, 0 failed** plus Rokit and **Rojo build PASS**.  
+**Current gate:** **R16 Stage B — Studio Gate B — HUMAN STUDIO PENDING**; **Studio Gate A also remains HUMAN STUDIO PENDING** because progression was explicitly overridden for implementation, not acceptance. Historical B17/G0 remains the downstream **HUMAN_GATE** after R16 completes; implementation/CI/Rojo build alone do not promote B03–B16 to ACCEPTED.  
 **Acceptance note:** A01–A04 and B01–B02 remain recorded ACCEPTED.  
 **Rule:** only one gameplay feature may be ACTIVE at a time. `SESSION.md` owns the evidence cursor; `25` owns implementation order. No C01 or later work may start without ordered R16 gate completion and recorded B17/G0 PASS or an explicit Product Owner gate decision.
 
@@ -24,7 +24,8 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - CLOSED / IMPLEMENTATION-REGRESSION — R09–R12 pre-G0 findings; retained in B17 only as runtime verification points.
 - CLOSED / IMPLEMENTATION-REGRESSION-CI-DOCS — R14.1–R14.11 pre-G0 runtime/tooling/evidence closure; Studio checkpoints remain HUMAN PENDING.
 - CLOSED / SUPERSEDED ORIENTATION DETAIL — R15.1 hard 2.5D lane-plane correction remains the Z-lock foundation; its free-world-Z orientation detail is superseded by R16.1.
-- **ACTIVE / R16 Stage A / R16.1–R16.4 IMPLEMENTED-AUTOMATED GREEN; HUMAN STUDIO PENDING** — upright body, canonical hubs, R16.3A centered authoritative shape, and 180° twin-leg phase. Mandatory Studio Gate A must pass before R16.5.
+- **ACTIVE / R16 Stage A / R16.1–R16.4 IMPLEMENTED-AUTOMATED GREEN; HUMAN STUDIO PENDING** — upright body, canonical hubs, R16.3A centered authoritative shape, and 180° twin-leg phase. Gate A acceptance remains pending even though the Product Owner explicitly authorized bounded Stage-B implementation.
+- **ACTIVE / R16 Stage B / R16.5–R16.7 IMPLEMENTED/AUTOMATED GREEN; Studio Gate B — HUMAN STUDIO PENDING** — single-owner leg material config and ROUND flat measurement, solver-owned Y evidence on Steps/Gap, full canonical reference-shape registry and comparative matrix. No live niche/speed result is accepted until Studio evidence is recorded.
 - BACKLOG / HUMAN_GATE — B17 G0; **hard stop before M0.5** and still required after R16 completion.
 
 ### R01–R12 implementation-integrity record
@@ -52,7 +53,7 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - **R14.8 Validation UX — CLOSED code/contract** — geometry errors map to `DRAW A DIFFERENT SHAPE`; transport/technical failures map to `TRY AGAIN`; final Studio visual/timing acceptance remains HUMAN PENDING.
 - **R14.9 CI Rojo build — CLOSED CI** — GitHub Actions installs the pinned toolchain and executes a real Rojo build after contract checks.
 - **R14.10 Types/RemoteNames — CLOSED code/contract** — shared StrokeTypes are consumed on active network/ShapeSpec runtime boundaries; active remote consumers and B12 Studio coverage use shared RemoteNames.
-- **R14.11 Docs/evidence reconciliation — CLOSED repository** — root/status/decision docs retain final code/tooling head `8a6a05a31427346d2a1437820ffa759f21fca90c`, run `34387618626`, **120 passed, 0 failed**, successful **Rojo build**, while preserving **Studio checkpoints: HUMAN PENDING** and **B17/G0 HUMAN_GATE**.
+- **R14.11 Docs/evidence reconciliation — CLOSED repository** — root/status/decision docs retain final code/tooling head `8a6a05a31427346d2e0ffa759f21fca90c`, run `34387618626`, **120 passed, 0 failed**, successful **Rojo build**, while preserving **Studio checkpoints: HUMAN PENDING** and **B17/G0 HUMAN_GATE**.
 
 ### R15/R15.1 hard 2.5D planar racer physics — historical foundation
 - **R15.1 — IMPLEMENTED/AUTOMATED GREEN; HUMAN STUDIO PENDING** — X/Y remain the physical gameplay plane and Z translation is mechanically locked to lane center by `PlaneConstraint`.
@@ -62,13 +63,20 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - R15.1 RED: `8574b918988b8e26551140f2e0d3005caded8fe8`, run `34394769781`, **123 passed, 2 failed**. Automated production evidence: `be44304bf00391e05c7d7750609730a7368ebc87`, run `34394991926`, **125 passed, 0 failed**, successful **Rojo build**.
 - Historical `PrimaryAxisParallel` / free-world-Z body rotation is explicitly superseded by R16.1 and is not the current orientation contract.
 
-### R16 Stage A — current reference mechanical parity
+### R16 Stage A — reference mechanical parity
 - **R16.1 Upright Body** — `AlignOrientation` uses `AllAxes` with identity attachment basis; X/Y remain physically free, Z remains plane-locked; rotation about world X: locked/corrected; rotation about world Y: locked/corrected; **rotation about world Z: locked/corrected**.
 - **R16.2 Hub Position** — `HubOffsetX = 0.0`, `HubOffsetY = -0.35`, `HubOffsetZAbs = 1.62` live only in `PhysicsConfig.LegGeometry`; Runtime consumes them symmetrically.
 - **R16.3 / R16.3A Pivot + Reference Shape Centering** — one accepted stroke becomes one ShapeSpec and exactly two same-XY legs. The server translates cleaned bounds center to `(0,0)` without resizing, mirroring or rotating; `StrokeResult.acceptedPoints` and physical geometry use the same **centered authoritative shape**. Raw position of an otherwise identical drawing inside DrawInputRect no longer changes the leg; drawn size still does.
 - **R16.4 Twin-leg Phase** — same motor locomotion direction, initial right-minus-left phase `180° ±1°`, and redraw preserves live per-side phase.
-- Automated R16 repository evidence before this status sync: head `d039e0084937962b2a023204b8375e9503b2f46c`, run `34404787484`, **132 passed, 0 failed**, successful Rokit install and **Rojo build**.
-- **Mandatory Studio Gate A — HUMAN STUDIO PENDING.** Do not start R16.5 until live solver evidence validates upright tolerance, lane bounds, hub behavior, two-leg parity, R16.3A centering and phase behavior.
+- Stage-A repository evidence: head `81c7d84c542160f07fc4fe986df89e5aa69f8f73`, run `34448666472`, **142 passed, 0 failed**, successful Rokit install and **Rojo build**.
+- **Mandatory Studio Gate A — HUMAN STUDIO PENDING.** The Product Owner authorized Stage-B implementation without retroactively marking this gate PASS.
+
+### R16 Stage B — reference feel/evidence implementation
+- **R16.5 Motor / Grip / Mass — IMPLEMENTED/AUTOMATED GREEN, HUMAN STUDIO PENDING** — `PhysicsConfig.PhysicalMaterials.LegSegment` owns the existing leg material values; `R16B` measures ROUND flat speed after `2 s` settle over `3 s`, requiring `4–7 studs/s`, motors enabled and no anti-stall. No production motor/torque/grip numbers were blindly changed to force a target.
+- **R16.6 Vertical Physics — IMPLEMENTED/AUTOMATED GREEN, HUMAN STUDIO PENDING** — normal locomotion remains solver-owned in Y; Stage-B harness measures HOOK rise on SmallSteps and SMALL_ROUND fall in GapSmall. No scripted Y locomotion was added.
+- **R16.7 Reference Shape Matrix — IMPLEMENTED/AUTOMATED GREEN, HUMAN STUDIO PENDING** — executable `ROUND_01`, `LONG_BAR_01`, `SMALL_ROUND_01`, `HOOK_01`, `ASYM_01`, `SUBOPTIMAL_01` run from reset through exact comparative rules for flat/steps/gap/tunnel, including `SuboptimalWorseRatio=0.20` and `noUniversalWinner`.
+- Stage-B repository evidence before this status sync: head `2197882e4c641e7c1d17a6dfc538f23fd1a521e6`, run `34451426807`, **145 passed, 0 failed**, successful Rokit install and **Rojo build**.
+- **Studio Gate B — HUMAN STUDIO PENDING.** CI does not prove real speed, vertical contact behavior or niche differentiation. R16.8–R16.10 remain blocked unless live evidence passes or the Product Owner records another bounded override.
 
 Repository audit conclusion at this gate: no new top-level gameplay service/controller family is justified. CI includes Rojo buildability but does not replace Studio/external-tester G0 evidence.
 
