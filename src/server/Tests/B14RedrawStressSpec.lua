@@ -11,6 +11,7 @@ local LegShapeService = require(script.Parent.Parent.Services:WaitForChild("LegS
 local B14RedrawStressSpec = {}
 
 local TEST_PLAYER = {}
+local MOVING_TEST_PLAYER = {}
 
 local function payload(sequence: number, points: { any })
 	return {
@@ -60,6 +61,17 @@ local function countLegParts(legsFolder: Folder): number
 	return count
 end
 
+local function phaseDegrees(hub: Part, root: Part): number
+	local relative = hub.CFrame:ToObjectSpace(root.CFrame)
+	local _, _, z = relative:ToOrientation()
+	return math.deg(z)
+end
+
+local function angularDistanceDegrees(a: number, b: number): number
+	local delta = (a - b + 180) % 360 - 180
+	return math.abs(delta)
+end
+
 local function assertCurrentShapeIntact(racer: any, legsFolder: Folder, version: number, leftModel: Instance, rightModel: Instance)
 	assert(racer:GetShapeVersion() == version, "rejected request changed valid current shape version")
 	assert(legsFolder:FindFirstChild("LeftLeg") == leftModel, "rejected request removed valid current shape LeftLeg")
@@ -67,6 +79,89 @@ local function assertCurrentShapeIntact(racer: any, legsFolder: Folder, version:
 	assert(countLegModels(legsFolder) == 2, "rejected request leaked leg models")
 	assert(legsFolder:FindFirstChild("LeftLeg_Retiring") == nil, "rejected request left retiring LeftLeg")
 	assert(legsFolder:FindFirstChild("RightLeg_Retiring") == nil, "rejected request left retiring RightLeg")
+end
+
+local function getLegRoot(legsFolder: Folder, legName: string): Part
+	local leg = legsFolder:FindFirstChild(legName)
+	assert(leg and leg:IsA("Model"), string.format("missing %s", legName))
+	local root = leg:FindFirstChild("LegRoot")
+	assert(root and root:IsA("Part"), string.format("%s missing LegRoot", legName))
+	return root
+end
+
+local function runMovingRedrawParity()
+	local movingRacer = RacerRuntime.new({
+		raceId = "R16_8_MOVING_REDRAW",
+		slotIndex = 8,
+		laneIndex = 8,
+		isBot = false,
+		trackId = "R16_8_FLAT",
+		spawnCFrame = CFrame.new(44, 12, 0),
+		laneCenterZ = 0,
+	})
+	local movingBody = movingRacer:GetBody()
+	movingBody.Anchored = false
+	local movingModel = movingRacer:GetModel()
+	local legsFolder = movingModel:FindFirstChild("Legs")
+	local leftHub = movingModel:FindFirstChild("LeftHub")
+	local rightHub = movingModel:FindFirstChild("RightHub")
+	assert(legsFolder and legsFolder:IsA("Folder"), "R16.8 moving racer missing Legs folder")
+	assert(leftHub and leftHub:IsA("Part"), "R16.8 moving racer missing LeftHub")
+	assert(rightHub and rightHub:IsA("Part"), "R16.8 moving racer missing RightHub")
+
+	local now = 500.0
+	local processor = LegShapeService.CreateSubmitProcessor({
+		resolveRacer = function(playerKey)
+			if playerKey == MOVING_TEST_PLAYER then
+				return movingRacer
+			end
+			return nil
+		end,
+		now = function()
+			return now
+		end,
+	})
+
+	local seeded = processor:Handle(MOVING_TEST_PLAYER, shapeA(2000))
+	assert(seeded ~= nil and seeded.accepted == true and seeded.shapeVersion == 1, "R16.8 moving seed must accept")
+
+	movingBody.AssemblyLinearVelocity = Vector3.new(9.5, 1.25, 0)
+	movingBody.AssemblyAngularVelocity = Vector3.new(0.1, -0.1, 0.2)
+
+	local expectedVersion = 1
+	for redrawIndex = 1, 10 do
+		local leftRootBefore = getLegRoot(legsFolder, "LeftLeg")
+		local rightRootBefore = getLegRoot(legsFolder, "RightLeg")
+		local bodyCFrameBeforeRedraw = movingBody.CFrame
+		local linearBeforeRedraw = movingBody.AssemblyLinearVelocity
+		local angularBeforeRedraw = movingBody.AssemblyAngularVelocity
+		local leftPhaseBeforeRedraw = phaseDegrees(leftHub, leftRootBefore)
+		local rightPhaseBeforeRedraw = phaseDegrees(rightHub, rightRootBefore)
+
+		now += PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown + 0.01
+		local sequence = 2000 + redrawIndex
+		local nextPayload = if redrawIndex % 2 == 0 then shapeA(sequence) else shapeB(sequence)
+		local result = processor:Handle(MOVING_TEST_PLAYER, nextPayload)
+		assert(result ~= nil and result.accepted == true, "R16.8 moving redraw must accept")
+		expectedVersion += 1
+		assert(result.shapeVersion == expectedVersion, "R16.8 ShapeVersion must increment exactly once per accept")
+		assert(movingRacer:GetShapeVersion() == expectedVersion, "R16.8 runtime ShapeVersion drift")
+		assert(countLegModels(legsFolder) == 2, "moving redraw must leave exactly two leg models")
+		assert(legsFolder:FindFirstChild("LeftLeg_Retiring") == nil, "moving redraw leaked retiring LeftLeg")
+		assert(legsFolder:FindFirstChild("RightLeg_Retiring") == nil, "moving redraw leaked retiring RightLeg")
+		assert(movingBody.CFrame == bodyCFrameBeforeRedraw, "moving redraw teleported body CFrame")
+		assert(movingBody.AssemblyLinearVelocity == linearBeforeRedraw, "moving redraw reset AssemblyLinearVelocity")
+		assert(movingBody.AssemblyAngularVelocity == angularBeforeRedraw, "moving redraw reset AssemblyAngularVelocity")
+
+		local leftRootAfter = getLegRoot(legsFolder, "LeftLeg")
+		local rightRootAfter = getLegRoot(legsFolder, "RightLeg")
+		local leftPhaseAfterRedraw = phaseDegrees(leftHub, leftRootAfter)
+		local rightPhaseAfterRedraw = phaseDegrees(rightHub, rightRootAfter)
+		assert(angularDistanceDegrees(leftPhaseAfterRedraw, leftPhaseBeforeRedraw) <= 5.0, "moving redraw left phase drift exceeded 5 degrees")
+		assert(angularDistanceDegrees(rightPhaseAfterRedraw, rightPhaseBeforeRedraw) <= 5.0, "moving redraw right phase drift exceeded 5 degrees")
+	end
+
+	movingRacer:Destroy()
 end
 
 function B14RedrawStressSpec.run()
@@ -186,6 +281,7 @@ function B14RedrawStressSpec.run()
 	assert(countLegParts(legsFolder) == partsBeforeBurst, "burst spam leaked physical parts")
 
 	racer:Destroy()
+	runMovingRedrawParity()
 	print("[DrawRacers][B14] redraw abuse/stress tests PASS")
 end
 
