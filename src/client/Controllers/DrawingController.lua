@@ -16,22 +16,25 @@ local StrokeTypes = require(
 local DrawingController = {}
 DrawingController.__index = DrawingController
 
-local DESKTOP_CANVAS_SIZE = UDim2.fromScale(0.46, 0.255)
-local TOUCH_CANVAS_SIZE = UDim2.fromScale(0.64, 0.285)
-local DRAW_INPUT_SIZE = UDim2.fromScale(0.92, 0.82)
+-- R16.3B: height is the responsive owner; the aspect constraint makes the
+-- visible panel itself the complete 1.75:1 semantic drawing surface.
+local DESKTOP_CANVAS_SIZE = UDim2.fromScale(0.46, 0.28)
+local TOUCH_CANVAS_SIZE = UDim2.fromScale(0.64, 0.34)
+local DRAW_INPUT_SIZE = UDim2.fromScale(1, 1)
 
-local DESKTOP_VALIDATION_POSITION = UDim2.fromScale(0.5, 0.705)
+local DESKTOP_VALIDATION_POSITION = UDim2.fromScale(0.5, 0.685)
 local DESKTOP_VALIDATION_SIZE = UDim2.fromScale(0.32, 0.052)
-local TOUCH_VALIDATION_POSITION = UDim2.fromScale(0.5, 0.675)
+local TOUCH_VALIDATION_POSITION = UDim2.fromScale(0.5, 0.615)
 local TOUCH_VALIDATION_SIZE = UDim2.fromScale(0.44, 0.058)
-local DESKTOP_HINT_POSITION = UDim2.fromScale(0.5, 0.705)
+local DESKTOP_HINT_POSITION = UDim2.fromScale(0.5, 0.685)
 local DESKTOP_HINT_SIZE = UDim2.fromScale(0.38, 0.06)
-local TOUCH_HINT_POSITION = UDim2.fromScale(0.5, 0.675)
+local TOUCH_HINT_POSITION = UDim2.fromScale(0.5, 0.615)
 local TOUCH_HINT_SIZE = UDim2.fromScale(0.50, 0.064)
 
 local DESKTOP_THICKNESS = 6
 local TOUCH_THICKNESS = 8
 local VALIDATION_TOAST_DURATION = 2.0
+local PRESENTATION_ANCHOR_HISTORY_MULTIPLIER = 4
 
 type SemanticPoint = StrokeTypes.SemanticPoint
 type SubmitStrokePayload = StrokeTypes.SubmitStrokePayload
@@ -150,6 +153,10 @@ local function copySemanticPoints(points: { SemanticPoint }): { SemanticPoint }
 	return result
 end
 
+local function copySemanticPoint(point: SemanticPoint): SemanticPoint
+	return { x = point.x, y = point.y }
+end
+
 local function validServerSemanticPoints(points: any): boolean
 	if type(points) ~= "table" then
 		return false
@@ -175,22 +182,59 @@ local function validServerSemanticPoints(points: any): boolean
 		if type(point) ~= "table" or not isFiniteNumber(point.x) or not isFiniteNumber(point.y) then
 			return false
 		end
-		if point.x < config.NormalizedMin or point.x > config.NormalizedMax
-			or point.y < config.NormalizedMin or point.y > config.NormalizedMax
+		-- acceptedPoints are R16.3B hub-local offsets. Their legal range is the
+		-- difference between two raw points in the canonical wide input rectangle.
+		if math.abs(point.x) > config.RawSemanticHalfWidth * 2 + 1e-6
+			or math.abs(point.y) > config.RawSemanticHalfHeight * 2 + 1e-6
 		then
 			return false
 		end
 	end
-	return true
+	local first = points[1]
+	return math.abs(first.x) <= 1e-6 and math.abs(first.y) <= 1e-6
 end
 
-local function semanticPointsToPixels(points: { SemanticPoint }, size: Vector2): { Vector2 }
+local function semanticPointsToPixels(
+	points: { SemanticPoint },
+	size: Vector2,
+	presentationAnchor: SemanticPoint?
+): { Vector2 }
+	local result = table.create(#points)
+	local unit = size.Y * 0.5
+	local center = size * 0.5
+	local anchor = presentationAnchor or { x = 0, y = 0 }
+	for index, point in points do
+		local x = point.x + anchor.x
+		local y = point.y + anchor.y
+		result[index] = Vector2.new(center.X + x * unit, center.Y - y * unit)
+	end
+	return result
+end
+
+local function fitSemanticPointsToPixels(points: { SemanticPoint }, size: Vector2): { Vector2 }
+	if #points == 0 then
+		return {}
+	end
+	local minX = points[1].x
+	local maxX = points[1].x
+	local minY = points[1].y
+	local maxY = points[1].y
+	for index = 2, #points do
+		local point = points[index]
+		minX = math.min(minX, point.x)
+		maxX = math.max(maxX, point.x)
+		minY = math.min(minY, point.y)
+		maxY = math.max(maxY, point.y)
+	end
+	local spanX = math.max(maxX - minX, 1e-4)
+	local spanY = math.max(maxY - minY, 1e-4)
+	local scale = math.min(size.X * 0.75 / spanX, size.Y * 0.75 / spanY)
+	local centerSemantic = Vector2.new((minX + maxX) * 0.5, (minY + maxY) * 0.5)
+	local centerPixel = size * 0.5
 	local result = table.create(#points)
 	for index, point in points do
-		result[index] = Vector2.new(
-			((point.x + 1) * 0.5) * size.X,
-			((1 - point.y) * 0.5) * size.Y
-		)
+		local localPoint = Vector2.new(point.x, point.y) - centerSemantic
+		result[index] = Vector2.new(centerPixel.X + localPoint.X * scale, centerPixel.Y - localPoint.Y * scale)
 	end
 	return result
 end
@@ -226,6 +270,13 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	drawCanvas.ZIndex = 20
 	drawCanvas.Parent = safeRoot
 
+	local canvasAspect = Instance.new("UIAspectRatioConstraint")
+	canvasAspect.Name = "R16WideDrawSurfaceConstraint"
+	canvasAspect.AspectRatio = PhysicsConfig.StrokeProcessing.RawSemanticHalfWidth
+		/ PhysicsConfig.StrokeProcessing.RawSemanticHalfHeight
+	canvasAspect.DominantAxis = Enum.DominantAxis.Height
+	canvasAspect.Parent = drawCanvas
+
 	local canvasCorner = Instance.new("UICorner")
 	canvasCorner.CornerRadius = UDim.new(0, 22)
 	canvasCorner.Parent = drawCanvas
@@ -244,12 +295,6 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	drawInputRect.Active = true
 	drawInputRect.ClipsDescendants = true
 	drawInputRect.ZIndex = 21
-
-	local semanticSquareConstraint = Instance.new("UIAspectRatioConstraint")
-	semanticSquareConstraint.Name = "SemanticSquareConstraint"
-	semanticSquareConstraint.AspectRatio = 1
-	semanticSquareConstraint.DominantAxis = Enum.DominantAxis.Height
-	semanticSquareConstraint.Parent = drawInputRect
 
 	local drawInputSurfaceStroke = Instance.new("UIStroke")
 	drawInputSurfaceStroke.Name = "DrawInputSurfaceStroke"
@@ -271,21 +316,6 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	local liveLayer = makeFrame("LiveLayer", strokePreview)
 	liveLayer.Size = UDim2.fromScale(1, 1)
 	liveLayer.ZIndex = 24
-
-	local pivotMarker = Instance.new("Frame")
-	pivotMarker.Name = "PivotMarker"
-	pivotMarker.AnchorPoint = Vector2.new(0.5, 0.5)
-	pivotMarker.Position = UDim2.fromScale(0.5, 0.5)
-	pivotMarker.Size = UDim2.fromOffset(8, 8)
-	pivotMarker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	pivotMarker.BackgroundTransparency = 0.75
-	pivotMarker.BorderSizePixel = 0
-	pivotMarker.ZIndex = 25
-	pivotMarker.Parent = drawInputRect
-
-	local pivotCorner = Instance.new("UICorner")
-	pivotCorner.CornerRadius = UDim.new(1, 0)
-	pivotCorner.Parent = pivotMarker
 
 	local acceptedShapeThumbnail = Instance.new("Frame")
 	acceptedShapeThumbnail.Name = "AcceptedShapeThumbnail"
@@ -368,6 +398,8 @@ function DrawingController.new(inputController: any, drawHud: ScreenGui, submitS
 		_livePoints = {} :: { Vector2 },
 		_semanticPixelPoints = {} :: { Vector2 },
 		_acceptedSemanticPoints = {} :: { SemanticPoint },
+		_acceptedPresentationAnchor = nil :: SemanticPoint?,
+		_presentationAnchors = {} :: { [number]: SemanticPoint },
 		acceptedPoints = {} :: { Vector2 },
 		livePoints = {} :: { Vector2 },
 		_drawing = false,
@@ -400,7 +432,11 @@ function DrawingController:_renderAcceptedStroke()
 		return
 	end
 
-	self.acceptedPoints = semanticPointsToPixels(self._acceptedSemanticPoints, inputSize)
+	self.acceptedPoints = semanticPointsToPixels(
+		self._acceptedSemanticPoints,
+		inputSize,
+		self._acceptedPresentationAnchor
+	)
 	renderPolyline(self._ui.acceptedLayer, self.acceptedPoints, self:_strokeThickness(), 0.35)
 end
 
@@ -413,7 +449,7 @@ function DrawingController:_renderThumbnail()
 		return
 	end
 
-	local mapped = semanticPointsToPixels(self._acceptedSemanticPoints, thumbSize)
+	local mapped = fitSemanticPointsToPixels(self._acceptedSemanticPoints, thumbSize)
 	renderPolyline(thumbnail, mapped, math.max(2, self:_strokeThickness() * 0.45), 0.1)
 end
 
@@ -441,8 +477,7 @@ function DrawingController:_applyLayout(family: string)
 		drawHint.Size = DESKTOP_HINT_SIZE
 	end
 
-	-- AbsoluteSize is updated by Roblox layout after the size token changes. Re-render
-	-- the accepted semantic shape on the next task so pixel Frames match the new square.
+	-- AbsoluteSize is updated by Roblox layout after responsive height changes.
 	task.defer(function()
 		if self._ui.safeRoot.Parent ~= nil and not self._drawing then
 			self:_renderAcceptedStroke()
@@ -501,8 +536,8 @@ function DrawingController:_normalizedPixelDistance(a: Vector2, b: Vector2): num
 	if inputSize.X <= 0 or inputSize.Y <= 0 then
 		return math.huge
 	end
-	local delta = a - b
-	return Vector2.new((delta.X / inputSize.X) * 2, (delta.Y / inputSize.Y) * 2).Magnitude
+	local unit = inputSize.Y * 0.5
+	return (a - b).Magnitude / unit
 end
 
 function DrawingController:_compactSemanticPixelPoints()
@@ -612,9 +647,11 @@ function DrawingController:_prepareSemanticPoints(pixelPoints: { Vector2 }): ({ 
 	end
 
 	local normalized = StrokeMath.Normalize(pixelPoints, inputSize)
-	local clamped, clampError = StrokeMath.Clamp(normalized, {
-		minCoordinate = config.NormalizedMin,
-		maxCoordinate = config.NormalizedMax,
+	local clamped, clampError = StrokeMath.ClampToRect(normalized, {
+		minX = -config.RawSemanticHalfWidth,
+		maxX = config.RawSemanticHalfWidth,
+		minY = -config.RawSemanticHalfHeight,
+		maxY = config.RawSemanticHalfHeight,
 		maxPoints = config.MaxRawPoints,
 	})
 	if clamped == nil then
@@ -655,6 +692,16 @@ function DrawingController:_pendingStrokeCount(): number
 	return count
 end
 
+function DrawingController:_prunePresentationAnchors(referenceSequence: number)
+	local keepCount = PhysicsConfig.StrokeProcessing.MaxPendingStrokes * PRESENTATION_ANCHOR_HISTORY_MULTIPLIER
+	local minimumSequence = math.max(1, referenceSequence - keepCount)
+	for sequence, _ in self._presentationAnchors do
+		if sequence < minimumSequence then
+			self._presentationAnchors[sequence] = nil
+		end
+	end
+end
+
 function DrawingController:_submitStrokeIntent(semanticPixelPoints: { Vector2 })
 	if self._submitStroke == nil then
 		self:_setValidationReason("NETWORK_NOT_READY")
@@ -682,6 +729,9 @@ function DrawingController:_submitStrokeIntent(semanticPixelPoints: { Vector2 })
 		points = copySemanticPoints(semanticPoints),
 		generation = generation,
 	}
+	local presentationAnchor = copySemanticPoint(semanticPoints[1])
+	self._presentationAnchors[sequence] = presentationAnchor
+	self:_prunePresentationAnchors(sequence)
 	self:_setValidation(nil)
 
 	task.delay(config.StrokeResultTimeout, function()
@@ -691,6 +741,8 @@ function DrawingController:_submitStrokeIntent(semanticPixelPoints: { Vector2 })
 		local pending = self._pendingStrokes[sequence]
 		if pending ~= nil and pending.generation == generation then
 			self._pendingStrokes[sequence] = nil
+			-- Keep the bounded presentation anchor so a late trusted ACCEPT can still
+			-- render at the submitted screen location, matching existing R14.5 semantics.
 			print(("[DrawRacers][R14.5] stroke result timeout sequence=%d"):format(sequence))
 			if sequence == self._latestSubmittedSequence then
 				self:_setValidationReason("NETWORK_TIMEOUT")
@@ -729,6 +781,8 @@ function DrawingController:_onStrokeResult(result: any)
 		if sequence > self._lastAcceptedSequence then
 			self._lastAcceptedSequence = sequence
 			self._acceptedSemanticPoints = copySemanticPoints(result.acceptedPoints)
+			local presentationAnchor = self._presentationAnchors[sequence]
+			self._acceptedPresentationAnchor = if presentationAnchor ~= nil then copySemanticPoint(presentationAnchor) else nil
 			self:_renderAcceptedStroke()
 			self:_renderThumbnail()
 			self._ui.emptyGhost.Visible = not self._hasStartedStroke
@@ -740,6 +794,8 @@ function DrawingController:_onStrokeResult(result: any)
 				end
 			end
 		end
+		self._presentationAnchors[sequence] = nil
+		self:_prunePresentationAnchors(sequence)
 		print(("[DrawRacers][B12] stroke accepted sequence=%d shapeVersion=%s"):format(
 			sequence,
 			tostring(result.shapeVersion)
@@ -747,6 +803,7 @@ function DrawingController:_onStrokeResult(result: any)
 		return
 	end
 
+	self._presentationAnchors[sequence] = nil
 	self:_renderAcceptedStroke()
 	self:_renderThumbnail()
 	self._ui.emptyGhost.Visible = not self._hasStartedStroke
@@ -876,7 +933,9 @@ function DrawingController:Destroy()
 	self._validationGeneration += 1
 	self._pendingGeneration += 1
 	table.clear(self._pendingStrokes)
+	table.clear(self._presentationAnchors)
 	table.clear(self._acceptedSemanticPoints)
+	self._acceptedPresentationAnchor = nil
 	self._inputController:Unbind()
 	if self._ui.safeRoot then
 		self._ui.safeRoot:Destroy()
