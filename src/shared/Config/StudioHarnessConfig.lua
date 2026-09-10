@@ -8,6 +8,7 @@ local MODES = {
 	G0 = "G0",
 	R16B = "R16B",
 	R16C = "R16C",
+	R16FINAL = "R16FINAL",
 }
 
 return {
