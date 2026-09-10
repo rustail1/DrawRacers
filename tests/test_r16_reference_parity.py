@@ -137,7 +137,7 @@ def test_r16_3a_network_contract_returns_centered_authoritative_points() -> None
     assert "raw DrawInputRect offset" in shape_spec
 
 
-def test_r16_status_docs_track_current_stage_a_contract_without_passing_human_gate() -> None:
+def test_r16_status_docs_preserve_stage_a_pending_while_stage_b_is_authorized() -> None:
     session = read("docs/SESSION.md")
     features = read("docs/FEATURE_LIST.md")
 
@@ -150,8 +150,9 @@ def test_r16_status_docs_track_current_stage_a_contract_without_passing_human_ga
         assert "centered authoritative shape" in doc
 
     current_session = session.split("## Current implementation/evidence cursor", 1)[1]
-    assert "R16 Stage A" in current_session
-    assert "Studio Gate A" in current_session
+    assert "R16 Stage B implementation" in current_session
+    assert "Studio Gate A remains HUMAN STUDIO PENDING" in current_session
+    assert "Stage B implementation authorized by Product Owner" in session
     assert "B17 — G0 HUMAN_GATE only" not in current_session
 
     current_features = features.split("## M0 — Physics Lab", 1)[1].split(
