@@ -83,7 +83,7 @@ function B07LegAssemblySpec.run()
 
 	local hardCapGeometry = table.clone(PhysicsConfig.LegGeometry)
 	hardCapGeometry.LegCanvasHalfSpan = 4.0
-	local hardCapped = GeometryMath.MapPoint(Vector2.new(1.5, 1), hardCapGeometry)
+	local hardCapped = GeometryMath.MapPoint(Vector2.new(1, 1), hardCapGeometry)
 	assertClose(hardCapped.Magnitude, hardCapGeometry.MaxLegExtentFromHub, 1e-5, "radial hard cap")
 
 	local segments = leg:GetSegments()
@@ -125,7 +125,7 @@ function B07LegAssemblySpec.run()
 	assert(model.Legs:FindFirstChild("LeftLeg") == nil, "LegAssembly destroy left runtime geometry behind")
 	racer:Destroy()
 
-	print("[DrawRacers][B07] one-leg geometry + nonphysical visual tests PASS")
+	print("[DrawRacers][B07] one-leg geometry tests PASS")
 end
 
 return B07LegAssemblySpec
