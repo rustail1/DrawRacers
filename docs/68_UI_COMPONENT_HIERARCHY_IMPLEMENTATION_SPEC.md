@@ -1,5 +1,5 @@
 # 68 — UI COMPONENT HIERARCHY & IMPLEMENTATION SPEC
-Статус: **EXACT UI INSTANCE/CONTROLLER CONTRACT v1.3.4**.
+Статус: **EXACT UI INSTANCE/CONTROLLER CONTRACT v1.3.4 / R16.3B**.
 
 Цель: `59` already fixes layout; this file fixes **ScreenGui/component names, controller ownership and state binding**, so UI programmer/Codex does not invent a second hierarchy.
 
@@ -22,7 +22,6 @@ DrawHUD
         StrokePreview
           AcceptedLayer
           LiveLayer
-        PivotMarker
       AcceptedShapeThumbnail
       EmptyGhost
     ValidationToast
@@ -86,7 +85,8 @@ Canonical local presentation states:
 Only one modal family (`RESULTS/GARAGE/STORE/SETTINGS`) owns modal input at a time. Settings may overlay race non-destructively; DrawCanvas input pauses while Settings modal owns pointer focus.
 
 ## 4. DrawCanvas input rules
-- The wide DrawCanvas contains one **square semantic DrawInputRect**; its visible boundary and pointer-capture area are the same square. Isotropic `[-1,+1]` mapping is owned by `73`.
+- **R16.3B:** DrawCanvas contains one **wide semantic DrawInputRect** with canonical semantic aspect `1.75:1`; its visible boundary and pointer-capture area are the same rectangle. Exact geometry and responsive sizes are owned by `59`.
+- Isotropic normalization uses half the DrawInputRect pixel height as one semantic unit on both axes. Raw input limits are `X ±1.75`, `Y ±1.0`; the wide UI must never stretch physical X/Y geometry.
 - only `DrawInputRect` captures drawing pointer;
 - pointer-down inside starts one stroke;
 - pointer exit does not terminate until pointer-up/cancel;
@@ -95,7 +95,9 @@ Only one modal family (`RESULTS/GARAGE/STORE/SETTINGS`) owns modal input at a ti
 - no submit until pointer-up;
 - sequence increments locally per submission;
 - awaiting server result does not freeze racer/current old shape;
-- accepted result swaps thumbnail/presentation; rejected result keeps previous accepted thumbnail.
+- accepted `StrokeResult.acceptedPoints` are first-point-anchored server authority; DrawingController may use the sequence-scoped submitted first point only as a presentation anchor so the accepted line remains where the player drew it;
+- that presentation anchor is local-only and cannot alter ShapeSpec, collider geometry, motor physics or server authority;
+- rejected result keeps previous accepted thumbnail.
 
 ## 5. Data binding
 UI receives immutable/view-model values from controllers; Roblox Instances are not the source of authoritative business state.
