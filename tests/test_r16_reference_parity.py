@@ -113,6 +113,19 @@ def test_r16_3a_docs_supersede_raw_canvas_offset_semantics() -> None:
     assert "no auto-centering by stroke bounds" not in design
 
 
+def test_r16_3a_network_contract_returns_centered_authoritative_points() -> None:
+    network = read("docs/22_NETWORK_DATA_CONTRACTS.md")
+
+    stroke_result = network.split("### `StrokeResult`", 1)[1].split("### `CosmeticResult`", 1)[0]
+    assert "acceptedPoints?" in stroke_result
+    assert "authoritative centered `ShapeSpec.normalizedPoints`" in stroke_result
+    assert "client renders `acceptedPoints`" in stroke_result
+
+    shape_spec = network.split("# 7. ShapeSpec contract", 1)[1].split("# 8. Remote abuse rules", 1)[0]
+    assert "centered authoritative normalized points" in shape_spec
+    assert "raw DrawInputRect offset" in shape_spec
+
+
 def test_r16_status_docs_track_current_stage_a_contract_without_passing_human_gate() -> None:
     session = read("docs/SESSION.md")
     features = read("docs/FEATURE_LIST.md")
