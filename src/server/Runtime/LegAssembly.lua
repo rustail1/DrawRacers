@@ -1,7 +1,6 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
@@ -38,6 +37,26 @@ local function makeSegmentCFrame(rootCFrame: CFrame, a: Vector2, b: Vector2): CF
 	return rootCFrame * localFrame
 end
 
+local function configureVisualPart(visual: Part, color: Color3)
+	visual.Anchored = false
+	visual.CanCollide = false
+	visual.CanTouch = false
+	visual.CanQuery = false
+	visual.Massless = true
+	visual.CollisionGroup = RACER_LEG_GROUP
+	visual.Material = Enum.Material.SmoothPlastic
+	visual.Color = color
+	visual.CastShadow = false
+end
+
+local function weldVisualToRoot(root: Part, visual: Part)
+	local weld = Instance.new("WeldConstraint")
+	weld.Name = "RootWeld"
+	weld.Part0 = root
+	weld.Part1 = visual
+	weld.Parent = visual
+end
+
 function LegAssembly.new(params: BuildParams)
 	assert(params.side == "Left" or params.side == "Right", "LegAssembly side must be Left or Right")
 	assert(type(params.shapeSpec) == "table", "LegAssembly requires authoritative shapeSpec")
@@ -59,6 +78,8 @@ function LegAssembly.new(params: BuildParams)
 	local legName = if side == "Left" then "LeftLeg" else "RightLeg"
 	local initialPhaseDegrees = params.initialPhaseDegrees or 0
 	local staged = params.staged == true
+	local visualColor = if side == "Left" then Color3.fromRGB(45, 155, 205) else Color3.fromRGB(70, 215, 245)
+	local visualThickness = geometry.PhysicalLegSegmentThickness * 0.78
 
 	local hub = racerModel:FindFirstChild(hubName)
 	assert(hub and hub:IsA("Part"), string.format("racerModel missing %s", hubName))
@@ -149,13 +170,9 @@ function LegAssembly.new(params: BuildParams)
 			legMaterial.FrictionWeight,
 			legMaterial.ElasticityWeight
 		)
-		if RunService:IsStudio() then
-			segment.Transparency = 0.08
-			segment.Color = if side == "Left" then Color3.fromRGB(60, 205, 255) else Color3.fromRGB(110, 235, 255)
-			segment.Material = Enum.Material.Neon
-		else
-			segment.Transparency = 1
-		end
+		-- R16.3B separates physical truth from presentation. Collider boxes remain
+		-- authoritative but are never the visible leg artwork.
+		segment.Transparency = 1
 		segment.Parent = segmentsFolder
 
 		local weld = Instance.new("WeldConstraint")
@@ -164,12 +181,32 @@ function LegAssembly.new(params: BuildParams)
 		weld.Part1 = segment
 		weld.Parent = segment
 
+		local visual = Instance.new("Part")
+		visual.Name = string.format("VisualSegment_%02d", planned.index)
+		visual.Shape = Enum.PartType.Cylinder
+		visual.Size = Vector3.new(mappedLength + geometry.SegmentOverlapAllowance, visualThickness, visualThickness)
+		visual.CFrame = makeSegmentCFrame(root.CFrame, a, b)
+		configureVisualPart(visual, visualColor)
+		visual.Parent = visualFolder
+		weldVisualToRoot(root, visual)
+
 		table.insert(segments, segment)
 	end
 
 	assert(#segments > 0, "LegAssembly produced no legal physical segments")
 
 	local mappedPoints = params.shapeSpec.mappedPoints or {}
+	for index, point in mappedPoints do
+		local visual = Instance.new("Part")
+		visual.Name = string.format("VisualJoint_%02d", index)
+		visual.Shape = Enum.PartType.Ball
+		visual.Size = Vector3.new(visualThickness, visualThickness, visualThickness)
+		visual.CFrame = root.CFrame * CFrame.new(point.X, point.Y, 0)
+		configureVisualPart(visual, visualColor)
+		visual.Parent = visualFolder
+		weldVisualToRoot(root, visual)
+	end
+
 	local self = setmetatable({
 		model = model,
 		root = root,
