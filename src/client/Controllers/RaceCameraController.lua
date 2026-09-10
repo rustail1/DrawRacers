@@ -57,10 +57,10 @@ local function findLocalRacerBody(): BasePart?
 	return nil
 end
 
-local function containsNamedAncestor(guiObject: Instance, name: string): boolean
+local function belongsToDrawInputRect(guiObject: Instance): boolean
 	local current: Instance? = guiObject
 	while current ~= nil do
-		if current.Name == name then
+		if current.Name == "DrawInputRect" then
 			return true
 		end
 		current = current.Parent
@@ -89,7 +89,7 @@ end
 function RaceCameraController:_pointOwnedByUI(position: Vector2): boolean
 	local guiObjects = self._playerGui:GetGuiObjectsAtPosition(math.floor(position.X), math.floor(position.Y))
 	for _, guiObject in guiObjects do
-		if containsNamedAncestor(guiObject, "DrawInputRect") then
+		if belongsToDrawInputRect(guiObject) then
 			return true
 		end
 		if guiObject.Visible and (guiObject:IsA("GuiButton") or guiObject.Active) then
