@@ -1,8 +1,25 @@
 # 26 — SYSTEM HANDOFF MAP
 
-Статус: **AI/DEVELOPER NAVIGATION v1.3.4**
+Статус: **AI/DEVELOPER NAVIGATION v1.3.5**
 
-Use this table before every task so AI/developer reads the smallest correct owner set. Exact current item still comes from `SESSION.md`; order comes from `25_IMPLEMENTATION_SEQUENCE.md`.
+Use this file before every task so AI/developer reads the smallest correct owner set. Exact current item still comes from `SESSION.md`; order comes from `25_IMPLEMENTATION_SEQUENCE.md`.
+
+## Process routing before feature routing
+
+Classify the task before selecting feature owners:
+
+| Task type | Read first | Execution rule |
+|---|---|---|
+| BUGFIX | `AGENTS.md`, `BUGFIX_PROTOCOL.md`, `SESSION.md`, this handoff row, exact current owner specs/code | default PLAN ONLY; prove root cause/blast radius; no write until approved plan; then bounded RED→GREEN |
+| REVIEW / `/review` | `REVIEW_PROTOCOL.md`, approved plan, actual base→head diff, affected owners | read-only; no repository writes |
+| CONTRACT_CHANGE | `AGENTS.md`, current owner spec, Decision Log, relevant code | current code is not patched around old spec; approve new contract before implementation |
+| FEATURE | `AGENTS.md`, `FEATURE_LIST.md`, `SESSION.md`, exact `66` row, this map, owner specs | technical reconnaissance → minimal implementation plan → implementation/acceptance |
+| TUNING | numeric owner (`16/57/59/60/61` as applicable), evidence/gate owner `55`, `SESSION.md` | one value family at a time; measured evidence; no hidden contract change |
+| DOC_ONLY | exact process/status owners | no runtime scope change; preserve gameplay/human-gate status unless explicitly part of the task |
+
+Human copy/paste prompts and the remote GitHub → PC → Rojo → Studio handoff are in `AI_WORKFLOW_QUICKSTART.md`.
+
+## Feature/system owner routing
 
 | Feature/system | Read first | Main code owner | Primary acceptance/test |
 |---|---|---|---|
@@ -19,7 +36,7 @@ Use this table before every task so AI/developer reads the smallest correct owne
 | 2-player rival | `05`, `08`, `29`, `55` G2 | existing race + camera/HUD | G2 crossover + fairness |
 | Camera | `08`, `16`, `29`, **`59` exclusion/layout** | RaceCameraController | obstacle+rival readability |
 | HUD/results | `08`, `05`, `29`, **`59/68`**, requeue timing `74` | HUD/ResultsController | exact hierarchy/layout + placement/rematch clarity |
-| 8-player scaling | `05`, `24`, `55` G3, `57` | existing race/racer systems | full heat + device/perf PASS |
+| 8-player scaling | `05`, `24`, `55` G3, `57` | existing systems | full heat + device/perf PASS |
 | FTUE | `08`, **`59`**, `61`, KPI plan `10`, events `46`, `55` | existing core + HUD | first-minute funnel + G4 inputs |
 | Coins/rewards | `06`, **`61`**, `31`, `44`, analytics `10/46` | RewardService + PlayerDataService | grant once/save/economy event |
 | Cosmetics | `06`, `43`, **`61/62/69/70/71`**, `44`, `55` G5 | CosmeticService | visual-only fairness + purchase/equip + free desire |
@@ -38,7 +55,6 @@ Use this table before every task so AI/developer reads the smallest correct owne
 | Player safety | `39`, `37` | presentation/settings | abuse/readability/accessibility check |
 
 Every task also reads `FEATURE_LIST.md`, `AGENTS.md`, `SESSION.md` and the relevant Decision Log. Do not read `_HISTORY/` for normal implementation. Historical changelogs and superseded audits are provenance only, never current owner specs.
-
 
 Additional exact-owner shortcuts:
 - UI placement/wireframe → `59`;

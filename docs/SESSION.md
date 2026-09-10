@@ -1,7 +1,7 @@
 # SESSION.md — CURRENT STATE
 
 Date: 2026-09-10  
-Documentation version: **v1.4.3 R16 STAGE-C IMPLEMENTATION STATUS**
+Documentation version: **v1.4.4 R16 STAGE-C + REMOTE BUGFIX WORKFLOW**
 
 ## Product state
 The product specification remains closed. CORE/pre-G0 repair **R01–R12**, bounded runtime/evidence closure **R14.1–R14.11**, planar correction **R15/R15.1**, and current reference-parity correction **R16** stay inside the already-approved B03–B16/B17 scope; they introduce **no new WHAT/WHY gameplay scope**.
@@ -147,6 +147,25 @@ R16.11 may synchronize final numbers, selected tuning values, screenshots/log ev
 ## Empirical G0 still required
 R16 completion itself does not pass B17. `55_EMPIRICAL_PRODUCT_GATE_PROTOCOL.md` still requires the fixed G0 evidence, including **6 unique external testers**. A local developer playtest is necessary technical evidence but is not the six-tester empirical gate.
 
+## Development execution workflow — ACTIVE
+A repository-process decision was approved on 2026-09-10 for the current ChatGPT-driven workflow. This does **not** change gameplay scope or R16 gate state.
+
+Current execution topology:
+
+```text
+ChatGPT remote GitHub main
+-> user git pull on PC
+-> Rojo (`default.project.json`)
+-> Roblox Studio human acceptance
+-> evidence back to ChatGPT
+```
+
+Bugfixes now default to `INVESTIGATE / PLAN ONLY` under `BUGFIX_PROTOCOL.md`. No GitHub write occurs until the user approves the bounded plan. After approval, the plan becomes the scope contract; implementation uses meaningful RED→GREEN, regression/full verification, diff audit, direct-main commit and fresh CI. `/review` follows `REVIEW_PROTOCOL.md` and is read-only. `AI_WORKFLOW_QUICKSTART.md` owns the copy/paste prompts and local PowerShell/Rojo handoff.
+
+Remote GitHub execution cannot assert that the user's local `C:\Dev\DrawRacers` worktree is clean. The user checks/protects local changes before pull. One task must not be concurrently implemented by remote GitHub and a local coding agent.
+
+Decision owner: `DECISION_LOG_REMOTE_GITHUB_BUGFIX_WORKFLOW_2026-09-10.md`.
+
 ## Audit notes / remaining risk
 Current layering remains aligned with the architecture: Bootstrap is composition root; `LegShapeService` owns authoritative shape processing; `RacerRuntime` owns body/legs/stabilizer/anti-stall lifetime; `StrokeRemoteTransport` remains transport-only; no early D05 `RacerService` exists.
 
@@ -157,15 +176,3 @@ No C01, M0.5, multiplayer, meta, economy, shop, or later implementation may begi
 
 ## Next permitted task
 **Run one combined Roblox Studio evidence pass on current main: first `R16C` for Stage-B/Stage-C measurements, then restore `G0` for the human reference-feel check. Record PASS/FAIL evidence; only bounded R16 repair or R16.11 evidence freeze may follow.**
-
-## R16 PRE-STUDIO CLOSURE P0–P6
-**Repository closure status: AUTOMATED GREEN target; Studio acceptance remains pending.**
-
-P0 reconciles the implementation plan with R16.3A centering and current upright-body basis. P1 replaces fixed-loop B10 recovery evidence with real elapsed `<=0.25 s`. P2 isolates flat-speed evidence on `R16FlatBenchmark`. P3 records an actual below-`RecoveryKillY` trigger while preserving ShapeSpec/ShapeVersion. P4 moves deterministic spawn/contact/reset/measurement into shared `R16TrialRunner`, measures all six canonical shapes, and derives `noUniversalWinner` from real winner-set intersection. P5 requires Wall good/bad evidence and P5.1 preserves dedicated `WallContactTimeout`. P6 owns this repository/documentation closure and final full CI/toolchain verification.
-
-**Studio Gate A — HUMAN STUDIO PENDING**  
-**Studio Gate B — HUMAN STUDIO PENDING**  
-**Studio Gate C — HUMAN STUDIO PENDING**  
-**B17/G0 — HUMAN_GATE PENDING**
-
-`AUTOMATED GREEN` refers only to the repository/CI contract once the current closure head verifies; it never promotes any of the human gates above.
