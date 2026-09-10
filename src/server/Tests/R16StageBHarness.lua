@@ -72,7 +72,7 @@ local function destroyActiveRacer()
 	end
 end
 
-local function spawnTrialRacer(pieceId: string, shapeId: string): any
+local function spawnTrialRacer(pieceId: string, shapeId: string, spawnX: number?): any
 	destroyActiveRacer()
 	local piece = findPiece(pieceId)
 	local racer = RacerRuntime.new({
@@ -81,7 +81,7 @@ local function spawnTrialRacer(pieceId: string, shapeId: string): any
 		laneIndex = 1,
 		isBot = true,
 		trackId = "M0_R16_STAGE_B",
-		spawnCFrame = CFrame.new(piece.StartX + 1, 3.3, 0),
+		spawnCFrame = CFrame.new(spawnX or (piece.StartX + 1), 3.3, 0),
 		laneCenterZ = 0,
 	})
 	activeRacer = racer
@@ -139,6 +139,80 @@ local function runFlatRoundTrial()
 	destroyActiveRacer()
 end
 
+local function runStepsVerticalTrial()
+	local acceptance = M0SceneConfig.ReferenceAcceptance
+	local racer = spawnTrialRacer("SmallSteps", "HOOK_01")
+	local body = racer:GetBody()
+
+	if not waitForTrackContact(racer, acceptance.TrackContactTimeout) then
+		warn("[DrawRacers][R16.6] HOOK_01 SmallSteps FAIL no Track contact")
+		destroyActiveRacer()
+		return
+	end
+
+	local startY = body.Position.Y
+	local maxY = startY
+	local elapsed = 0
+	while elapsed < acceptance.StepsMeasureSeconds do
+		local dt = RunService.Heartbeat:Wait()
+		elapsed += dt
+		maxY = math.max(maxY, body.Position.Y)
+	end
+
+	local maxDeltaY = maxY - startY
+	local passed = maxDeltaY >= acceptance.StepsRiseMin
+	print(string.format(
+		"[DrawRacers][R16.6] HOOK_01 SmallSteps maxDeltaY=%.3f target>=%.2f %s",
+		maxDeltaY,
+		acceptance.StepsRiseMin,
+		if passed then "PASS" else "FAIL"
+	))
+	destroyActiveRacer()
+end
+
+local function runGapVerticalTrial()
+	local acceptance = M0SceneConfig.ReferenceAcceptance
+	local piece = findPiece("GapSmall")
+	local gapWidth = assert(piece.GapWidth, "GapSmall missing GapWidth")
+	local approachLength = (piece.Length - gapWidth) / 2
+	local gapStart = piece.StartX + approachLength
+	local racer = spawnTrialRacer("GapSmall", "SMALL_ROUND_01", gapStart - 2.0)
+	local body = racer:GetBody()
+
+	if not waitForTrackContact(racer, acceptance.TrackContactTimeout) then
+		warn("[DrawRacers][R16.6] SMALL_ROUND_01 GapSmall FAIL no Track contact")
+		destroyActiveRacer()
+		return
+	end
+
+	local startY = body.Position.Y
+	local minY = startY
+	local elapsed = 0
+	local crossedRecoveryKillY = false
+	while elapsed < acceptance.GapMeasureSeconds do
+		local dt = RunService.Heartbeat:Wait()
+		elapsed += dt
+		minY = math.min(minY, body.Position.Y)
+		if body.Position.Y < M0SceneConfig.RecoveryKillY then
+			crossedRecoveryKillY = true
+			break
+		end
+	end
+
+	local minDeltaY = minY - startY
+	local fallDistance = -minDeltaY
+	local passed = fallDistance >= acceptance.GapFallMin
+	print(string.format(
+		"[DrawRacers][R16.6] SMALL_ROUND_01 GapSmall minDeltaY=%.3f fall=%.3f target>=%.2f recoveryThreshold=%s %s",
+		minDeltaY,
+		fallDistance,
+		acceptance.GapFallMin,
+		tostring(crossedRecoveryKillY),
+		if passed then "PASS" else "FAIL"
+	))
+	destroyActiveRacer()
+end
+
 function R16StageBHarness.start()
 	assert(RunService:IsStudio(), "R16StageBHarness is Studio-only")
 	if started then
@@ -148,9 +222,13 @@ function R16StageBHarness.start()
 	print("[DrawRacers][R16B] Stage B reference measurement harness ready")
 
 	task.spawn(function()
-		local ok, err = xpcall(runFlatRoundTrial, debug.traceback)
+		local ok, err = xpcall(function()
+			runFlatRoundTrial()
+			runStepsVerticalTrial()
+			runGapVerticalTrial()
+		end, debug.traceback)
 		if not ok then
-			warn("[DrawRacers][R16.5] flat measurement harness error: " .. tostring(err))
+			warn("[DrawRacers][R16B] measurement harness error: " .. tostring(err))
 			destroyActiveRacer()
 		end
 	end)
