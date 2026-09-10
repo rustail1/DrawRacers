@@ -81,10 +81,10 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - **Studio Gate B — HUMAN STUDIO PENDING.** CI does not prove real speed, vertical contact behavior or niche differentiation.
 
 ### R16 Stage C — redraw/presentation/canonical pass implementation
-**R16 Stage C implementation was authorized by Product Owner on 2026-09-10.** Studio Gate A, Studio Gate B and Studio Gate C remain **HUMAN STUDIO PENDING**.
-- **R16.8 Moving Redraw Parity — IMPLEMENTED** — 10 moving redraws assert ShapeVersion progression, exactly two active leg models, no retiring leaks, no commit-time body CFrame/velocity reset, and live per-side phase preservation within `5°`.
-- **R16.9 Reference Camera / Observer Isolation — IMPLEMENTED** — Studio presentation uses side-oriented camera constants; observer Character parts are hidden/restored; presentation proxy remains non-physical.
-- **R16.10 Canonical Final Harness — IMPLEMENTED** — Stage-C evidence verifies unchanged Flat/Steps/Wall/Gap/Tunnel presence, Wall HOOK/LONG_BAR evidence, and 10 Heartbeat-spaced live redraws through `LegShapeService`; obstacle Parts are not created/mutated by the harness.
+**R16 Stage C implementation authorized by Product Owner on 2026-09-10.** Studio Gate A, Studio Gate B and Studio Gate C remain **HUMAN STUDIO PENDING**.
+- **R16.8 Moving Redraw Parity — IMPLEMENTED/AUTOMATED GREEN** — 10 moving redraws assert ShapeVersion progression, exactly two active leg models, no retiring leaks, no commit-time body CFrame/velocity reset, and live per-side phase preservation within `5°`.
+- **R16.9 Reference Camera / Observer Isolation — IMPLEMENTED/AUTOMATED GREEN** — Studio presentation uses side-oriented camera constants; observer Character parts are hidden/restored; presentation proxy remains non-physical.
+- **R16.10 Canonical Final Harness — IMPLEMENTED/AUTOMATED GREEN** — Stage-C evidence verifies unchanged Flat/Steps/Wall/Gap/Tunnel presence, Wall HOOK/LONG_BAR evidence, and 10 Heartbeat-spaced live redraws through `LegShapeService`; obstacle Parts are not created/mutated by the harness.
 - Historical R16.10 code evidence: head `3838a994f5b5164b64f3cdee934e5bc84f7be7a4`, run `34454820796`, **149 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**.
 - **Studio Gate C — HUMAN STUDIO PENDING.** Current R16.3B unifies evidence under `R16FINAL`; automation is not Studio acceptance.
 - **R16.11 must not freeze before Studio Gate C is actually recorded from Roblox Studio evidence.** R16.11 may only reconcile final live evidence/tuning/status after the combined Studio pass; it must not turn pending gates into PASS based on CI.
