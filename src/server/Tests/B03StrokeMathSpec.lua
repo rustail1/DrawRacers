@@ -94,7 +94,7 @@ function B03StrokeMathSpec.run()
 	local _, tooManyError = StrokeMath.Clamp(tooMany, clampOptions)
 	assert(tooManyError == "TOO_MANY_POINTS")
 
-	print("[DrawRacers][B03] StrokeMath clamp tests PASS")
+	print("[DrawRacers][B03] StrokeMath tests PASS")
 end
 
 return B03StrokeMathSpec
