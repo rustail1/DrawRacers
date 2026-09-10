@@ -41,12 +41,17 @@ def test_b14_studio_stress_spec_is_wired() -> None:
         "PAYLOAD_TOO_LARGE",
         "valid current shape",
         "no leaked leg models",
-        "countLegParts",
+        "countPhysicalLegParts",
+        "countVisualLegParts",
+        "leaked physical parts",
+        "leaked visual parts",
         "for attempt = 1, 40 do",
         "for attempt = 1, 50 do",
         "redraw abuse/stress tests PASS",
     ]:
         assert token in spec, f"missing B14 stress acceptance token: {token}"
+
+    assert "countLegParts(" not in spec, "R16.3B B14 must not classify nonphysical Visual BaseParts as physical"
 
     bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
     assert "B14RedrawStressSpec" in bootstrap
