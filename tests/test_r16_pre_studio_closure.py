@@ -35,3 +35,25 @@ def test_p1_b10_uses_real_elapsed_quarter_second_recovery_window() -> None:
     assert "recoveryElapsed += RunService.Heartbeat:Wait()" in b10
     assert "upright recovery exceeded 0.25 s" in b10
     assert "for _ = 1, 15 do" not in b10
+
+
+def test_p2_flat_speed_uses_isolated_studio_benchmark_not_canonical_course() -> None:
+    config = read("src/shared/Config/M0SceneConfig.lua")
+    scene = read("src/server/M0TestScene.lua")
+    stage_b = read("src/server/Tests/R16StageBHarness.lua")
+
+    assert "ReferenceBenchmark = {" in config
+    assert 'Name = "R16FlatBenchmark"' in config
+    assert "CenterZ = 16" in config
+    assert "Length = 60" in config
+    assert "buildReferenceBenchmark" in scene
+    assert 'benchmark.Name' in scene
+    assert 'benchmark.CenterZ' in scene
+    assert "CollectionService:AddTag(part, \"RecoverySurface\")" not in scene.split("local function buildReferenceBenchmark", 1)[1].split("end", 1)[0]
+
+    assert "local benchmark = M0SceneConfig.ReferenceBenchmark" in stage_b
+    assert "benchmark.SpawnX" in stage_b
+    assert "laneCenterZ = benchmark.CenterZ" in stage_b
+    assert "waitForContinuousTrackContact" in stage_b
+    assert "result.valid = false" in stage_b
+    assert "M0SceneConfig.Spawn.X" not in stage_b.split("local function runFlatSpeedTrial", 1)[1].split("local function runProgressTrial", 1)[0]
