@@ -71,9 +71,6 @@ local function restoreCharacter()
 end
 
 local function isolateCharacter(character: Model)
-	-- A newly spawned Character must not re-enable or visually overlap the reference racer.
-	-- Keep every still-parented Character part isolated and hidden until harness teardown;
-	-- only move the descendant watcher when Roblox gives this player a newer Character.
 	disconnectCharacterDescendantWatcher()
 
 	for _, descendant in character:GetDescendants() do
@@ -122,6 +119,7 @@ local function createActiveRacer(player: Player)
 	local model = racer:GetModel()
 	model:SetAttribute("DebugTarget", true)
 	model:SetAttribute("OwnerUserId", player.UserId)
+	model:SetAttribute("RecoveryCount", 0)
 	activeRacer = racer
 	return racer
 end
@@ -137,6 +135,18 @@ local function respawnActiveRacer()
 	local shapeVersionBefore = racer:GetShapeVersion()
 	local model = racer:GetModel()
 	local spawn = M0SceneConfig.Spawn
+	local triggerY = racer:GetBody().Position.Y
+	assert(
+		triggerY < M0SceneConfig.RecoveryKillY,
+		string.format(
+			"G0 recovery cannot trigger before real fall: y=%.3f threshold=%.3f",
+			triggerY,
+			M0SceneConfig.RecoveryKillY
+		)
+	)
+	local recoveryCountValue = model:GetAttribute("RecoveryCount")
+	local recoveryCount = if type(recoveryCountValue) == "number" then recoveryCountValue + 1 else 1
+	model:SetAttribute("RecoveryCount", recoveryCount)
 
 	model:PivotTo(CFrame.new(spawn.X, spawn.Y, spawn.Z))
 	for _, descendant in model:GetDescendants() do
@@ -150,6 +160,13 @@ local function respawnActiveRacer()
 	local shapeVersionAfter = racer:GetShapeVersion()
 	assert(shapeSpecAfter == shapeSpecBefore, "G0 recovery must preserve current ShapeSpec")
 	assert(shapeVersionAfter == shapeVersionBefore, "G0 recovery must preserve ShapeVersion")
+	print(string.format(
+		"[DrawRacers][R16.6][G0] recovery triggerY=%.3f threshold=%.3f count=%d shapeVersion=%d PASS",
+		triggerY,
+		M0SceneConfig.RecoveryKillY,
+		recoveryCount,
+		shapeVersionAfter
+	))
 	print("[DrawRacers][R14.6] G0 racer recovered at canonical spawn")
 end
 
