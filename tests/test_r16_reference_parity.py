@@ -165,6 +165,26 @@ def test_r16_owner_docs_match_upright_and_centered_shape_contract() -> None:
     assert "PrimaryAxisParallel" not in tuning
 
 
+def test_r16_readme_entrypoint_tracks_current_stage_a_contract() -> None:
+    readme = read("README.md")
+
+    current_state = readme.split("## Current state", 1)[1].split("## CORE / pre-G0 integrity repair", 1)[0]
+    assert "R16 Stage A" in current_state
+    assert "Studio Gate A" in current_state
+    assert "HUMAN STUDIO PENDING" in current_state
+    assert "next permitted item remains B17/G0 HUMAN_GATE" not in current_state
+
+    repair = readme.split("## CORE / pre-G0 integrity repair", 1)[1].split("## Toolchain", 1)[0]
+    assert "R16.1" in repair
+    assert "R16.3A" in repair
+    assert "soft/free-tilt stabilization" not in repair
+
+    locomotion = readme.split("### B06–B10 — Physical locomotion foundation", 1)[1].split(
+        "### B11–B12", 1
+    )[0]
+    assert "upright" in locomotion.lower()
+
+
 def test_r16_4_phase_is_180_and_redraw_retains_each_side() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
