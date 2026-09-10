@@ -1,6 +1,6 @@
 # 22 — NETWORK & DATA CONTRACTS
 
-Статус: **SECURITY/INTEGRATION CONTRACT v1.3.4**
+Статус: **SECURITY/INTEGRATION CONTRACT v1.3.4 / R16.3A**
 
 Roblox competitive rule: client is trusted for **input intent**, not for authoritative result.
 
@@ -23,7 +23,7 @@ Payload concept:
 }
 ```
 
-Client may pre-simplify for bandwidth, but server repeats validation/cleanup.
+Client may pre-simplify for bandwidth, but server repeats validation/cleanup. The submitted `points` are input intent in normalized DrawInputRect space. R16.3A does not preserve their raw canvas offset as gameplay geometry: after cleanup, the server centers the accepted shape by its cleaned bounds midpoint before building the authoritative `ShapeSpec`.
 
 Server validates:
 - correct player/race phase;
@@ -101,9 +101,12 @@ Server checks canonical eligibility (`45/61`), GuestSafe, configured SKU mapping
   sequence,
   accepted:boolean,
   shapeVersion?,
+  acceptedPoints?: Array<{x:number, y:number}>,
   rejectReasonCode?
 }
 ```
+
+On `accepted=true`, `acceptedPoints` is the authoritative centered `ShapeSpec.normalizedPoints` produced by the server after clamp/dedupe/simplify/resample/R16.3A bounds-centering. It is not an echo of raw submitted coordinates. The client renders `acceptedPoints` as the accepted preview so UI and the physical legs show the same server-owned geometry. On rejection, `acceptedPoints` is omitted.
 
 Reason codes are UI/debug categories, not sensitive internal security details.
 
@@ -254,7 +257,7 @@ ShapeSpec {
 }
 ```
 
-`segmentPlan` is derived by server and is not trusted from client.
+`normalizedPoints` are the centered authoritative normalized points after R16.3A processing. Their bounds midpoint is `(0,0)` within floating-point tolerance; the raw DrawInputRect offset from the submitted stroke is intentionally not retained as physical shape offset. Shape size/proportions are retained. `segmentPlan` is derived by server from these authoritative points and is not trusted from client.
 
 ---
 
@@ -326,4 +329,3 @@ No generic RPC or client-authored reward/ownership/settings table is added.
 
 ## Launch seed/variant rule
 Every heat has one server-generated `HeatSeed` stored in RaceRuntime for reproducible bot/presentation diagnostics. Launch T01–T20 geometry uses exact `TrackDefinition` numeric values: `variantSeed=nil`, no per-heat random obstacle dimensions. HeatSeed may derive bot RNG (`75`) and noncompetitive presentation; moving gameplay obstacles follow their exact phase schedule from `60` identically in all lanes. Future random geometry variants require a new validated config/Decision Log before `variantSeed` becomes non-nil.
-
