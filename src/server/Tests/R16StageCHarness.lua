@@ -257,6 +257,24 @@ local function runLiveMovingRedrawTrial(): boolean
 	return movingRedrawPassed
 end
 
+function R16StageCHarness.RunEvidence(): boolean
+	assert(RunService:IsStudio(), "R16StageCHarness evidence is Studio-only")
+	local piecesPassed = verifyCanonicalPieces()
+	local stageBPassed = R16StageBHarness.RunEvidence()
+	local wallPassed = runWallTrial()
+	local movingRedrawPassed = runLiveMovingRedrawTrial()
+	local passed = piecesPassed and stageBPassed and wallPassed and movingRedrawPassed
+	print(string.format(
+		"[DrawRacers][R16.10] canonical pass pieces=%s stageB=%s wall=%s movingRedraw=%s %s",
+		tostring(piecesPassed),
+		tostring(stageBPassed),
+		tostring(wallPassed),
+		tostring(movingRedrawPassed),
+		if passed then "PASS" else "FAIL"
+	))
+	return passed
+end
+
 function R16StageCHarness.start()
 	assert(RunService:IsStudio(), "R16StageCHarness is Studio-only")
 	if started then
@@ -265,26 +283,18 @@ function R16StageCHarness.start()
 	started = true
 	print("[DrawRacers][R16C] final reference-parity harness ready")
 
+	-- Preserve the standalone R16C mode's asynchronous behavior. R16FINAL calls
+	-- RunEvidence synchronously so StudioGate READY cannot race ahead of evidence.
 	task.spawn(function()
-		local ok, err = xpcall(function()
-			local piecesPassed = verifyCanonicalPieces()
-			local stageBPassed = R16StageBHarness.RunEvidence()
-			local wallPassed = runWallTrial()
-			local movingRedrawPassed = runLiveMovingRedrawTrial()
-			local passed = piecesPassed and stageBPassed and wallPassed and movingRedrawPassed
-			print(string.format(
-				"[DrawRacers][R16.10] canonical pass pieces=%s stageB=%s wall=%s movingRedraw=%s %s",
-				tostring(piecesPassed),
-				tostring(stageBPassed),
-				tostring(wallPassed),
-				tostring(movingRedrawPassed),
-				if passed then "PASS" else "FAIL"
-			))
+		local ok, result = xpcall(function()
+			return R16StageCHarness.RunEvidence()
 		end, debug.traceback)
 		if not ok then
-			warn("[DrawRacers][R16C] final harness error: " .. tostring(err))
+			warn("[DrawRacers][R16C] final harness error: " .. tostring(result))
 			R16TrialRunner.DestroyActive()
 			destroyActiveRacer()
+		elseif result ~= true then
+			warn("[DrawRacers][R16C] one or more final evidence checks FAILED")
 		end
 	end)
 end
