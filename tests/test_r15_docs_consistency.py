@@ -56,7 +56,7 @@ def test_r15_owner_docs_define_planar_locomotion_without_passing_g0() -> None:
     assert "R15.1" in decision
     assert "laneDeviation 5.199" in decision
     assert "PlaneConstraint" in decision
-    assert "rotation around world Z remains physical and free" in decision
+    assert "rotation around world Z = physical/free in-plane tumble" in decision
     assert "8574b918988b8e26551140f2e0d3005caded8fe8" in decision
     assert "34394769781" in decision
     assert "123 passed, 2 failed" in decision
