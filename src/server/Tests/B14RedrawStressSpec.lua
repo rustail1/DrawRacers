@@ -12,6 +12,9 @@ local B14RedrawStressSpec = {}
 
 local TEST_PLAYER = {}
 local MOVING_TEST_PLAYER = {}
+local MAX_PHYSICAL_LEG_PARTS = 2 * (PhysicsConfig.LegGeometry.MaxColliderSegmentsPerLeg + 1)
+local MAX_VISUAL_LEG_PARTS = 2
+	* (PhysicsConfig.LegGeometry.MaxColliderSegmentsPerLeg + PhysicsConfig.StrokeProcessing.MaxCleanedPoints)
 
 local function payload(sequence: number, points: { any })
 	return {
@@ -51,14 +54,53 @@ local function countLegModels(legsFolder: Folder): number
 	return count
 end
 
-local function countLegParts(legsFolder: Folder): number
+local function countPhysicalLegParts(legsFolder: Folder): number
 	local count = 0
-	for _, descendant in legsFolder:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			count += 1
+	for _, legModel in legsFolder:GetChildren() do
+		if legModel:IsA("Model") then
+			local root = legModel:FindFirstChild("LegRoot")
+			if root ~= nil and root:IsA("BasePart") then
+				count += 1
+			end
+			local segmentsFolder = legModel:FindFirstChild("Segments")
+			if segmentsFolder ~= nil then
+				for _, descendant in segmentsFolder:GetDescendants() do
+					if descendant:IsA("BasePart") then
+						count += 1
+					end
+				end
+			end
 		end
 	end
 	return count
+end
+
+local function countVisualLegParts(legsFolder: Folder): number
+	local count = 0
+	for _, legModel in legsFolder:GetChildren() do
+		if legModel:IsA("Model") then
+			local visualFolder = legModel:FindFirstChild("Visual")
+			if visualFolder ~= nil then
+				for _, descendant in visualFolder:GetDescendants() do
+					if descendant:IsA("BasePart") then
+						count += 1
+					end
+				end
+			end
+		end
+	end
+	return count
+end
+
+local function assertLegPartBounds(legsFolder: Folder, context: string)
+	assert(
+		countPhysicalLegParts(legsFolder) <= MAX_PHYSICAL_LEG_PARTS,
+		context .. " leaked physical parts"
+	)
+	assert(
+		countVisualLegParts(legsFolder) <= MAX_VISUAL_LEG_PARTS,
+		context .. " leaked visual parts"
+	)
 end
 
 local function phaseDegrees(hub: Part, root: Part): number
@@ -77,6 +119,7 @@ local function assertCurrentShapeIntact(racer: any, legsFolder: Folder, version:
 	assert(legsFolder:FindFirstChild("LeftLeg") == leftModel, "rejected request removed valid current shape LeftLeg")
 	assert(legsFolder:FindFirstChild("RightLeg") == rightModel, "rejected request removed valid current shape RightLeg")
 	assert(countLegModels(legsFolder) == 2, "rejected request leaked leg models")
+	assertLegPartBounds(legsFolder, "rejected request")
 	assert(legsFolder:FindFirstChild("LeftLeg_Retiring") == nil, "rejected request left retiring LeftLeg")
 	assert(legsFolder:FindFirstChild("RightLeg_Retiring") == nil, "rejected request left retiring RightLeg")
 end
@@ -124,6 +167,7 @@ local function runMovingRedrawParity()
 
 	local seeded = processor:Handle(MOVING_TEST_PLAYER, shapeA(2000))
 	assert(seeded ~= nil and seeded.accepted == true and seeded.shapeVersion == 1, "R16.8 moving seed must accept")
+	assertLegPartBounds(legsFolder, "moving seed")
 
 	movingBody.AssemblyLinearVelocity = Vector3.new(9.5, 1.25, 0)
 	movingBody.AssemblyAngularVelocity = Vector3.new(0.1, -0.1, 0.2)
@@ -147,6 +191,7 @@ local function runMovingRedrawParity()
 		assert(result.shapeVersion == expectedVersion, "R16.8 ShapeVersion must increment exactly once per accept")
 		assert(movingRacer:GetShapeVersion() == expectedVersion, "R16.8 runtime ShapeVersion drift")
 		assert(countLegModels(legsFolder) == 2, "moving redraw must leave exactly two leg models")
+		assertLegPartBounds(legsFolder, "moving redraw")
 		assert(legsFolder:FindFirstChild("LeftLeg_Retiring") == nil, "moving redraw leaked retiring LeftLeg")
 		assert(legsFolder:FindFirstChild("RightLeg_Retiring") == nil, "moving redraw leaked retiring RightLeg")
 		assert(movingBody.CFrame == bodyCFrameBeforeRedraw, "moving redraw teleported body CFrame")
@@ -251,9 +296,8 @@ function B14RedrawStressSpec.run()
 	assert(oversized ~= nil and oversized.accepted == false and oversized.rejectReasonCode == "PAYLOAD_TOO_LARGE")
 	assertCurrentShapeIntact(racer, legsFolder, 1, leftModel, rightModel)
 
-	-- Repeated valid redraws must replace, not accumulate, physical leg assemblies.
+	-- Repeated valid redraws must replace, not accumulate, either physical or visual leg assemblies.
 	local acceptedVersion = 1
-	local maxLegParts = 2 * (PhysicsConfig.LegGeometry.MaxColliderSegmentsPerLeg + 1)
 	for attempt = 1, 40 do
 		now += PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown + 0.01
 		local sequence = 10 + attempt
@@ -263,14 +307,15 @@ function B14RedrawStressSpec.run()
 		acceptedVersion += 1
 		assert(result.shapeVersion == acceptedVersion and racer:GetShapeVersion() == acceptedVersion, "stress redraw version drift")
 		assert(countLegModels(legsFolder) == 2, "stress redraw: no leaked leg models")
-		assert(countLegParts(legsFolder) <= maxLegParts, "stress redraw leaked physical parts")
+		assertLegPartBounds(legsFolder, "stress redraw")
 		assert(legsFolder:FindFirstChild("LeftLeg_Retiring") == nil, "stress redraw leaked retiring LeftLeg")
 		assert(legsFolder:FindFirstChild("RightLeg_Retiring") == nil, "stress redraw leaked retiring RightLeg")
 	end
 
 	-- Burst spam after a successful redraw may reject repeatedly but cannot grow Instances.
 	local modelsBeforeBurst = countLegModels(legsFolder)
-	local partsBeforeBurst = countLegParts(legsFolder)
+	local physicalPartsBeforeBurst = countPhysicalLegParts(legsFolder)
+	local visualPartsBeforeBurst = countVisualLegParts(legsFolder)
 	local versionBeforeBurst = racer:GetShapeVersion()
 	for attempt = 1, 50 do
 		local result = processor:Handle(TEST_PLAYER, shapeA(1000 + attempt))
@@ -278,7 +323,8 @@ function B14RedrawStressSpec.run()
 	end
 	assert(racer:GetShapeVersion() == versionBeforeBurst, "burst spam changed valid current shape")
 	assert(countLegModels(legsFolder) == modelsBeforeBurst, "burst spam: no leaked leg models")
-	assert(countLegParts(legsFolder) == partsBeforeBurst, "burst spam leaked physical parts")
+	assert(countPhysicalLegParts(legsFolder) == physicalPartsBeforeBurst, "burst spam leaked physical parts")
+	assert(countVisualLegParts(legsFolder) == visualPartsBeforeBurst, "burst spam leaked visual parts")
 
 	racer:Destroy()
 	runMovingRedrawParity()
