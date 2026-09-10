@@ -27,16 +27,27 @@ end
 function B04StrokeMathSpec.run()
 	local config = PhysicsConfig.StrokeProcessing
 
-	-- Exact DrawInputRect mapping from spec 73: center=(0,0), right=+X, up=+Y.
+	-- R16.3B: one semantic unit is half the DrawInputRect height on both axes.
 	local normalized = StrokeMath.Normalize({
 		Vector2.new(0, 0),
 		Vector2.new(100, 50),
 		Vector2.new(200, 100),
 	}, Vector2.new(200, 100))
 	assertSamePoints(normalized, {
-		Vector2.new(-1, 1),
+		Vector2.new(-2, 1),
 		Vector2.new(0, 0),
-		Vector2.new(1, -1),
+		Vector2.new(2, -1),
+	})
+
+	local anchored = StrokeMath.AnchorToFirstPoint({
+		Vector2.new(-1.25, 0.4),
+		Vector2.new(-0.25, 0.1),
+		Vector2.new(0.50, -0.6),
+	})
+	assertSamePoints(anchored, {
+		Vector2.new(0, 0),
+		Vector2.new(1.0, -0.3),
+		Vector2.new(1.75, -1.0),
 	})
 
 	-- RDP removes redundant collinear samples but preserves endpoints.
@@ -52,7 +63,6 @@ function B04StrokeMathSpec.run()
 		Vector2.new(1, 0),
 	})
 
-	-- A meaningful corner must survive launch epsilon.
 	local usefulV = {
 		Vector2.new(-0.8, -0.5),
 		Vector2.new(0, 0.8),
@@ -61,7 +71,6 @@ function B04StrokeMathSpec.run()
 	local simplifiedV = StrokeMath.SimplifyRDP(usefulV, config.RDPEpsilon)
 	assert(#simplifiedV == 3, "useful V shape collapsed below its meaningful corner")
 
-	-- Resampling follows open-polyline arc length and never invents a closing segment.
 	local resampled = StrokeMath.Resample({
 		Vector2.new(-1, 0),
 		Vector2.new(1, 0),
@@ -82,7 +91,7 @@ function B04StrokeMathSpec.run()
 
 	assertClose(StrokeMath.MeasureLength({ Vector2.new(0, 0), Vector2.new(0.3, 0.4) }), 0.5, 1e-6, "MeasureLength")
 
-	print("[DrawRacers][B04] StrokeMath simplify/resample/normalize tests PASS")
+	print("[DrawRacers][B04] StrokeMath R16.3B normalize/origin tests PASS")
 end
 
 return B04StrokeMathSpec
