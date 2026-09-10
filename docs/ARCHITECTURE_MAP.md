@@ -31,6 +31,8 @@ A documentation-only commit after the audited runtime base does not invalidate t
 
 **Bounded R16.3B refresh:** the `LegAssembly` presentation layer and `R16FINAL` evidence route below were revalidated after the full-audit base. This is not a new full-runtime audit; unaffected rows still derive from the audited base above.
 
+**Bounded 2026-09-11 presentation refresh:** Product Owner Decision Log `DECISION_LOG_EARLY_CAMERA_RIDER_SEQUENCE_OVERRIDE_2026-09-11.md` authorized the already-locked production `CameraMath` / `RaceCameraController` / `RiderPresentationController` presentation slice before the normal D09/E03 cursor. Only the affected client/shared navigation rows below are refreshed; R16/B17 human-gate facts and later race/gameplay service absence are unchanged.
+
 `docs/SOURCE_MAP.md` is different: it tracks provenance/research sources. `docs/21_SYSTEM_CLASS_ARCHITECTURE.md` is different: it owns target architecture. `docs/26_HANDOFF_MAP.md` routes features to owner specs. This file is only the **current implemented code navigation cache**.
 
 ---
@@ -47,7 +49,7 @@ src/server  -> ServerScriptService
 src/client  -> StarterPlayer.StarterPlayerScripts
 ```
 
-The project file also declares the current static `ReplicatedStorage.Remotes`, `StarterGui` roots, `ServerStorage` roots, and `Workspace.Runtime` roots.
+The project file also declares the current static `ReplicatedStorage.Remotes`, `StarterGui` roots, `ServerStorage` roots, and `Workspace.Runtime` roots. `Workspace.Runtime.RacePresentation` is the existing presentation parent used by the client-only rider and Studio debug proxy; no Rojo mapping change was required for the early presentation slice.
 
 Bug-routing rule: if a script/module is missing or appears in the wrong Studio location, inspect `default.project.json` plus the relevant filesystem path first. Do **not** edit Rojo mapping as a collateral bugfix unless evidence proves the mapping itself is the root cause.
 
@@ -60,6 +62,17 @@ CLIENT INPUT
 InputController
   -> DrawingController
   -> ReplicatedStorage.Remotes.SubmitStroke
+
+CLIENT CAMERA / RIDER PRESENTATION
+CameraMath
+  -> RaceCameraController
+       -> resolves Local Racer from replicated OwnerUserId
+       -> BodyCollider.Position only
+       -> Scriptable camera / damping / dead-zone / bounded orbit
+RiderPresentationController
+  -> resolves human racer from replicated OwnerUserId
+  -> clones standardized nonphysical rider visual
+  -> Workspace.Runtime.RacePresentation
 
 SERVER STROKE AUTHORITY
 SubmitStroke
@@ -99,10 +112,11 @@ Bootstrap.server
 Bootstrap.client
   -> InputController + DrawingController
   -> DebugTuningPanel
-  -> G0 presentation harness after server gate READY in G0/R16FINAL
+  -> RaceCameraController + RiderPresentationController after server gate READY
+  -> G0 debug-proxy harness after server gate READY in G0/R16FINAL
 ```
 
-This is the current active M0/R16 implementation. It is intentionally smaller than the future target graph in doc `21`.
+This is the current active M0/R16 implementation plus the bounded early production presentation slice. It remains intentionally smaller than the full future target graph in doc `21`.
 
 ---
 
@@ -110,13 +124,15 @@ This is the current active M0/R16 implementation. It is intentionally smaller th
 
 | Area | Current file | Owns / first things to inspect | Immediate dependencies |
 |---|---|---|---|
-| Client composition | `src/client/Bootstrap.client.lua` | DrawHUD bootstrap, remotes lookup, controller construction, Studio gate reaction, G0/R16FINAL presentation start | `InputController`, `DrawingController`, `DebugTuningPanel`, `RemoteNames`, `StudioHarnessConfig` |
+| Client composition | `src/client/Bootstrap.client.lua` | DrawHUD bootstrap, remotes lookup, controller construction, Studio gate reaction, production camera/rider start, G0/R16FINAL proxy start | `InputController`, `DrawingController`, `DebugTuningPanel`, `RaceCameraController`, `RiderPresentationController`, `RemoteNames`, `StudioHarnessConfig` |
 | Pointer lifecycle | `src/client/Controllers/InputController.lua` | mouse/touch `start/move/end/cancel`, one active pointer, binding drawing surface | Roblox `UserInputService` |
 | Drawing UI + submit flow | `src/client/Controllers/DrawingController.lua` | DrawCanvas/DrawInputRect runtime UI, live/accepted/thumbnail presentation, local cleanup, pending sequences/timeouts, SubmitStroke/StrokeResult client side | `PhysicsConfig`, `StrokeMath`, `StrokeTypes`, `InputController`, remotes |
+| Production race camera | `src/client/Controllers/RaceCameraController.lua` | Local Racer position-only target, frame-rate-independent smoothing, vertical dead-zone, side framing, RMB/touch bounded orbit, camera capture/restore; no Remote/gameplay authority | `CameraMath`, `Workspace.Runtime.Racers`, `Players.LocalPlayer`, `UserInputService`, `PlayerGui` |
+| Human rider presentation | `src/client/Controllers/RiderPresentationController.lua` | client-only human rider clone keyed by `OwnerUserId`, accessory fallback, nonphysical standardized scale/pose, body-position-only placement | `Players`, `Workspace.Runtime.Racers`, `Workspace.Runtime.RacePresentation`, `RunService` |
 | Debug UI | `src/client/Controllers/DebugTuningPanel.lua` | reads replicated racer debug attributes and displays the DEV/STAGING/Studio panel | `Workspace.Runtime.Racers`, `RunService` |
-| Current G0 camera/presentation | `src/client/Dev/M0G0PresentationHarness.lua` | Studio-only G0/R16FINAL scriptable camera and non-physical body proxy | `StudioHarnessConfig`, `Workspace.Runtime` |
+| Current G0 debug proxy | `src/client/Dev/M0G0PresentationHarness.lua` | Studio-only G0/R16FINAL nonphysical body proxy; deliberately **not** a camera owner | `StudioHarnessConfig`, `Workspace.Runtime` |
 
-Important current absence: production `RaceCameraController`, `HUDController`, `ResultsController`, Garage/Store/Settings race systems from doc `21` are **target/future owners**, not current M0 runtime owners. Do not invent them to repair an M0 bug.
+Important current absence: `HUDController`, `ResultsController`, Garage/Store/Settings race systems and the later race/gameplay services from doc `21` remain **target/future owners**. The early presentation override does not authorize them.
 
 ---
 
@@ -135,7 +151,7 @@ Important current absence: production `RaceCameraController`, `HUDController`, `
 | Debug telemetry | `src/server/Runtime/DebugTelemetry.lua` | current racer debug attributes, collider/motor/speed/stuck/lane sampling | `PhysicsConfig`, `Workspace.Runtime.Racers` |
 | M0 obstacle lab | `src/server/M0TestScene.lua` | current canonical M0 Studio track pieces, reference benchmark, recovery surfaces, debug spawn/anchors | `M0SceneConfig`, `CollisionGroups` |
 
-Important current absence: production `RacerService`, `RaceService`, `TrackService`, `ProgressValidationService`, persistence/economy/monetization services described in doc `21` are **not current M0 implementations**. `RacerService` remains explicitly reserved for D05. Current G0 uses the Studio-only resolver in `M0HumanHarness`.
+Important current absence: production `RacerService`, `RaceService`, `TrackService`, `ProgressValidationService`, persistence/economy/monetization services described in doc `21` are **not current M0 implementations**. `RacerService` remains explicitly reserved for D05. Current G0 uses the Studio-only resolver in `M0HumanHarness`; Camera/Rider only consume the existing replicated `OwnerUserId` presentation identifier.
 
 ---
 
@@ -148,16 +164,17 @@ Important current absence: production `RacerService`, `RaceService`, `TrackServi
 | Studio harness selection | `src/shared/Config/StudioHarnessConfig.lua` | selected Studio evidence mode; current default remains `G0`, `R16FINAL` is the unified evidence mode |
 | Stroke pure math | `src/shared/Math/StrokeMath.lua` | clamp/dedupe/normalize/bounds/centering/simplify/resample/length |
 | Physical segment planning | `src/shared/Math/GeometryMath.lua` | normalized point mapping, radial cap, segment plan, inner-hub collision eligibility |
+| Camera pure math | `src/shared/Math/CameraMath.lua` | frame-rate-independent exponential smoothing, vertical dead-zone step, bounded orbit clamp |
 | Network/shared shape types | `src/shared/Types/StrokeTypes.lua` | SubmitStroke/StrokeResult/ShapeSpec fields |
 | Remote name registry | `src/shared/Net/RemoteNames.lua` | canonical active remote names |
 
-Intended behavior is still owned by the relevant Source-of-Truth docs, especially `03`, `16`, `21`, `22`, `55`, `59`, `60`, `62`, `65`, `68`, `73` as routed by `26_HANDOFF_MAP.md`.
+Intended behavior is still owned by the relevant Source-of-Truth docs, especially `03`, `08`, `16`, `21`, `22`, `55`, `59`, `60`, `62`, `65`, `68`, `73`, plus the dated Camera/Rider Decision Logs as routed by `26_HANDOFF_MAP.md`.
 
 ---
 
 ## 6. Studio/test owners
 
-Current Studio regression/evidence code lives under `src/server/Tests/`.
+Current Studio regression/evidence code lives under `src/server/Tests/` plus source-contract tests under `tests/`.
 
 Navigation clusters:
 - `StudioSpecRunner.lua` + B03–B16 `*Spec.lua` — deterministic Studio regression suite started by server bootstrap;
@@ -167,7 +184,8 @@ Navigation clusters:
 - `R16StageBHarness.lua` — R16 Stage-B measurements;
 - `R16StageCHarness.lua` — Stage-C aggregate/wall/live-redraw evidence and synchronous `RunEvidence()` owner;
 - `R16FinalHarness.lua` — `R16FINAL` synchronous Stage-B/C -> `M0HumanHarness` boundary; human G0 starts and `HUMAN G0 READY` is printed only after automated evidence passes;
-- B08/B09/B10 harnesses — focused earlier physics evidence modes.
+- B08/B09/B10 harnesses — focused earlier physics evidence modes;
+- `tests/test_camera_rider_presentation.py` — early production Camera/Rider source-contract boundary; it does not replace live Studio camera/visual acceptance.
 
 A test/harness is evidence infrastructure, not automatically the production owner of gameplay behavior.
 
@@ -179,7 +197,7 @@ Use this table to avoid a repository-wide scan. Start with the listed cluster, t
 
 | Symptom | Start here | Usually verify next |
 |---|---|---|
-| click/touch does not begin/end drawing | `InputController.lua`, `DrawingController.lua` | `Bootstrap.client.lua`, current DrawHUD structure/owner docs |
+| click/touch does not begin/end drawing | `InputController.lua`, `DrawingController.lua` | `RaceCameraController.lua` touch/RMB ownership, `Bootstrap.client.lua`, current DrawHUD structure/owner docs |
 | live line/accepted line wrong or disappears | `DrawingController.lua` | `StrokeMath.lua`, StrokeResult contract, UI owner docs |
 | visible leg/stroke visual wrong | `DrawingController.lua`, `LegAssembly.lua` | presentation owners `59/62/73`, B07/B14 visual/physical invariants |
 | server rejects valid drawing / accepts malformed drawing | `LegShapeService.lua` | `StrokeMath.lua`, `StrokeTypes.lua`, `PhysicsConfig.lua`, network doc `22` |
@@ -192,7 +210,9 @@ Use this table to avoid a repository-wide scan. Start with the listed cluster, t
 | obstacle/wall/gap/tunnel wrong | `M0TestScene.lua`, `M0SceneConfig.lua` | `CollisionGroups.lua`, owner docs `60/65`, B15/R16 harness |
 | redraw/network timeout/stale order bug | `DrawingController.lua`, `StrokeRemoteTransport.lua`, `LegShapeService.lua` | `StrokeTypes.lua`, `PhysicsConfig.lua`, B12/B13/B14 tests |
 | reset/respawn/G0 recovery bug | `M0HumanHarness.lua`, `RacerRuntime.lua` | `M0SceneConfig.lua`, `RacerStabilizer.lua`, `Bootstrap.server.lua` |
-| G0 camera/body proxy wrong | `M0G0PresentationHarness.lua` | `Bootstrap.client.lua`, `StudioHarnessConfig.lua`, camera owner docs |
+| production camera wrong/jitters/orbit steals input | `RaceCameraController.lua`, `CameraMath.lua` | `Bootstrap.client.lua`, `DrawingController.lua`, UI/camera owners `08/16/59/68`, real Studio evidence |
+| rider missing/oversized/physical-looking | `RiderPresentationController.lua` | replicated racer `OwnerUserId`, source Character, `RacePresentation`, visual owners/Decision Log |
+| G0 debug body proxy wrong | `M0G0PresentationHarness.lua` | `Bootstrap.client.lua`, `StudioHarnessConfig.lua`; camera bugs route to `RaceCameraController.lua` |
 | debug values/panel wrong | `DebugTelemetry.lua`, `DebugTuningPanel.lua` | producer attributes in `RacerRuntime`/stabilizer/anti-stall |
 | R16FINAL ordering/evidence wrong | `R16FinalHarness.lua`, `R16StageCHarness.lua`, `Bootstrap.server.lua` | `StudioSpecRunner.lua`, `StudioHarnessConfig.lua`, current `SESSION.md` gate status |
 | Studio says TESTING/BLOCKED/READY unexpectedly | `Bootstrap.server.lua`, `StudioSpecRunner.lua` | selected harness, Output first failing spec |
@@ -207,6 +227,8 @@ Do not change these casually. Read their owner docs/current definitions before p
 - authoritative `ShapeSpec` meaning — `StrokeTypes.lua`, `LegShapeService.lua`, owner `73` plus current R16 decision/status docs;
 - racer body/leg ownership and dependency direction — doc `21` plus `RacerRuntime.lua`/`LegAssembly.lua`;
 - collision groups/matrix — `CollisionGroups.lua`, owner `65`;
+- production camera ownership — `CameraMath.lua` + `RaceCameraController.lua`, owners `08/16/59/68` and Camera/Rider Decision Logs; no second active camera controller;
+- human rider presentation — `RiderPresentationController.lua` + `RacePresentation`; client-only/nonphysical and no gameplay authority;
 - Rojo DataModel mapping — `default.project.json`;
 - Studio/HUMAN gate semantics — `SESSION.md`, `55`, current R16 decisions.
 
