@@ -172,7 +172,7 @@ function B11LegShapeServiceSpec.run()
 
 	anchoringRacer:Destroy()
 	racer:Destroy()
-	print("[DrawRacers][B11] authoritative R16.3B LegShapeService tests PASS")
+	print("[DrawRacers][B11] authoritative LegShapeService tests PASS")
 end
 
 return B11LegShapeServiceSpec
