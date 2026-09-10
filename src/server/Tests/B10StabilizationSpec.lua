@@ -11,9 +11,37 @@ local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRun
 
 local B10StabilizationSpec = {}
 
+local RECOVERY_WINDOW = 0.25
+local MAX_RECOVERY_SAMPLE_DT = 0.10
+local MAX_RECOVERY_ATTEMPTS = 3
+
 local function bodyAngularDeviationDegrees(body: BasePart): number
 	local x, y, z = body.CFrame:ToOrientation()
 	return math.max(math.abs(math.deg(x)), math.abs(math.deg(y)), math.abs(math.deg(z)))
+end
+
+local function runUprightRecoveryAttempt(body: BasePart, recoveryCFrame: CFrame): (boolean, number, number, number?)
+	body.Anchored = true
+	body.CFrame = recoveryCFrame
+	body.AssemblyLinearVelocity = Vector3.zero
+	body.AssemblyAngularVelocity = Vector3.zero
+	body.Anchored = false
+
+	local peakDeviation = bodyAngularDeviationDegrees(body)
+	assert(peakDeviation <= 3.0, string.format("upright body angular deviation peak %.4f", peakDeviation))
+
+	local recoveryElapsed = 0
+	local recovered = bodyAngularDeviationDegrees(body) <= 1.0
+	while recoveryElapsed < RECOVERY_WINDOW and not recovered do
+		local dt = RunService.Heartbeat:Wait()
+		if dt > MAX_RECOVERY_SAMPLE_DT then
+			return false, recoveryElapsed, bodyAngularDeviationDegrees(body), dt
+		end
+		recoveryElapsed += dt
+		recovered = bodyAngularDeviationDegrees(body) <= 1.0
+	end
+
+	return recovered, recoveryElapsed, bodyAngularDeviationDegrees(body), nil
 end
 
 function B10StabilizationSpec.run()
@@ -79,27 +107,42 @@ function B10StabilizationSpec.run()
 	)
 
 	-- Reference-parity body contract: disturb the cube but keep it upright while the legs
-	-- remain the only rotating locomotion assemblies. Use real Heartbeat dt so low FPS cannot
-	-- silently stretch the quarter-second recovery target.
-	body.Anchored = true
-	body.CFrame = CFrame.new(-18, 8, laneCenterZ) * CFrame.Angles(0, 0, math.rad(2.5))
-	body.AssemblyLinearVelocity = Vector3.zero
-	body.AssemblyAngularVelocity = Vector3.zero
-	body.Anchored = false
-	local peakDeviation = bodyAngularDeviationDegrees(body)
-	assert(peakDeviation <= 3.0, string.format("upright body angular deviation peak %.4f", peakDeviation))
+	-- remain the only rotating locomotion assemblies. A Heartbeat sample larger than the
+	-- measurement resolution cannot prove how long recovery took, so discard that attempt
+	-- and retry instead of misclassifying a Studio scheduler stall as a physics failure.
+	local recoveryCFrame = CFrame.new(-18, 8, laneCenterZ) * CFrame.Angles(0, 0, math.rad(2.5))
 	local recoveryElapsed = 0
-	local recovered = bodyAngularDeviationDegrees(body) <= 1.0
-	while recoveryElapsed < 0.25 and not recovered do
-		recoveryElapsed += RunService.Heartbeat:Wait()
-		recovered = bodyAngularDeviationDegrees(body) <= 1.0
+	local recoveryDeviation = math.huge
+	local recovered = false
+	local validRecoveryEvidence = false
+	local lastStallDt: number? = nil
+
+	for attempt = 1, MAX_RECOVERY_ATTEMPTS do
+		local attemptRecovered, attemptElapsed, attemptDeviation, stallDt = runUprightRecoveryAttempt(body, recoveryCFrame)
+		recovered = attemptRecovered
+		recoveryElapsed = attemptElapsed
+		recoveryDeviation = attemptDeviation
+		if stallDt == nil then
+			validRecoveryEvidence = true
+			break
+		end
+		lastStallDt = stallDt
 	end
+
 	assert(
-		recovered and recoveryElapsed <= 0.25,
+		validRecoveryEvidence,
+		string.format(
+			"upright recovery evidence invalidated by Heartbeat stalls: attempts=%d lastDt=%.4f",
+			MAX_RECOVERY_ATTEMPTS,
+			lastStallDt or -1
+		)
+	)
+	assert(
+		recovered and recoveryElapsed <= RECOVERY_WINDOW,
 		string.format(
 			"upright recovery exceeded 0.25 s: elapsed=%.4f deviation=%.4f",
 			recoveryElapsed,
-			bodyAngularDeviationDegrees(body)
+			recoveryDeviation
 		)
 	)
 
