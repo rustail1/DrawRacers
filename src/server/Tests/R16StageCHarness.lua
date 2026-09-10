@@ -10,6 +10,7 @@ local M0SceneConfig = require(
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 local LegShapeService = require(script.Parent.Parent.Services:WaitForChild("LegShapeService"))
 local R16ReferenceShapes = require(script.Parent:WaitForChild("R16ReferenceShapes"))
+local R16TrialRunner = require(script.Parent:WaitForChild("R16TrialRunner"))
 local R16StageBHarness = require(script.Parent:WaitForChild("R16StageBHarness"))
 
 local R16StageCHarness = {}
@@ -24,15 +25,6 @@ local CANONICAL_PIECES = {
 
 local started = false
 local activeRacer: any = nil
-
-local function findPiece(pieceId: string): any
-	for _, piece in M0SceneConfig.Pieces do
-		if piece.PieceId == pieceId then
-			return piece
-		end
-	end
-	error(string.format("missing canonical piece %s", pieceId))
-end
 
 local function hasTrackContact(model: Model, partName: string?): boolean
 	for _, descendant in model:GetDescendants() do
@@ -107,73 +99,24 @@ local function verifyCanonicalPieces(): boolean
 	return true
 end
 
-local function spawnWallRacer(shapeId: string): any
-	destroyActiveRacer()
-	local piece = findPiece("SingleWallLow")
-	local racer = RacerRuntime.new({
-		raceId = "R16_STAGE_C_WALL",
-		slotIndex = 7,
-		laneIndex = 1,
-		isBot = true,
-		trackId = "M0_R16_STAGE_C",
-		spawnCFrame = CFrame.new(piece.StartX + 1, 3.3, 0),
-		laneCenterZ = 0,
-	})
-	activeRacer = racer
-	local model = racer:GetModel()
-	model:SetAttribute("R16StageCTrial", true)
-	racer:ApplyShape(R16ReferenceShapes.Get(shapeId), true)
-	model:SetAttribute("ShapeVersion", 1)
-	return racer
-end
-
-local function runWallShape(shapeId: string): boolean
-	local acceptance = M0SceneConfig.ReferenceAcceptance
-	local piece = findPiece("SingleWallLow")
-	local racer = spawnWallRacer(shapeId)
-	local body = racer:GetBody()
-
-	local contactedWall = waitForTrackContact(racer, acceptance.WallContactTimeout, "Wall")
-	if not contactedWall then
-		print(string.format("[DrawRacers][R16.10] wall shape=%s contact=false completed=false FAIL", shapeId))
-		destroyActiveRacer()
-		return false
-	end
-
-	local maxX = body.Position.X
-	local elapsed = 0
-	while elapsed < acceptance.WallMeasureSeconds do
-		local dt = RunService.Heartbeat:Wait()
-		elapsed += dt
-		maxX = math.max(maxX, body.Position.X)
-		if body.Position.Y < M0SceneConfig.RecoveryKillY then
-			break
-		end
-	end
-
-	local completed = maxX >= piece.StartX + piece.Length - 0.5
-	print(string.format(
-		"[DrawRacers][R16.10] wall shape=%s contact=%s maxX=%.2f target>=%.2f completed=%s %s",
-		shapeId,
-		tostring(contactedWall),
-		maxX,
-		piece.StartX + piece.Length - 0.5,
-		tostring(completed),
-		if completed then "PASS" else "FAIL"
-	))
-	destroyActiveRacer()
-	return completed
-end
-
 local function runWallTrial(): boolean
-	local hookPassed = runWallShape("HOOK_01")
-	local longBarPassed = runWallShape("LONG_BAR_01")
-	local wallPassed = hookPassed or longBarPassed
+	local acceptance = M0SceneConfig.ReferenceAcceptance
+	local options = { contactName = "Wall" }
+	local hook = R16TrialRunner.RunPiece("SingleWallLow", "HOOK_01", acceptance.WallMeasureSeconds, options)
+	local longBar = R16TrialRunner.RunPiece("SingleWallLow", "LONG_BAR_01", acceptance.WallMeasureSeconds, options)
+	local suboptimal = R16TrialRunner.RunPiece("SingleWallLow", "SUBOPTIMAL_01", acceptance.WallMeasureSeconds, options)
+	local wallGoodPassed = hook.completedPiece or longBar.completedPiece
+	local wallBadPassed = suboptimal.valid and not suboptimal.completedPiece
+	local wallPassed = wallGoodPassed and wallBadPassed
 	print(string.format(
-		"[DrawRacers][R16.10] wall summary hook=%s longBar=%s wallPassed=%s",
-		tostring(hookPassed),
-		tostring(longBarPassed),
-		tostring(wallPassed)
+		"[DrawRacers][R16.10] wall summary hook=%s longBar=%s suboptimal=%s good=%s bad=%s wallPassed=%s %s",
+		tostring(hook.completedPiece),
+		tostring(longBar.completedPiece),
+		tostring(suboptimal.completedPiece),
+		tostring(wallGoodPassed),
+		tostring(wallBadPassed),
+		tostring(wallPassed),
+		if wallPassed then "PASS" else "FAIL"
 	))
 	return wallPassed
 end
@@ -337,6 +280,7 @@ function R16StageCHarness.start()
 		end, debug.traceback)
 		if not ok then
 			warn("[DrawRacers][R16C] final harness error: " .. tostring(err))
+			R16TrialRunner.DestroyActive()
 			destroyActiveRacer()
 		end
 	end)
@@ -344,6 +288,7 @@ end
 
 function R16StageCHarness.stop()
 	R16StageBHarness.stop()
+	R16TrialRunner.DestroyActive()
 	destroyActiveRacer()
 	started = false
 end
