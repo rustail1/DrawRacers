@@ -11,6 +11,8 @@ local StrokeTypes = require(
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
 
 local RACER_LEG_GROUP = "RacerLeg"
+local FRONT_VISUAL_COLOR = Color3.fromRGB(23, 32, 51)
+local BACK_VISUAL_COLOR = Color3.fromRGB(57, 68, 84)
 
 local LegAssembly = {}
 LegAssembly.__index = LegAssembly
@@ -78,7 +80,7 @@ function LegAssembly.new(params: BuildParams)
 	local legName = if side == "Left" then "LeftLeg" else "RightLeg"
 	local initialPhaseDegrees = params.initialPhaseDegrees or 0
 	local staged = params.staged == true
-	local visualColor = if side == "Left" then Color3.fromRGB(45, 155, 205) else Color3.fromRGB(70, 215, 245)
+	local visualColor = if side == "Left" then BACK_VISUAL_COLOR else FRONT_VISUAL_COLOR
 	local visualThickness = geometry.PhysicalLegSegmentThickness * 0.78
 
 	local hub = racerModel:FindFirstChild(hubName)
