@@ -83,13 +83,13 @@ Repository-level implementation now includes:
 Latest Stage-B automated code evidence before this status reconciliation: head `2197882e4c641e7c1d17a6dfc538f23fd1a521e6`; `Contract Verify` run `34451426807` → **145 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. These are repository/build facts only. They do not prove the live Roblox solver meets the speed/niche thresholds.
 
 ## Current implementation/evidence cursor
-**R16 Stage B — Mandatory Studio Gate B — HUMAN STUDIO PENDING. Studio Gate A also remains HUMAN STUDIO PENDING because implementation progression was explicitly overridden without fabricating acceptance.**
+**R16 Stage B implementation — Mandatory Studio Gate B — HUMAN STUDIO PENDING. Studio Gate A also remains HUMAN STUDIO PENDING because implementation progression was explicitly overridden without fabricating acceptance.**
 
 ### Studio Gate A evidence still required
 Verify current `main` locally:
 - Studio Play reaches `[StudioGate] TOTAL 13 PASS / 0 FAIL` then `READY` with no red DrawRacers runtime error;
 - B10 upright/lane regression passes under the live Roblox solver;
-- normal `laneDeviation <= 0.03`; unexplained excursion `>0.08` is FAIL;
+- normal `laneDeviation <=0.03`; unexplained excursion `>0.08` is FAIL;
 - body normal angular deviation `<=1°`; injected strong-contact disturbance stays `<=3°` and returns to `<=1°` within `0.25 s`;
 - body still moves/rises/falls in X/Y from real physics rather than a scripted position lock;
 - hubs remain symmetric/fixed at the configured offsets and the body does not continuously scrape flat solely because of axle placement;
