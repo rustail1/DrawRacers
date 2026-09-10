@@ -39,6 +39,15 @@ local function makePart(name: string, size: Vector3, position: Vector3, parent: 
 	return part
 end
 
+local function configureTrackPart(part: Part)
+	part.CanCollide = true
+	part.CanTouch = true
+	part.CanQuery = true
+	part.CollisionGroup = CollisionGroups.Track
+	part.Material = Enum.Material.SmoothPlastic
+	part.Color = Color3.fromRGB(115, 120, 130)
+end
+
 local function makeTrackPart(
 	name: string,
 	x0: number,
@@ -57,17 +66,28 @@ local function makeTrackPart(
 		Vector3.new((x0 + x1) / 2, topY - height / 2, 0),
 		parent
 	)
-	part.CanCollide = true
-	part.CanTouch = true
-	part.CanQuery = true
-	part.CollisionGroup = CollisionGroups.Track
-	part.Material = Enum.Material.SmoothPlastic
-	part.Color = Color3.fromRGB(115, 120, 130)
+	configureTrackPart(part)
 	if antiStallSurface == true then
 		CollectionService:AddTag(part, "RecoverySurface")
 		part:SetAttribute("RequirementTag", "FAST_ROLL")
 	end
 	return part
+end
+
+local function buildReferenceBenchmark(parent: Instance)
+	local benchmark = config.ReferenceBenchmark
+	local part = makePart(
+		benchmark.Name,
+		Vector3.new(benchmark.Length, benchmark.Thickness, benchmark.Width),
+		Vector3.new(
+			benchmark.StartX + benchmark.Length / 2,
+			benchmark.TopY - benchmark.Thickness / 2,
+			benchmark.CenterZ
+		),
+		parent
+	)
+	configureTrackPart(part)
+	part:SetAttribute("R16ReferenceBenchmark", true)
 end
 
 local function makeRaisedBlock(name: string, x0: number, x1: number, topY: number, parent: Instance): Part
@@ -108,12 +128,7 @@ local function buildSingleWallLow(piece: PieceConfig, parent: Instance)
 		Vector3.new(centerX, config.Lane.TopY + height / 2, 0),
 		parent
 	)
-	wall.CanCollide = true
-	wall.CanTouch = true
-	wall.CanQuery = true
-	wall.CollisionGroup = CollisionGroups.Track
-	wall.Material = Enum.Material.SmoothPlastic
-	wall.Color = Color3.fromRGB(115, 120, 130)
+	configureTrackPart(wall)
 end
 
 local function buildGapSmall(piece: PieceConfig, parent: Instance)
@@ -143,12 +158,7 @@ local function buildLowTunnelWide(piece: PieceConfig, parent: Instance)
 		Vector3.new((ceilingX0 + ceilingX1) / 2, config.Lane.TopY + clearance + ceilingThickness / 2, 0),
 		parent
 	)
-	ceiling.CanCollide = true
-	ceiling.CanTouch = true
-	ceiling.CanQuery = true
-	ceiling.CollisionGroup = CollisionGroups.Track
-	ceiling.Material = Enum.Material.SmoothPlastic
-	ceiling.Color = Color3.fromRGB(115, 120, 130)
+	configureTrackPart(ceiling)
 end
 
 local BUILDERS = {
@@ -175,6 +185,11 @@ function M0TestScene.build()
 	local obstacleLab = Instance.new("Folder")
 	obstacleLab.Name = "ObstacleLab"
 	obstacleLab.Parent = scene
+
+	local referenceLab = Instance.new("Folder")
+	referenceLab.Name = "ReferenceBenchmarks"
+	referenceLab.Parent = scene
+	buildReferenceBenchmark(referenceLab)
 
 	makeTrackPart("EntryFloor", 0, config.Pieces[1].StartX, config.Lane.TopY, config.Lane.Thickness, obstacleLab, true)
 
