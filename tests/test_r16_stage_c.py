@@ -33,18 +33,22 @@ def test_r16_8_moving_redraw_parity_is_stress_verified() -> None:
     assert "moving redraw leaked retiring RightLeg" in b14
 
 
-def test_r16_9_g0_camera_is_reference_side_view_and_observer_is_hidden() -> None:
+def test_r16_9_production_camera_is_side_view_and_observer_is_hidden() -> None:
+    camera = read("src/client/Controllers/RaceCameraController.lua")
     presentation = read("src/client/Dev/M0G0PresentationHarness.lua")
     human = read("src/server/Tests/M0HumanHarness.lua")
 
-    assert "local CAMERA_OFFSET = Vector3.new(0, 4, 22)" in presentation
-    assert "local CAMERA_LOOK_AHEAD = Vector3.new(6, 0.8, 0)" in presentation
-    assert "local CAMERA_FIELD_OF_VIEW = 40" in presentation
-    assert "camera.CameraType = Enum.CameraType.Scriptable" in presentation
-    assert "camera.FieldOfView = CAMERA_FIELD_OF_VIEW" in presentation
-    assert "camera.CFrame = CFrame.lookAt(cameraPosition, target)" in presentation
-    assert "previousFieldOfView" in presentation
-    assert "camera.FieldOfView = previousFieldOfView" in presentation
+    assert "local FIELD_OF_VIEW = 60" in camera
+    assert "local LOOK_AHEAD = 11" in camera
+    assert "local CAMERA_HEIGHT = 10" in camera
+    assert "local SIDE_DISTANCE = 23" in camera
+    assert "camera.CameraType = Enum.CameraType.Scriptable" in camera
+    assert "camera.FieldOfView = FIELD_OF_VIEW" in camera
+    assert "camera.CFrame = CFrame.lookAt(cameraPosition" in camera
+    assert "_previousFieldOfView" in camera
+    assert "camera.FieldOfView = self._previousFieldOfView" in camera
+    assert "camera.CameraType" not in presentation
+    assert "camera.CFrame" not in presentation
 
     for token in [
         "proxy.Anchored = true",
