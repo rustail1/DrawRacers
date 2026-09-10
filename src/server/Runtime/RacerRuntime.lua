@@ -157,14 +157,16 @@ local function captureLegPhaseDegrees(leg: any, hub: Part, fallbackDegrees: numb
 end
 
 local function makeInternalShapeSpec(normalizedPoints: { Vector2 }): ShapeSpec
-	local centeredPoints = StrokeMath.CenterOnBounds(normalizedPoints)
-	local plan = GeometryMath.BuildSegmentPlan(centeredPoints, PhysicsConfig.LegGeometry)
+	-- R16.3B test/reference shapes use the same mechanical-origin semantics as
+	-- player shapes: the first point is the hub-relative origin.
+	local anchoredPoints = StrokeMath.AnchorToFirstPoint(normalizedPoints)
+	local plan = GeometryMath.BuildSegmentPlan(anchoredPoints, PhysicsConfig.LegGeometry)
 	assert(#plan.segmentPlan > 0, "internal shape produced no legal physical segments")
-	local bounds = StrokeMath.ComputeBounds(centeredPoints)
+	local bounds = StrokeMath.ComputeBounds(anchoredPoints)
 	assert(bounds ~= nil, "internal shape requires bounds")
 	return {
 		version = 0,
-		normalizedPoints = centeredPoints,
+		normalizedPoints = anchoredPoints,
 		mappedPoints = plan.mappedPoints,
 		bounds = bounds,
 		segmentPlan = plan.segmentPlan,
