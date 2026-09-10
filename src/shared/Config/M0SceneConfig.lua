@@ -18,6 +18,17 @@ return {
 		Z = 0,
 	},
 	RecoveryKillY = -12,
+	ReferenceBenchmark = {
+		Name = "R16FlatBenchmark",
+		StartX = 0,
+		Length = 60,
+		CenterZ = 16,
+		TopY = 0,
+		Width = 8,
+		Thickness = 2,
+		SpawnX = 4,
+		SpawnY = 3.3,
+	},
 	ReferenceAcceptance = {
 		TrackContactTimeout = 4.0,
 		FlatIgnoreSeconds = 2.0,
