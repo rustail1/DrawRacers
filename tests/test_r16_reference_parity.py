@@ -165,6 +165,16 @@ def test_r16_owner_docs_match_upright_and_centered_shape_contract() -> None:
     assert "PrimaryAxisParallel" not in tuning
 
 
+def test_r16_technical_design_does_not_reintroduce_free_body_roll() -> None:
+    tech = read("docs/11_TECH_DESIGN_ROBLOX.md")
+    stabilization = tech.split("## 10. Body stabilization", 1)[1].split("## 11. Network model", 1)[0]
+
+    assert "R16.1 upright-body contract" in stabilization
+    assert "all three body rotation axes" in stabilization
+    assert "prevent endless roll" not in stabilization
+    assert "tuned softly" not in stabilization
+
+
 def test_r16_readme_entrypoint_tracks_current_stage_a_contract() -> None:
     readme = read("README.md")
 
