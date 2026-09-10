@@ -24,6 +24,10 @@ return {
 		FlatMeasureSeconds = 3.0,
 		FlatSpeedMin = 4.0,
 		FlatSpeedMax = 7.0,
+		StepsMeasureSeconds = 10.0,
+		StepsRiseMin = 0.25,
+		GapMeasureSeconds = 6.0,
+		GapFallMin = 1.0,
 	},
 	Pieces = {
 		{
