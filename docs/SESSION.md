@@ -83,7 +83,7 @@ Repository-level implementation now includes:
 Latest Stage-B automated code evidence before this status reconciliation: head `2197882e4c641e7c1d17a6dfc538f23fd1a521e6`; `Contract Verify` run `34451426807` → **145 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. These are repository/build facts only. They do not prove the live Roblox solver meets the speed/niche thresholds.
 
 ## Current implementation/evidence cursor
-**R16 Stage B implementation — Mandatory Studio Gate B — HUMAN STUDIO PENDING. Studio Gate A also remains HUMAN STUDIO PENDING because implementation progression was explicitly overridden without fabricating acceptance.**
+**R16 Stage B implementation — Mandatory Studio Gate B — HUMAN STUDIO PENDING. Studio Gate A remains HUMAN STUDIO PENDING because implementation progression was explicitly overridden without fabricating acceptance.**
 
 ### Studio Gate A evidence still required
 Verify current `main` locally:
