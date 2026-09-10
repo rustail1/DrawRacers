@@ -157,3 +157,15 @@ No C01, M0.5, multiplayer, meta, economy, shop, or later implementation may begi
 
 ## Next permitted task
 **Run one combined Roblox Studio evidence pass on current main: first `R16C` for Stage-B/Stage-C measurements, then restore `G0` for the human reference-feel check. Record PASS/FAIL evidence; only bounded R16 repair or R16.11 evidence freeze may follow.**
+
+## R16 PRE-STUDIO CLOSURE P0–P6
+**Repository closure status: AUTOMATED GREEN target; Studio acceptance remains pending.**
+
+P0 reconciles the implementation plan with R16.3A centering and current upright-body basis. P1 replaces fixed-loop B10 recovery evidence with real elapsed `<=0.25 s`. P2 isolates flat-speed evidence on `R16FlatBenchmark`. P3 records an actual below-`RecoveryKillY` trigger while preserving ShapeSpec/ShapeVersion. P4 moves deterministic spawn/contact/reset/measurement into shared `R16TrialRunner`, measures all six canonical shapes, and derives `noUniversalWinner` from real winner-set intersection. P5 requires Wall good/bad evidence and P5.1 preserves dedicated `WallContactTimeout`. P6 owns this repository/documentation closure and final full CI/toolchain verification.
+
+**Studio Gate A — HUMAN STUDIO PENDING**  
+**Studio Gate B — HUMAN STUDIO PENDING**  
+**Studio Gate C — HUMAN STUDIO PENDING**  
+**B17/G0 — HUMAN_GATE PENDING**
+
+`AUTOMATED GREEN` refers only to the repository/CI contract once the current closure head verifies; it never promotes any of the human gates above.
