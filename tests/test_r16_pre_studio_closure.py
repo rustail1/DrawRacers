@@ -119,6 +119,17 @@ def test_p5_wall_requires_suitable_success_and_suboptimal_failure() -> None:
     assert "wallBadPassed" in stage_c
 
 
+def test_p5_1_wall_preserves_dedicated_contact_timeout_through_trial_runner() -> None:
+    runner = read("src/server/Tests/R16TrialRunner.lua")
+    stage_c = read("src/server/Tests/R16StageCHarness.lua")
+
+    assert "local contactTimeout = if options ~= nil and options.contactTimeout ~= nil" in runner
+    assert "options.contactTimeout" in runner
+    assert "else acceptance.TrackContactTimeout" in runner
+    assert "waitForTrackContact(racer, contactTimeout, options)" in runner
+    assert "contactTimeout = acceptance.WallContactTimeout" in stage_c
+
+
 def test_p6_status_records_pre_studio_closure_without_passing_human_gates() -> None:
     session = read("docs/SESSION.md")
     features = read("docs/FEATURE_LIST.md")
