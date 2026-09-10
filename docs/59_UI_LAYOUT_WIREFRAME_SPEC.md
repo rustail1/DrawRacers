@@ -1,5 +1,5 @@
 # 59 — UI LAYOUT / WIREFRAME SPEC
-Статус: **FINAL PRESENTATION LAYOUT CONTRACT v1.3.4**.
+Статус: **FINAL PRESENTATION LAYOUT CONTRACT v1.3.4 / R16.3B**.
 
 This file owns **where player-facing UI is placed and how large it is**. Exact ScreenGui child names/controller/focus binding are owned by `68_UI_COMPONENT_HIERARCHY_IMPLEMENTATION_SPEC.md`. `29_UI_SCREEN_FLOW_SPEC.md` owns screen behavior/state transitions; `37_LOCALIZATION_ACCESSIBILITY.md` owns accessibility/localization. Any implementation may change HOW the hierarchy is coded, but it must preserve the observable layout contract below unless a Product Owner Decision Log changes this file.
 
@@ -34,20 +34,22 @@ No cosmetic/VFX element may render above DrawCanvas input feedback or modal purc
 | PlacementChip | A(0,0) | P(.025,.025) S(.115,.070) | P(.025,.025) S(.145,.078) | Shows `3 / 8`; player number icon at left |
 | ProgressStrip | A(.5,0) | P(.500,.030) S(.420,.040) | P(.500,.030) S(.390,.044) | Local marker + nearest two rivals + finish icon |
 | SettingsButton | A(1,0) | P(.975,.025) S(.050,.070) | P(.975,.025) S(.065,.078) | gear icon; opens non-destructive settings |
-| DrawCanvas | A(.5,1) | P(.500,.975) S(.460,.255) | P(.500,.975) S(.640,.285) | lower center; rounded panel, transparent enough to see world silhouette |
-| ValidationToast | A(.5,1) | P(.500,.705) S(.320,.052) | P(.500,.675) S(.440,.058) | max 2.0 s; accepted/rejected only |
-| DrawHint | A(.5,1) | P(.500,.705) S(.380,.060) | P(.500,.675) S(.500,.064) | FTUE/timed hint only; mutually exclusive with toast |
+| DrawCanvas | A(.5,1) | P(.500,.975) S(.460,.280) | P(.500,.975) S(.640,.340) | lower center; R16.3B visible 1.75:1 semantic draw surface |
+| ValidationToast | A(.5,1) | P(.500,.685) S(.320,.052) | P(.500,.615) S(.440,.058) | max 2.0 s; accepted/rejected only |
+| DrawHint | A(.5,1) | P(.500,.685) S(.380,.060) | P(.500,.615) S(.500,.064) | FTUE/timed hint only; mutually exclusive with toast |
 | ConnectionBanner | A(.5,0) | P(.500,.085) S(.420,.050) | same | non-blocking; never covers progress strip |
 
 ### DrawCanvas internal layout
-- The outer DrawCanvas remains the wide status panel above. Its **square semantic DrawInputRect** is centered inside it: height = 82% of DrawCanvas and width is constrained to the same pixel size (`AspectRatio=1`). Remaining width is border/status/thumbnail space, not semantic drawing area.
+- **R16.3B:** DrawCanvas itself contains one **wide semantic DrawInputRect** that fills the visible panel. Its canonical semantic aspect is `1.75:1`, owned by `PhysicsConfig.StrokeProcessing.RawSemanticHalfWidth / RawSemanticHalfHeight`; height is the responsive owner.
+- The visible DrawInputRect and pointer-capture area are the same rectangle. There is no hidden larger/smaller hit target and no second inner semantic surface.
+- Raw semantic coordinates use `X ∈ [-1.75,+1.75]`, `Y ∈ [-1,+1]`. Mapping is isotropic: one semantic unit equals half of the DrawInputRect pixel height on both axes, so the wide surface never stretches physical X versus Y.
 - Stroke visual thickness: 6 px equivalent desktop, 8 px touch; physics thickness is unrelated.
 - Empty-state ghost icon centered at 18% opacity until first pointer-down; disappears permanently for that heat after first stroke.
-- Pivot marker: non-interactive 8 px equivalent dot at exact DrawInputRect center `(0,0)`, 25% opacity; semantic mapping owner is `73`.
+- The center is presentation-only. R16.3B mechanical origin is the **first cleaned authoritative point**, not the bounds midpoint and not a draggable center marker.
 - No Apply / Confirm / Delete button.
-- Input rect exactly matches the **visible** square drawing surface; no invisible oversized or undersized hit area.
 - Current accepted-shape thumbnail: top-right of canvas, 14% canvas width, square; informational only, no click.
 - Local preview color uses equipped Ink; invalid preview adds dashed outline, not color-only failure.
+- `StrokeResult.acceptedPoints` are first-point-anchored server authority. For player-facing continuity, `DrawingController` may reapply the sequence-scoped submitted first-point presentation anchor when rendering the accepted preview; that local presentation offset never enters ShapeSpec, collision geometry, motor physics or network authority.
 
 ### World billboards
 - Each visible human racer has a compact marker above body: `#N` + truncated display name (max 12 glyphs), no chat/status text. Bots use exact label `BOT #N` and never imitate a human name/avatar.
