@@ -117,3 +117,27 @@ def test_p5_wall_requires_suitable_success_and_suboptimal_failure() -> None:
     assert "local wallBadPassed = suboptimal.valid and not suboptimal.completedPiece" in stage_c
     assert "local wallPassed = wallGoodPassed and wallBadPassed" in stage_c
     assert "wallBadPassed" in stage_c
+
+
+def test_p6_status_records_pre_studio_closure_without_passing_human_gates() -> None:
+    session = read("docs/SESSION.md")
+    features = read("docs/FEATURE_LIST.md")
+    decision_path = ROOT / "docs/DECISION_LOG_R16_PRE_STUDIO_CLOSURE_2026-09-10.md"
+    assert decision_path.exists(), "P6 requires a dedicated pre-Studio closure decision log"
+    decision = decision_path.read_text(encoding="utf-8")
+
+    for doc in [session, features, decision]:
+        assert "R16 PRE-STUDIO CLOSURE P0–P6" in doc
+        assert "P0" in doc and "P1" in doc and "P2" in doc
+        assert "P3" in doc and "P4" in doc and "P5" in doc and "P6" in doc
+        assert "Studio Gate A — HUMAN STUDIO PENDING" in doc
+        assert "Studio Gate B — HUMAN STUDIO PENDING" in doc
+        assert "Studio Gate C — HUMAN STUDIO PENDING" in doc
+        assert "B17/G0" in doc and "HUMAN_GATE" in doc
+
+    assert "AUTOMATED GREEN" in session
+    assert "AUTOMATED GREEN" in features
+    assert "R16.11" in decision and "must not freeze" in decision
+    assert "Studio Gate A — PASS" not in decision
+    assert "Studio Gate B — PASS" not in decision
+    assert "Studio Gate C — PASS" not in decision
