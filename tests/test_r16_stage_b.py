@@ -87,3 +87,42 @@ def test_r16_6_vertical_motion_is_solver_owned_and_measured_in_studio() -> None:
     assert "maxDeltaY" in harness
     assert "minDeltaY" in harness
     assert "[DrawRacers][R16.6]" in harness
+
+
+def test_r16_7_reference_matrix_has_all_shapes_and_exact_comparison_rules() -> None:
+    scene = read("src/shared/Config/M0SceneConfig.lua")
+    harness = read("src/server/Tests/R16StageBHarness.lua")
+    shapes = read("src/server/Tests/R16ReferenceShapes.lua")
+
+    for shape_id in [
+        "ROUND_01",
+        "LONG_BAR_01",
+        "SMALL_ROUND_01",
+        "HOOK_01",
+        "ASYM_01",
+        "SUBOPTIMAL_01",
+    ]:
+        assert shape_id in shapes
+
+    for token in [
+        "StepsProgressAdvantage = 4.0",
+        "GapProgressAdvantage = 2.0",
+        "TunnelMeasureSeconds = 8.0",
+        "TunnelProgressAdvantage = 6.0",
+        "SuboptimalWorseRatio = 0.20",
+    ]:
+        assert token in scene
+
+    assert "runProgressTrial" in harness
+    assert "runFlatSpeedTrial" in harness
+    assert "runShapeMatrix" in harness
+    assert "StepsProgressAdvantage" in harness
+    assert "GapProgressAdvantage" in harness
+    assert "TunnelProgressAdvantage" in harness
+    assert "SuboptimalWorseRatio" in harness
+    assert "stepsNichePassed" in harness
+    assert "gapNichePassed" in harness
+    assert "tunnelNichePassed" in harness
+    assert "suboptimalPassed" in harness
+    assert "noUniversalWinner" in harness
+    assert "[DrawRacers][R16.7]" in harness
