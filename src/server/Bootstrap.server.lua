@@ -69,6 +69,9 @@ if RunService:IsStudio() then
 			elseif harnessMode == "B10" then
 				local B10StabilizationHarness = require(testsFolder:WaitForChild("B10StabilizationHarness"))
 				B10StabilizationHarness.start()
+			elseif harnessMode == "R16B" then
+				local R16StageBHarness = require(testsFolder:WaitForChild("R16StageBHarness"))
+				R16StageBHarness.start()
 			elseif harnessMode ~= "NONE" then
 				error(string.format("unknown StudioHarnessConfig.Mode %s", tostring(harnessMode)))
 			end
