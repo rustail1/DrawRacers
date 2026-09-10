@@ -57,3 +57,15 @@ def test_p2_flat_speed_uses_isolated_studio_benchmark_not_canonical_course() -> 
     assert "waitForContinuousTrackContact" in stage_b
     assert "result.valid = false" in stage_b
     assert "M0SceneConfig.Spawn.X" not in stage_b.split("local function runFlatSpeedTrial", 1)[1].split("local function runProgressTrial", 1)[0]
+
+
+def test_p3_g0_recovery_records_real_below_threshold_trigger() -> None:
+    harness = read("src/server/Tests/M0HumanHarness.lua")
+
+    assert 'model:SetAttribute("RecoveryCount", 0)' in harness
+    assert "local triggerY = racer:GetBody().Position.Y" in harness
+    assert "triggerY < M0SceneConfig.RecoveryKillY" in harness
+    assert 'model:SetAttribute("RecoveryCount", recoveryCount)' in harness
+    assert "[DrawRacers][R16.6][G0] recovery triggerY=" in harness
+    assert "ShapeSpec" in harness and "ShapeVersion" in harness
+    assert "body.Position.Y < M0SceneConfig.RecoveryKillY" in harness
