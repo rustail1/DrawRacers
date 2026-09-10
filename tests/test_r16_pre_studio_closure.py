@@ -25,3 +25,13 @@ def test_p0_implementation_plan_matches_r16_3a_and_current_upright_basis() -> No
     assert "Studio Gate A remains HUMAN STUDIO PENDING" in plan
     assert "Studio Gate B remains HUMAN STUDIO PENDING" in plan
     assert "Studio Gate C remains HUMAN STUDIO PENDING" in plan
+
+
+def test_p1_b10_uses_real_elapsed_quarter_second_recovery_window() -> None:
+    b10 = read("src/server/Tests/B10StabilizationSpec.lua")
+
+    assert "local recoveryElapsed = 0" in b10
+    assert "while recoveryElapsed < 0.25" in b10
+    assert "recoveryElapsed += RunService.Heartbeat:Wait()" in b10
+    assert "upright recovery exceeded 0.25 s" in b10
+    assert "for _ = 1, 15 do" not in b10
