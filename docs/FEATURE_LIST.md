@@ -206,3 +206,15 @@ Every item must be ACCEPTED or explicitly CUT by Product Owner Decision before p
 - BACKLOG — Current final documentation audit (`78`) remains PASS after any spec change
 
 Any unlisted feature requires a scope decision before documentation/implementation.
+
+## R16 PRE-STUDIO CLOSURE P0–P6
+**Repository closure status: AUTOMATED GREEN target; Studio acceptance remains pending.**
+
+P0–P6 record the bounded pre-Studio repair sequence: P0 plan/contract reconciliation; P1 real elapsed B10 recovery timing; P2 isolated flat benchmark; P3 real below-kill-Y recovery evidence; P4 shared full six-shape matrix with winner-set intersection; P5 Wall suitable-success plus SUBOPTIMAL negative-control proof with dedicated WallContactTimeout preserved; P6 repository status/decision reconciliation and final CI/toolchain verification.
+
+**Studio Gate A — HUMAN STUDIO PENDING**  
+**Studio Gate B — HUMAN STUDIO PENDING**  
+**Studio Gate C — HUMAN STUDIO PENDING**  
+**B17/G0 — HUMAN_GATE PENDING**
+
+`AUTOMATED GREEN` is repository/CI evidence only and never marks any Studio or external human gate PASS.
