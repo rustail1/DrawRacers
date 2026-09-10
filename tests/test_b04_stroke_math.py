@@ -9,23 +9,26 @@ def test_b04_stroke_math_contract() -> None:
 
     for token in [
         "function StrokeMath.Normalize",
+        "function StrokeMath.ClampToRect",
+        "function StrokeMath.AnchorToFirstPoint",
         "function StrokeMath.SimplifyRDP",
         "function StrokeMath.Resample",
         "function StrokeMath.MeasureLength",
     ]:
         assert token in stroke_math, f"missing B04 function: {token}"
 
-    # Spec 73: normalization is tied to DrawInputRect center and does not use
-    # the stroke's own bounds. Later phases may legitimately add ComputeBounds
-    # as a separate utility, so keep this historical guard scoped to Normalize.
+    # R16.3B: pixel mapping is isotropic and owned by DrawInputRect height.
     normalize_body = stroke_math.split("function StrokeMath.Normalize", 1)[1].split(
         "function StrokeMath.MeasureLength", 1
     )[0]
-    assert "(point.X / canvasSize.X) * 2 - 1" in normalize_body
-    assert "1 - (point.Y / canvasSize.Y) * 2" in normalize_body
+    assert "local unit = canvasSize.Y * 0.5" in normalize_body
+    assert "point.X - center.X" in normalize_body
+    assert "center.Y - point.Y" in normalize_body
     assert "ComputeBounds" not in normalize_body
 
     for token in [
+        "RawSemanticHalfWidth = 1.75",
+        "RawSemanticHalfHeight = 1.0",
         "RDPEpsilon = 0.022",
         "ResampleTargetPoints = 12",
         "MaxCleanedPoints = 15",
@@ -39,6 +42,7 @@ def test_b04_studio_spec_is_wired() -> None:
     assert spec.is_file(), "missing B04 Studio behavior spec"
     text = spec.read_text(encoding="utf-8")
     assert "StrokeMath.Normalize" in text
+    assert "StrokeMath.AnchorToFirstPoint" in text
     assert "StrokeMath.SimplifyRDP" in text
     assert "StrokeMath.Resample" in text
     assert "useful V shape collapsed" in text
