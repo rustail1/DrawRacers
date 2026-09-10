@@ -8,6 +8,8 @@ local controllers = script.Parent:WaitForChild("Controllers")
 local InputController = require(controllers:WaitForChild("InputController"))
 local DrawingController = require(controllers:WaitForChild("DrawingController"))
 local DebugTuningPanel = require(controllers:WaitForChild("DebugTuningPanel"))
+local RaceCameraController = require(controllers:WaitForChild("RaceCameraController"))
+local RiderPresentationController = require(controllers:WaitForChild("RiderPresentationController"))
 
 local shared = ReplicatedStorage:WaitForChild("Shared")
 local RemoteNames = require(shared:WaitForChild("Net"):WaitForChild("RemoteNames"))
@@ -27,6 +29,18 @@ local strokeResult = remotes:WaitForChild(RemoteNames.StrokeResult)
 
 local inputController = InputController.new()
 local drawingController = DrawingController.new(inputController, drawHud, submitStroke, strokeResult)
+local raceCameraController = RaceCameraController.new(playerGui)
+local riderPresentationController = RiderPresentationController.new()
+local productionPresentationStarted = false
+
+local function startProductionPresentation()
+	if productionPresentationStarted then
+		return
+	end
+	productionPresentationStarted = true
+	raceCameraController:Start()
+	riderPresentationController:Start()
+end
 
 local debugTuningPanel = DebugTuningPanel.new(playerGui)
 debugTuningPanel:Start()
@@ -68,6 +82,7 @@ if RunService:IsStudio() then
 		local state = ReplicatedStorage:GetAttribute("DrawRacersStudioGateState")
 		if state == "READY" then
 			gateBanner.Visible = false
+			startProductionPresentation()
 			if not drawingStarted then
 				drawingStarted = true
 				drawingController:Start()
@@ -89,6 +104,7 @@ if RunService:IsStudio() then
 	ReplicatedStorage:GetAttributeChangedSignal("DrawRacersStudioGateState"):Connect(applyStudioGateState)
 	applyStudioGateState()
 else
+	startProductionPresentation()
 	drawingController:Start()
 end
 
