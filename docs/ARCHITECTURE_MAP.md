@@ -29,6 +29,8 @@ Rules:
 
 A documentation-only commit after the audited runtime base does not invalidate this map. A runtime/code/Rojo change after the audited base means the affected rows must be revalidated before relying on them.
 
+**Bounded R16.3B refresh:** the `LegAssembly` presentation layer and `R16FINAL` evidence route below were revalidated after the full-audit base. This is not a new full-runtime audit; unaffected rows still derive from the audited base above.
+
 `docs/SOURCE_MAP.md` is different: it tracks provenance/research sources. `docs/21_SYSTEM_CLASS_ARCHITECTURE.md` is different: it owns target architecture. `docs/26_HANDOFF_MAP.md` routes features to owner specs. This file is only the **current implemented code navigation cache**.
 
 ---
@@ -71,7 +73,7 @@ SubmitStroke
   -> StrokeResult
   -> DrawingController authoritative accepted preview
 
-RACER PHYSICS
+RACER PHYSICS / PRESENTATION
 RacerRuntime
   -> BodyCollider + LeftHub + RightHub
   -> RacerStabilizer
@@ -79,18 +81,25 @@ RacerRuntime
   -> Left/Right LegAssembly
        -> LegRoot
        -> one HingeConstraint motor per leg
-       -> welded physical segment chain
+       -> welded physical Segments
+       -> nonphysical Visual
+            -> VisualSegment
+            -> VisualJoint
 
 STUDIO / M0
 Bootstrap.server
   -> M0TestScene
   -> StudioSpecRunner
   -> selected Studio harness
+  -> R16FINAL: R16FinalHarness
+       -> synchronous R16StageCHarness.RunEvidence
+       -> M0HumanHarness
+       -> HUMAN G0 READY
 
 Bootstrap.client
   -> InputController + DrawingController
   -> DebugTuningPanel
-  -> G0 presentation harness only after server gate READY in G0
+  -> G0 presentation harness after server gate READY in G0/R16FINAL
 ```
 
 This is the current active M0/R16 implementation. It is intentionally smaller than the future target graph in doc `21`.
@@ -101,11 +110,11 @@ This is the current active M0/R16 implementation. It is intentionally smaller th
 
 | Area | Current file | Owns / first things to inspect | Immediate dependencies |
 |---|---|---|---|
-| Client composition | `src/client/Bootstrap.client.lua` | DrawHUD bootstrap, remotes lookup, controller construction, Studio gate reaction, G0 presentation start | `InputController`, `DrawingController`, `DebugTuningPanel`, `RemoteNames`, `StudioHarnessConfig` |
+| Client composition | `src/client/Bootstrap.client.lua` | DrawHUD bootstrap, remotes lookup, controller construction, Studio gate reaction, G0/R16FINAL presentation start | `InputController`, `DrawingController`, `DebugTuningPanel`, `RemoteNames`, `StudioHarnessConfig` |
 | Pointer lifecycle | `src/client/Controllers/InputController.lua` | mouse/touch `start/move/end/cancel`, one active pointer, binding drawing surface | Roblox `UserInputService` |
-| Drawing UI + submit flow | `src/client/Controllers/DrawingController.lua` | DrawCanvas/DrawInputRect runtime UI, live/accepted preview, local cleanup, pending sequences/timeouts, SubmitStroke/StrokeResult client side | `PhysicsConfig`, `StrokeMath`, `StrokeTypes`, `InputController`, remotes |
+| Drawing UI + submit flow | `src/client/Controllers/DrawingController.lua` | DrawCanvas/DrawInputRect runtime UI, live/accepted/thumbnail presentation, local cleanup, pending sequences/timeouts, SubmitStroke/StrokeResult client side | `PhysicsConfig`, `StrokeMath`, `StrokeTypes`, `InputController`, remotes |
 | Debug UI | `src/client/Controllers/DebugTuningPanel.lua` | reads replicated racer debug attributes and displays the DEV/STAGING/Studio panel | `Workspace.Runtime.Racers`, `RunService` |
-| Current G0 camera/presentation | `src/client/Dev/M0G0PresentationHarness.lua` | Studio-only G0 scriptable camera and non-physical body proxy | `StudioHarnessConfig`, `Workspace.Runtime` |
+| Current G0 camera/presentation | `src/client/Dev/M0G0PresentationHarness.lua` | Studio-only G0/R16FINAL scriptable camera and non-physical body proxy | `StudioHarnessConfig`, `Workspace.Runtime` |
 
 Important current absence: production `RaceCameraController`, `HUDController`, `ResultsController`, Garage/Store/Settings race systems from doc `21` are **target/future owners**, not current M0 runtime owners. Do not invent them to repair an M0 bug.
 
@@ -119,7 +128,7 @@ Important current absence: production `RaceCameraController`, `HUDController`, `
 | Authoritative stroke processing | `src/server/Services/LegShapeService.lua` | network envelope/points validation, sequence/rate state, stroke cleanup, authoritative ShapeSpec, build request, acceptedPoints | `PhysicsConfig`, `StrokeMath`, `GeometryMath`, `StrokeTypes`, `RacerRuntime` interface |
 | Stroke remote transport | `src/server/Services/StrokeRemoteTransport.lua` | SubmitStroke server binding, safe processor invocation, StrokeResult response | `LegShapeService`, `StrokeTypes` |
 | Racer lifetime / atomic redraw | `src/server/Runtime/RacerRuntime.lua` | RacerTemplate/current racer model, body/hubs, current ShapeSpec/version, staging+atomic swap of two legs, stabilizer/anti-stall lifetime | `PhysicsConfig`, `StrokeMath`, `GeometryMath`, `CollisionGroups`, `LegAssembly`, `RacerStabilizer`, `RacerAntiStall` |
-| One physical leg | `src/server/Runtime/LegAssembly.lua` | LegRoot, one motor hinge, welded collider segment chain, staged/commit/destroy lifecycle | `PhysicsConfig`, `StrokeTypes`, `CollisionGroups` |
+| One leg assembly | `src/server/Runtime/LegAssembly.lua` | LegRoot, one motor hinge, hidden welded physical collider `Segments`, separate nonphysical `VisualSegment`/`VisualJoint` presentation, staged/commit/destroy lifecycle | `PhysicsConfig`, `StrokeTypes`, `CollisionGroups` |
 | Upright + lane plane | `src/server/Runtime/RacerStabilizer.lua` | mechanical Z plane and upright AlignOrientation, lane deviation flags | `PhysicsConfig` |
 | Bounded recovery assist | `src/server/Runtime/RacerAntiStall.lua` | eligible-contact bounded +X anti-stall pulse only | `PhysicsConfig`, `CollectionService` |
 | Collision groups | `src/server/Runtime/CollisionGroups.lua` | current collision-group registration and matrix | Roblox `PhysicsService` |
@@ -136,13 +145,13 @@ Important current absence: production `RacerService`, `RaceService`, `TrackServi
 |---|---|---|
 | Core physics/stroke numbers | `src/shared/Config/PhysicsConfig.lua` | stroke-processing limits, leg geometry, motor, material, stabilization, anti-stall/recovery values |
 | M0 scene/evidence numbers | `src/shared/Config/M0SceneConfig.lua` | lane/spawn/recovery, benchmark, R16 acceptance windows, canonical pieces |
-| Studio harness selection | `src/shared/Config/StudioHarnessConfig.lua` | selected Studio evidence mode; current default remains `G0` |
+| Studio harness selection | `src/shared/Config/StudioHarnessConfig.lua` | selected Studio evidence mode; current default remains `G0`, `R16FINAL` is the unified evidence mode |
 | Stroke pure math | `src/shared/Math/StrokeMath.lua` | clamp/dedupe/normalize/bounds/centering/simplify/resample/length |
 | Physical segment planning | `src/shared/Math/GeometryMath.lua` | normalized point mapping, radial cap, segment plan, inner-hub collision eligibility |
 | Network/shared shape types | `src/shared/Types/StrokeTypes.lua` | SubmitStroke/StrokeResult/ShapeSpec fields |
 | Remote name registry | `src/shared/Net/RemoteNames.lua` | canonical active remote names |
 
-Intended behavior is still owned by the relevant Source-of-Truth docs, especially `03`, `16`, `21`, `22`, `55`, `59`, `60`, `65`, `68`, `73` as routed by `26_HANDOFF_MAP.md`.
+Intended behavior is still owned by the relevant Source-of-Truth docs, especially `03`, `16`, `21`, `22`, `55`, `59`, `60`, `62`, `65`, `68`, `73` as routed by `26_HANDOFF_MAP.md`.
 
 ---
 
@@ -156,7 +165,8 @@ Navigation clusters:
 - `R16ReferenceShapes.lua` — canonical R16 reference shapes;
 - `R16TrialRunner.lua` — shared R16 trial spawn/contact/measurement runner;
 - `R16StageBHarness.lua` — R16 Stage-B measurements;
-- `R16StageCHarness.lua` — Stage-C aggregate/wall/live-redraw evidence;
+- `R16StageCHarness.lua` — Stage-C aggregate/wall/live-redraw evidence and synchronous `RunEvidence()` owner;
+- `R16FinalHarness.lua` — `R16FINAL` synchronous Stage-B/C -> `M0HumanHarness` boundary; human G0 starts and `HUMAN G0 READY` is printed only after automated evidence passes;
 - B08/B09/B10 harnesses — focused earlier physics evidence modes.
 
 A test/harness is evidence infrastructure, not automatically the production owner of gameplay behavior.
@@ -171,6 +181,7 @@ Use this table to avoid a repository-wide scan. Start with the listed cluster, t
 |---|---|---|
 | click/touch does not begin/end drawing | `InputController.lua`, `DrawingController.lua` | `Bootstrap.client.lua`, current DrawHUD structure/owner docs |
 | live line/accepted line wrong or disappears | `DrawingController.lua` | `StrokeMath.lua`, StrokeResult contract, UI owner docs |
+| visible leg/stroke visual wrong | `DrawingController.lua`, `LegAssembly.lua` | presentation owners `59/62/73`, B07/B14 visual/physical invariants |
 | server rejects valid drawing / accepts malformed drawing | `LegShapeService.lua` | `StrokeMath.lua`, `StrokeTypes.lua`, `PhysicsConfig.lua`, network doc `22` |
 | accepted preview differs from physical shape | `LegShapeService.lua`, `DrawingController.lua` | `StrokeTypes.lua`, `StrokeMath.lua`, `GeometryMath.lua`, shape owner `73` |
 | wrong leg shape/size/pivot/segment count | `LegShapeService.lua`, `GeometryMath.lua`, `LegAssembly.lua` | `RacerRuntime.lua`, `PhysicsConfig.lua`, owner `73` |
@@ -183,6 +194,7 @@ Use this table to avoid a repository-wide scan. Start with the listed cluster, t
 | reset/respawn/G0 recovery bug | `M0HumanHarness.lua`, `RacerRuntime.lua` | `M0SceneConfig.lua`, `RacerStabilizer.lua`, `Bootstrap.server.lua` |
 | G0 camera/body proxy wrong | `M0G0PresentationHarness.lua` | `Bootstrap.client.lua`, `StudioHarnessConfig.lua`, camera owner docs |
 | debug values/panel wrong | `DebugTelemetry.lua`, `DebugTuningPanel.lua` | producer attributes in `RacerRuntime`/stabilizer/anti-stall |
+| R16FINAL ordering/evidence wrong | `R16FinalHarness.lua`, `R16StageCHarness.lua`, `Bootstrap.server.lua` | `StudioSpecRunner.lua`, `StudioHarnessConfig.lua`, current `SESSION.md` gate status |
 | Studio says TESTING/BLOCKED/READY unexpectedly | `Bootstrap.server.lua`, `StudioSpecRunner.lua` | selected harness, Output first failing spec |
 | files do not appear/update in Studio | `default.project.json` | local `git rev-parse HEAD`, `git status`, Rojo connection/output, filesystem path |
 
