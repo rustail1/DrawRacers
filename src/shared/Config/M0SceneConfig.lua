@@ -18,6 +18,13 @@ return {
 		Z = 0,
 	},
 	RecoveryKillY = -12,
+	ReferenceAcceptance = {
+		TrackContactTimeout = 4.0,
+		FlatIgnoreSeconds = 2.0,
+		FlatMeasureSeconds = 3.0,
+		FlatSpeedMin = 4.0,
+		FlatSpeedMax = 7.0,
+	},
 	Pieces = {
 		{
 			AnchorName = "FlatAnchor",
