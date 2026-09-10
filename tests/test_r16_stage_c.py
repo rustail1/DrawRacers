@@ -130,3 +130,25 @@ def test_r16_10_final_harness_covers_unchanged_full_lab_and_live_redraw() -> Non
     assert 'Instance.new("Part")' not in stage_c
     assert "M0SceneConfig.Pieces[" not in stage_c
     assert "[DrawRacers][R16.10] canonical pass" in stage_c
+
+
+def test_r16_stage_c_status_records_override_without_fabricating_studio_pass() -> None:
+    session = read("docs/SESSION.md")
+    features = read("docs/FEATURE_LIST.md")
+
+    for path, doc in [("SESSION.md", session), ("FEATURE_LIST.md", features)]:
+        assert "R16 Stage C implementation authorized by Product Owner" in doc, path
+        assert "R16.8–R16.10" in doc, path
+        assert "IMPLEMENTED/AUTOMATED GREEN" in doc, path
+        assert "Studio Gate A" in doc and "HUMAN STUDIO PENDING" in doc, path
+        assert "Studio Gate B" in doc and "HUMAN STUDIO PENDING" in doc, path
+        assert "Studio Gate C" in doc and "HUMAN STUDIO PENDING" in doc, path
+        assert "3838a994f5b5164b64f3cdee934e5bc84f7be7a4" in doc, path
+        assert "34454820796" in doc, path
+        assert "149 passed, 0 failed" in doc, path
+        assert "Rojo build PASS" in doc, path
+        assert "B17/G0" in doc and "HUMAN_GATE" in doc, path
+        assert "R16.11" in doc and "Studio Gate C" in doc, path
+
+    assert "R16.11 must not freeze" in session
+    assert "R16.11 must not freeze" in features
