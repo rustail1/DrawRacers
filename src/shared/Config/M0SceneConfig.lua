@@ -33,6 +33,11 @@ return {
 		TunnelMeasureSeconds = 8.0,
 		TunnelProgressAdvantage = 6.0,
 		SuboptimalWorseRatio = 0.20,
+		WallContactTimeout = 8.0,
+		WallMeasureSeconds = 8.0,
+		MovingRedrawSettleSeconds = 0.5,
+		MovingRedrawStepSeconds = 0.25,
+		MovingRedrawMinProgress = 0.5,
 	},
 	Pieces = {
 		{
