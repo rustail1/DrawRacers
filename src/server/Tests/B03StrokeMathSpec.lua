@@ -28,6 +28,7 @@ function B03StrokeMathSpec.run()
 		maxPoints = config.MaxRawPoints,
 	}
 
+	-- Legacy square clamp remains deterministic for callers that still use it.
 	local outOfBounds = {
 		Vector2.new(-2.5, 0.25),
 		Vector2.new(0.5, 4.0),
@@ -40,6 +41,22 @@ function B03StrokeMathSpec.run()
 		Vector2.new(-1, 0.25),
 		Vector2.new(0.5, 1),
 		Vector2.new(1, -1),
+	})
+
+	-- R16.3B authoritative/raw input uses independent wide X and Y limits.
+	local rectClamped, rectError = StrokeMath.ClampToRect(outOfBounds, {
+		minX = -config.RawSemanticHalfWidth,
+		maxX = config.RawSemanticHalfWidth,
+		minY = -config.RawSemanticHalfHeight,
+		maxY = config.RawSemanticHalfHeight,
+		maxPoints = config.MaxRawPoints,
+	})
+	assert(rectError == nil, tostring(rectError))
+	assert(rectClamped ~= nil, "rect clamp unexpectedly rejected finite points")
+	assertSamePoints(rectClamped, {
+		Vector2.new(-1.75, 0.25),
+		Vector2.new(0.5, 1),
+		Vector2.new(1.5, -1),
 	})
 
 	local nearDuplicates = {
@@ -56,7 +73,6 @@ function B03StrokeMathSpec.run()
 		Vector2.new(0.05, 0),
 	})
 
-	-- Same input and defaults must always yield the same sequence.
 	local repeatA = StrokeMath.Dedupe(nearDuplicates, config.DedupeDistance)
 	local repeatB = StrokeMath.Dedupe(nearDuplicates, config.DedupeDistance)
 	assertSamePoints(repeatA, repeatB)
@@ -78,7 +94,7 @@ function B03StrokeMathSpec.run()
 	local _, tooManyError = StrokeMath.Clamp(tooMany, clampOptions)
 	assert(tooManyError == "TOO_MANY_POINTS")
 
-	print("[DrawRacers][B03] StrokeMath tests PASS")
+	print("[DrawRacers][B03] StrokeMath clamp tests PASS")
 end
 
 return B03StrokeMathSpec
