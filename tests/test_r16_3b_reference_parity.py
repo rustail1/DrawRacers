@@ -94,15 +94,23 @@ def test_r16_3b_leg_visual_is_nonphysical_and_physical_colliders_are_hidden() ->
     assert "physical collider count changed by visual layer" in b07
 
 
-def test_r16_3b_g0_presentation_uses_side_camera_and_restores_fov() -> None:
+def test_r16_3b_g0_proxy_uses_production_side_camera_owner() -> None:
     presentation = read("src/client/Dev/M0G0PresentationHarness.lua")
+    camera = read("src/client/Controllers/RaceCameraController.lua")
 
-    assert "local CAMERA_OFFSET = Vector3.new(0, 4, 22)" in presentation
-    assert "local CAMERA_LOOK_AHEAD = Vector3.new(6, 0.8, 0)" in presentation
-    assert "local CAMERA_FIELD_OF_VIEW = 40" in presentation
-    assert "previousFieldOfView" in presentation
-    assert "camera.FieldOfView = CAMERA_FIELD_OF_VIEW" in presentation
-    assert "camera.FieldOfView = previousFieldOfView" in presentation
+    assert "local FIELD_OF_VIEW = 60" in camera
+    assert "local LOOK_AHEAD = 11" in camera
+    assert "local CAMERA_HEIGHT = 10" in camera
+    assert "local SIDE_DISTANCE = 23" in camera
+    assert "camera.CameraType = Enum.CameraType.Scriptable" in camera
+    assert "camera.FieldOfView = FIELD_OF_VIEW" in camera
+    assert "camera.CFrame = CFrame.lookAt" in camera
+    assert "_previousFieldOfView" in camera
+    assert "camera.FieldOfView = self._previousFieldOfView" in camera
+
+    assert "camera.CameraType" not in presentation
+    assert "camera.FieldOfView" not in presentation
+    assert "camera.CFrame" not in presentation
     assert "proxy.Transparency = 0" in presentation
     assert "proxy.Material = Enum.Material.SmoothPlastic" in presentation
 
