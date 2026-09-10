@@ -206,6 +206,18 @@ def test_r16_readme_entrypoint_tracks_current_stage_a_contract() -> None:
     assert "upright" in locomotion.lower()
 
 
+def test_r16_1_qa_matrix_uses_exact_upright_acceptance() -> None:
+    qa = read("docs/24_TESTING_QA_MATRIX.md")
+    locomotion = qa.split("## Locomotion", 1)[1].split("## Redraw", 1)[0]
+
+    assert "R16.1 upright-body acceptance" in locomotion
+    assert "normal angular deviation <= 1.0 degree" in locomotion
+    assert "strong-contact disturbance <= 3.0 degrees" in locomotion
+    assert "return to <= 1.0 degree within 0.25 s" in locomotion
+    assert "X/Y translation remains physical/free" in locomotion
+    assert "racer does not endlessly spin from normal contacts" not in locomotion
+
+
 def test_r16_4_phase_is_180_and_redraw_retains_each_side() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
