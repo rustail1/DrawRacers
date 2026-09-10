@@ -10,6 +10,12 @@ return {
 		ResampleTargetPoints = 12,
 		MaxCleanedPoints = 15,
 		MinimumCleanedPolylineLength = 0.18,
+		-- R16.3B: DrawInputRect is a wide isotropic semantic surface. Y half-span
+		-- is the normalization unit; X receives the matching 1.75x pixel span.
+		RawSemanticHalfWidth = 1.75,
+		RawSemanticHalfHeight = 1.0,
+		-- Kept as legacy symmetric bounds for older pure-math callers/tests. The
+		-- authoritative R16.3B stroke path uses RawSemanticHalfWidth/Height.
 		NormalizedMin = -1,
 		NormalizedMax = 1,
 		StrokeSubmitCooldown = 0.20,
