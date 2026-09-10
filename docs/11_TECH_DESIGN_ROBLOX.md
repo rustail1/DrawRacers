@@ -72,7 +72,7 @@ Build next shape off/disabled → validate → attach at current hubs/phase → 
 Gameplay is 2.5D: X forward, Y vertical, Z fixed around lane center. Use constraint/force strategy that preserves physical bounce but prevents drift into neighbor lane.
 
 ## 10. Body stabilization
-Use orientation correction/constraint tuned softly. The stabilizer should prevent endless roll, not erase physics response.
+R16.1 upright-body contract is canonical for the current core: `BodyCollider` remains physically free to translate in X/Y while lane Z translation stays mechanically constrained, but all three body rotation axes are locked/corrected toward upright by the stabilization constraint. The stabilizer may apply corrective torque only; it must not provide forward propulsion, vertical lift, or per-frame position teleports. Exact tolerances and numeric tuning are owned by `03/16` and verified by B10/Studio evidence.
 
 ## 11. Network model
 ### Preferred
