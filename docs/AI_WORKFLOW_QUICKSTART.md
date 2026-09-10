@@ -61,7 +61,25 @@ Rojo mapping is owned by `default.project.json`; do not create manual competing 
 
 ---
 
-## 3. UNIVERSAL PLAN-FIRST PROMPT
+## 3. ARCHITECTURE MAP RULE
+
+`docs/ARCHITECTURE_MAP.md` is a pre-audited map of the **currently implemented** runtime. It exists so a new bug can begin from the likely 2–5 files/systems instead of repeatedly loading the whole repository.
+
+The map is only navigation:
+
+```text
+ARCHITECTURE_MAP
+-> choose likely subsystem
+-> read current files + immediate dependencies
+-> read exact Source-of-Truth owner
+-> prove root cause
+```
+
+Do not trust the map over current GitHub code. If it is stale, current code + Source of Truth wins and the stale row is reported. A broad repository scan is allowed only when evidence requires it.
+
+---
+
+## 4. UNIVERSAL PLAN-FIRST PROMPT
 
 Use this for almost any problem. Fill only what you actually know.
 
@@ -86,20 +104,29 @@ DRAW RACERS / PLAN ONLY
 Проверь текущий rustail1/DrawRacers main и сначала классифицируй задачу:
 BUGFIX / FEATURE / CONTRACT_CHANGE / TUNING / DOC_ONLY.
 
+Перед расследованием используй:
+- AGENTS.md;
+- docs/ARCHITECTURE_MAP.md;
+- docs/SESSION.md;
+- docs/26_HANDOFF_MAP.md и только нужные owner docs.
+
+ARCHITECTURE_MAP используй только для навигации. Выбери минимальный вероятный кластер систем, затем обязательно проверь актуальный код этих файлов и непосредственных зависимостей. Не обходи весь репозиторий заново без конкретной причины. Если карта противоречит current main — current code + Source of Truth имеют приоритет; укажи устаревший раздел карты.
+
 Следуй AGENTS.md и профильному protocol.
 Если это BUGFIX — проведи docs/BUGFIX_PROTOCOL.md полностью.
 Если текущий код соответствует Source of Truth, но желаемое поведение другое — это CONTRACT_CHANGE: не патчь код вокруг старого spec, сначала дай план изменения контракта.
 
 Сейчас НИЧЕГО НЕ МЕНЯЙ в GitHub.
 Сначала дай доказательства, root cause/причину, blast radius, FILES TO CHANGE, DO NOT TOUCH, RED/test plan, Studio acceptance plan и итоговый план.
+Для каждого шага плана укажи: ЧТО -> ГДЕ -> ЗАЧЕМ -> ЧТО СОХРАНЯЕМ -> ЧТО ОЖИДАЕМ -> КАК ПРОВЕРЯЕМ.
 Остановись и жди моего разрешения.
 ```
 
-This prompt is intentionally plan-first. It prevents the executor from jumping directly into code after a vague symptom report.
+This prompt is intentionally plan-first and map-first. It prevents the executor from jumping directly into code while also avoiding unnecessary repository-wide rereads.
 
 ---
 
-## 4. APPROVE IMPLEMENTATION
+## 5. APPROVE IMPLEMENTATION
 
 After reading and accepting the plan, send exactly:
 
@@ -129,7 +156,7 @@ No Studio/human PASS may be invented from CI.
 
 ---
 
-## 5. POST-IMPLEMENTATION REVIEW
+## 6. POST-IMPLEMENTATION REVIEW
 
 After ChatGPT implements the fix, send:
 
@@ -154,7 +181,7 @@ After ChatGPT implements the fix, send:
 
 ---
 
-## 6. HUMAN ROBLOX STUDIO ACCEPTANCE
+## 7. HUMAN ROBLOX STUDIO ACCEPTANCE
 
 After `/review` is clean, pull the current remote head to PC and perform the exact Studio checklist from the implementation report.
 
@@ -182,7 +209,7 @@ If the Studio result fails, start a new bounded investigation from the exact fai
 
 ---
 
-## 7. SHORT BUG REPORT TEMPLATE
+## 8. SHORT BUG REPORT TEMPLATE
 
 When the bug is simple, this shorter version is enough:
 
@@ -201,15 +228,18 @@ Play -> войти в гонку -> Reset Character -> respawn.
 ДОКАЗАТЕЛЬСТВО:
 RaceHUD после respawn отсутствует.
 
-Проведи BUGFIX PROTOCOL.
+Используй AGENTS.md + docs/ARCHITECTURE_MAP.md + docs/SESSION.md.
+Карту используй только для навигации; current code/Git HEAD имеет приоритет.
+Не исследуй весь репозиторий заново без конкретной причины.
+Проведи docs/BUGFIX_PROTOCOL.md.
 Сейчас только расследование и план. GitHub не меняй.
 ```
 
-After approval use the implementation phrase from section 4.
+After approval use the implementation phrase from section 5.
 
 ---
 
-## 8. CONTRACT / DESIGN CHANGE TEMPLATE
+## 9. CONTRACT / DESIGN CHANGE TEMPLATE
 
 Use when the game currently follows its written spec but you decide the desired behavior should change, for example after comparing a mechanic/camera/UI to a reference:
 
@@ -228,6 +258,7 @@ CONTRACT CHANGE / PLAN ONLY
 EVIDENCE / REFERENCE:
 ...
 
+Используй docs/ARCHITECTURE_MAP.md только чтобы быстро найти текущих владельцев, затем проверь actual current code.
 Сначала проверь current Source of Truth и текущую реализацию.
 Покажи, какие owner docs и runtime owners затрагиваются, какие старые assumptions будут superseded, blast radius, migration/test plan и Studio acceptance.
 Код и документы пока не меняй.
@@ -250,7 +281,7 @@ Do not disguise a design change as a local bugfix.
 
 ---
 
-## 9. FEATURE / LARGE CHANGE TEMPLATE
+## 10. FEATURE / LARGE CHANGE TEMPLATE
 
 ```text
 FEATURE / PLAN ONLY
@@ -267,7 +298,7 @@ SOURCE OF TRUTH / REFERENCE:
 ОГРАНИЧЕНИЯ:
 ...
 
-Изучи current main, AGENTS, FEATURE_LIST, SESSION, HANDOFF MAP, exact task row and owner specs.
+Изучи current main, AGENTS, ARCHITECTURE_MAP, FEATURE_LIST, SESSION, HANDOFF MAP, exact task row and owner specs. Используй ARCHITECTURE_MAP только для current-code навигации, не как Source of Truth.
 Составь минимальный implementation plan: что/где/зачем меняется, FILES TO CHANGE, DO NOT TOUCH, interfaces, test plan, regression surface, expected result and final Roblox Studio acceptance.
 Ничего пока не меняй.
 ```
@@ -276,7 +307,7 @@ Approve only after the plan is understandable and bounded.
 
 ---
 
-## 10. WHAT EVIDENCE TO SEND
+## 11. WHAT EVIDENCE TO SEND
 
 Best evidence, in descending usefulness:
 - exact Roblox Studio Output lines around the failure;
@@ -290,7 +321,7 @@ Avoid only saying `не работает` when a more concrete observation is av
 
 ---
 
-## 11. STATUS WORDS
+## 12. STATUS WORDS
 
 Use these consistently:
 

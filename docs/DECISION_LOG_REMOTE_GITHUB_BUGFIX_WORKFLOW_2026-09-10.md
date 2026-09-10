@@ -11,9 +11,11 @@ A recurring failure mode of vague requests such as `fix this bug` is premature i
 
 The user observed that fixes are materially safer when the agent first produces an explicit investigation/plan describing root cause, files to touch, files not to touch, expected output and verification.
 
+A second inefficiency is repeatedly rediscovering the entire repository for every small bug. The repository already has detailed target architecture and owner specs, but those documents intentionally include future systems that are not yet implemented. A compact map of the **current implemented runtime** can reduce context and search cost if it is treated only as navigation and never as proof.
+
 ## Decision
 
-Adopt a mandatory **plan-first bugfix workflow** for DrawRacers.
+Adopt a mandatory **plan-first bugfix workflow** for DrawRacers and a non-authoritative **current architecture navigation cache**.
 
 ### Repository execution profile
 - Repository: `rustail1/DrawRacers`.
@@ -29,10 +31,28 @@ Every requested change is first classified as `BUGFIX`, `FEATURE`, `CONTRACT_CHA
 
 A desired behavior that conflicts with current Source of Truth is not patched as a BUGFIX. It becomes a CONTRACT_CHANGE: update/approve the design contract before runtime implementation.
 
+### Current architecture navigation cache
+`docs/ARCHITECTURE_MAP.md` records the current implemented code topology, current M0/R16 owners, immediate dependencies, common symptom routing and protected public boundaries.
+
+It is explicitly **not Source of Truth**. The precedence is:
+
+```text
+current GitHub main code + current Source-of-Truth owner docs
+> ARCHITECTURE_MAP navigation cache
+```
+
+For a bug investigation, the executor starts from the smallest likely cluster in the map, reads the current code for that cluster and its immediate dependencies, and expands only when evidence crosses a boundary. A repository-wide rescan is not the default.
+
+If the map disagrees with current code, the map is stale. The executor reports the stale row and uses current code/current owner docs. The map is refreshed only when architecture/navigation materially changes; ordinary local bugfixes do not churn it.
+
+Target/future systems documented in `21_SYSTEM_CLASS_ARCHITECTURE.md` are not assumed to exist. The map distinguishes currently implemented M0/R16 owners from future target modules.
+
 ### BUGFIX lifecycle
 
 ```text
 user evidence
+-> ARCHITECTURE_MAP navigation
+-> current code + exact owner-doc verification
 -> INVESTIGATE / PLAN ONLY
 -> root cause + blast radius + exact scope + RED/test plan + Studio acceptance plan
 -> user approval
@@ -63,9 +83,10 @@ After approval, the plan is a scope contract. If implementation needs an unappro
 ### Human acceptance
 Automated checks and a clean console do not promote Roblox physics feel, camera framing, visual readability, touch UX, Studio Gate A/B/C, B17/G0 or any other explicitly human gate to PASS. The correct state after repository GREEN is `READY FOR HUMAN ACCEPTANCE` until the user supplies Studio evidence.
 
-## New process owners
+## Process owners
 - `AGENTS.md` — repository entry/router and hard execution rules.
 - `docs/AGENTS.md` — detailed AI/developer policy and Source of Truth routing.
+- `docs/ARCHITECTURE_MAP.md` — non-authoritative current implemented-runtime navigation cache.
 - `docs/BUGFIX_PROTOCOL.md` — mandatory investigate/plan/implement bugfix protocol.
 - `docs/REVIEW_PROTOCOL.md` — mandatory read-only post-fix review protocol.
 - `docs/AI_WORKFLOW_QUICKSTART.md` — human copy/paste prompts and GitHub -> PC -> Rojo -> Studio instructions.
@@ -79,10 +100,11 @@ This decision does **not**:
 - change `default.project.json` or Rojo mapping;
 - change network/DataStore/gameplay architecture;
 - authorize unrelated refactor;
-- replace specialized owner specs.
+- replace specialized owner specs;
+- make `ARCHITECTURE_MAP.md` authoritative over current code or Source of Truth.
 
 Current R16 Studio Gate A/B/C and B17/G0 human acceptance status remain exactly as recorded by their existing owners.
 
 ## Rationale
 
-The workflow adds a deliberate boundary between diagnosis and implementation. It makes the root cause and blast radius reviewable before repository writes, preserves existing architecture by default, and matches the actual development topology in which ChatGPT changes remote GitHub while the user is the only authority for local Roblox Studio evidence.
+The workflow adds a deliberate boundary between diagnosis and implementation. The architecture map adds a second boundary between **navigation** and **evidence**: it lets the executor find the likely owner quickly without pretending cached architecture knowledge proves current behavior. Together they make root cause and blast radius reviewable before repository writes, preserve existing architecture by default, reduce unnecessary context loading, and match the actual topology in which ChatGPT changes remote GitHub while the user is the only authority for local Roblox Studio evidence.

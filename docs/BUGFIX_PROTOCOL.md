@@ -30,7 +30,7 @@ If current code correctly follows the current Source of Truth but the user wants
 Allowed:
 - read repository files;
 - inspect current `main`, commits, history, diffs and CI evidence;
-- read `AGENTS.md`, Source of Truth and exact owner docs;
+- read `AGENTS.md`, `docs/ARCHITECTURE_MAP.md`, Source of Truth and exact owner docs;
 - inspect `default.project.json` and Rojo mapping;
 - inspect related code/tests/configs;
 - perform safe read-only reasoning/checks.
@@ -63,6 +63,22 @@ Read `default.project.json` and identify which filesystem roots are Rojo-managed
 - declared GUI/runtime folders from the project file.
 
 Filesystem/Rojo-managed source is authoritative. Do not create a competing manual Script/LocalScript/ModuleScript in Studio to bypass the repository.
+
+## 1A. PROJECT CONTEXT / ARCHITECTURE MAP ROUTING
+
+Before tracing the bug, read `docs/ARCHITECTURE_MAP.md` and use it only to choose the smallest likely **current implemented** subsystem.
+
+Mandatory routing rules:
+1. Start from the map's symptom/system row and select the smallest likely owner cluster, normally 2–5 files/systems plus direct dependencies.
+2. Read the **current GitHub code** for that cluster before making any root-cause claim.
+3. Read the exact Source-of-Truth owner docs routed by `docs/26_HANDOFF_MAP.md`.
+4. Expand into another subsystem only when evidence shows the flow crosses that boundary or the first hypothesis cannot explain the observation.
+5. Do not perform a full repository rescan merely by default; record the concrete reason if a broad scan becomes necessary.
+6. `ARCHITECTURE_MAP.md` is a navigation cache, not proof. If current code conflicts with it, current code and current Source-of-Truth owners take priority.
+7. If a row is stale, report exactly what is stale. Update the map only if architecture/navigation materially changed; a local bugfix that keeps the same owners should not churn the map.
+8. Do not treat target/future owners from `docs/21_SYSTEM_CLASS_ARCHITECTURE.md` as already implemented. Verify that a file/system actually exists in current `main` before routing a fix through it.
+
+The purpose is **less context, not less rigor**: map first, then current code, then evidence.
 
 ## 2. BUG CONTRACT
 
