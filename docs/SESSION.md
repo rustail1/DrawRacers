@@ -1,12 +1,14 @@
 # SESSION.md — CURRENT STATE
 
 Date: 2026-09-10  
-Documentation version: **v1.4.4 R16 STAGE-C + REMOTE BUGFIX WORKFLOW**
+Documentation version: **v1.4.5 R16.3B STROKE-ORIGIN REFERENCE PARITY**
 
 ## Product state
-The product specification remains closed. CORE/pre-G0 repair **R01–R12**, bounded runtime/evidence closure **R14.1–R14.11**, planar correction **R15/R15.1**, and current reference-parity correction **R16** stay inside the already-approved B03–B16/B17 scope; they introduce **no new WHAT/WHY gameplay scope**.
+The product specification remains closed. CORE/pre-G0 repair **R01–R12**, bounded runtime/evidence closure **R14.1–R14.11**, planar correction **R15/R15.1**, and current reference-parity correction **R16 / R16.3B** stay inside the already-approved B03–B16/B17 scope; they introduce **no new WHAT/WHY gameplay scope**.
 
 Locked direction remains: 8-player live physics drawing race; one continuous player stroke controls two real rotating physical legs; no competitive power monetization; progression/meta remains outside M0 until the ordered gates allow it.
+
+**Current R16.3B contract:** the visible input surface is one wide semantic DrawInputRect (`RawSemanticHalfWidth=1.75`, `RawSemanticHalfHeight=1.0`) normalized isotropically by height. After cleanup, the **first cleaned point** becomes the authoritative mechanical origin `(0,0)`; the previous R16.3A bounds-center/bounds midpoint pivot rule is superseded. One first-point-anchored ShapeSpec drives both legs; physical collider boxes stay hidden while separate visual geometry is nonphysical. A sequence-scoped client presentation anchor may preserve where the accepted line is drawn, but never enters ShapeSpec, network authority or collision physics.
 
 ## Accepted implementation evidence
 Repository-recorded human/Studio acceptance remains unchanged:
@@ -20,7 +22,7 @@ Repository-recorded human/Studio acceptance remains unchanged:
 B03–B16 code and regression specs exist in `main`, but they are **not promoted to ACCEPTED** merely because automated checks and Rojo build are green. Required Studio/physics/human evidence is still pending.
 
 ## CORE/pre-G0 integrity repair R01–R12
-- **R01 Geometry Authority** — `GeometryMath` is the single pure owner of normalized-shape → mapped-points/segment-plan construction; server ShapeSpec carries that plan into `LegAssembly`. The visible wide DrawCanvas contains a square semantic DrawInputRect.
+- **R01 Geometry Authority** — `GeometryMath` is the single pure owner of authoritative-shape → mapped-points/segment-plan construction; server ShapeSpec carries that plan into `LegAssembly`. R16.3B now uses one visible **wide semantic DrawInputRect** with isotropic height-based normalization.
 - **R02 Drawing/Network Correctness** — visual preview sampling is decoupled from bounded semantic payload sampling; obvious too-short strokes are rejected locally; accepted-result ordering follows server truth.
 - **R03 Physics Contract** — complete semantic collision groups/matrix, no forward propulsion from stabilization, M0 lab under `Workspace.Runtime.Tracks`, and tunnel geometry relative to `Lane.TopY`.
 - **R04 Debug Correctness** — collider count reads real `Segments` folders, cleaned-point telemetry comes from accepted ShapeSpec, stuck telemetry uses the documented +X progress window, and debug targeting prefers explicit `DebugTarget` then a human racer.
@@ -53,15 +55,15 @@ Historical R15.1 automated evidence is retained: head `be44304bf00391e05c7d77506
 R15/R15.1 historically left world-Z body rotation free via `PrimaryAxisParallel`; **that orientation contract is no longer current**. R16.1 supersedes it with full upright-body correction while retaining physical X/Y translation and the mechanical Z plane.
 
 ## R16 Stage A — reference mechanical parity
-**R16 Stage A / R16.1–R16.4: IMPLEMENTED/AUTOMATED GREEN; Studio Gate A — HUMAN STUDIO PENDING.**
+**R16 Stage A / R16.1–R16.4 implementation remains present; Studio Gate A — HUMAN STUDIO PENDING.**
 
-Current canonical Stage-A contract:
+Current canonical Stage-A mechanical contract:
 - **R16.1 Upright Body** — X/Y body translation remains physically free; Z translation remains mechanically lane-locked; rotation about world X: locked/corrected; rotation about world Y: locked/corrected; **rotation about world Z: locked/corrected**. Only the legs intentionally rotate for locomotion. `AlignOrientation` uses `AllAxes` with an identity attachment basis.
 - **R16.2 Hub Position** — `PhysicsConfig.LegGeometry` is the sole numeric owner: `HubOffsetX = 0.0`, `HubOffsetY = -0.35`, `HubOffsetZAbs = 1.62`; runtime consumes those values symmetrically.
-- **R16.3 / R16.3A One drawing → Two legs / Reference Shape Centering** — after clamp/dedupe/simplify/resample, the server translates the cleaned bounds center to `(0,0)` without scaling, mirroring or rotating. The resulting **centered authoritative shape** is the ShapeSpec returned to accepted preview and duplicated as the same XY geometry on Left/Right. Drawing the same figure at different locations inside DrawInputRect must therefore produce the same physical geometry; changing the figure size still changes physical radius.
+- **R16.3 / R16.3B One drawing → Two legs / First-point Origin** — after clamp/dedupe/simplify/resample, the server translates the **first cleaned point** to `(0,0)` without scaling, mirroring or rotating. The resulting first-point-anchored authoritative shape is duplicated as the same XY geometry on Left/Right. The old R16.3A requirement that the bounds midpoint/bounds center itself be the hub is superseded and no longer current.
 - **R16.4 Twin-leg Phase** — both legs use the same locomotion direction; initial right-minus-left phase is `180° ±1°`; accepted redraw preserves each side's live phase rather than restarting the gait.
 
-R16.3A explicitly supersedes the earlier raw-canvas-offset interpretation from pre-R16 doc 73. No automatic spoke from hub to first point is introduced.
+Historical R16.3A pre-Studio closure evidence is retained as history only. R16.3B supersedes its bounds-center mechanical-origin wording while keeping translation invariance, shape-size preservation, no hidden gameplay power and no client-authored world geometry.
 
 Stage-A automated evidence before Stage-B work: head `81c7d84c542160f07fc4fe986df89e5aa69f8f73`; `Contract Verify` run `34448666472` → **142 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. This is repository evidence only and does not satisfy Studio physics/human acceptance.
 
@@ -71,13 +73,13 @@ Stage-A automated evidence before Stage-B work: head `81c7d84c542160f07fc4fe986d
 This is a bounded process override, not a fabricated acceptance result. It authorized implementation/instrumentation work for `R16.5 → R16.7` while Stage-A live solver evidence remains pending. It does **not** authorize claiming that Stage A, Stage B, B17/G0, obstacle niches, or reference feel have passed without Roblox Studio evidence.
 
 ## R16 Stage B — feel/evidence implementation
-**R16.5–R16.7: IMPLEMENTED/AUTOMATED GREEN; Studio Gate B — HUMAN STUDIO PENDING. Studio Gate A remains HUMAN STUDIO PENDING.**
+**R16.5–R16.7: IMPLEMENTED/AUTOMATED GREEN at their historical evidence head; Studio Gate B — HUMAN STUDIO PENDING. Studio Gate A remains HUMAN STUDIO PENDING.**
 
-Repository-level implementation now includes:
-- **R16.5 Motor / Grip / Mass Feel instrumentation** — current production motor values remain `AngularVelocity=-8`, `MotorMaxTorque=35000`, `MotorMaxAcceleration=120`; existing leg material values were moved to the single `PhysicsConfig.PhysicalMaterials.LegSegment` owner without changing their numbers. `R16B` Studio harness measures `ROUND_01` only after stable contact, ignores 2 s, measures 3 s, requires +X average `4.0–7.0 studs/s`, motors enabled and `antiStallActive=false`. No motor/torque/friction value has been tuned blindly without Studio evidence.
+Repository-level implementation includes:
+- **R16.5 Motor / Grip / Mass Feel instrumentation** — current production motor values remain `AngularVelocity=-8`, `MotorMaxTorque=35000`, `MotorMaxAcceleration=120`; existing leg material values live in the single `PhysicsConfig.PhysicalMaterials.LegSegment` owner. `R16B` Studio harness measures `ROUND_01` after stable contact, ignores 2 s, measures 3 s, requires +X average `4.0–7.0 studs/s`, motors enabled and `antiStallActive=false`.
 - **R16.6 Vertical Physics evidence path** — normal locomotion remains solver-owned in Y; `RacerStabilizer` does not write body Y/CFrame/velocities and anti-stall remains X-only. The Stage-B harness records `HOOK_01` maximum Y rise on `SmallSteps` and `SMALL_ROUND_01` Y fall on `GapSmall` using bounded evidence thresholds.
 - **R16.7 Reference Shape Matrix** — executable canonical shapes include `ROUND_01`, `LONG_BAR_01`, `SMALL_ROUND_01`, `HOOK_01`, `ASYM_01`, `SUBOPTIMAL_01`. The Studio harness runs identical-reset comparisons for flat/steps/gap/tunnel and reports the approved niche checks: steps `+4 studs` or one higher step, gap landing or `+2 studs`, tunnel completion or `+6 studs`, SUBOPTIMAL at least `20%` worse, plus `noUniversalWinner`.
-- Studio harness selection gained `R16B`; default remains `G0`, so normal G0 behavior is not silently replaced.
+- Studio harness selection includes `R16B`; default remains `G0`.
 - Canonical obstacle geometry was not changed during Stage-B instrumentation.
 
 Latest Stage-B automated code evidence before Stage-C work: head `2197882e4c641e7c1d17a6dfc538f23fd1a521e6`; `Contract Verify` run `34451426807` → **145 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. These are repository/build facts only. They do not prove the live Roblox solver meets the speed/niche thresholds.
@@ -88,20 +90,34 @@ Latest Stage-B automated code evidence before Stage-C work: head `2197882e4c641e
 The Product Owner explicitly requested that repository implementation continue through **R16.8–R16.10** before the next Roblox Studio launch. This bounded override authorizes code/tests/evidence harness work only. It does not retroactively pass Studio Gate A, Studio Gate B, Studio Gate C, B17/G0, reference feel, obstacle niches, or live solver behavior.
 
 ## R16 Stage C — redraw/camera/canonical-pass implementation
-**R16.8–R16.10: IMPLEMENTED/AUTOMATED GREEN; Studio Gate C — HUMAN STUDIO PENDING. Studio Gate A — HUMAN STUDIO PENDING. Studio Gate B — HUMAN STUDIO PENDING.**
+**R16.8–R16.10 implementation remains present; Studio Gate C — HUMAN STUDIO PENDING. Studio Gate A — HUMAN STUDIO PENDING. Studio Gate B — HUMAN STUDIO PENDING.**
 
-Repository-level implementation now includes:
+Repository-level implementation includes:
 - **R16.8 Redraw parity** — B14 performs 10 redraws while the racer has live motion state, proving each accepted redraw advances ShapeVersion, leaves exactly two leg models, removes retiring state, preserves body CFrame/linear/angular velocities at commit time, and preserves each side's live phase within `5°`.
-- **R16.9 Reference camera/presentation** — the Studio G0 presentation camera uses the approved side-oriented framing; the observer Roblox Character is hidden for the test presentation and its transparency is restored on teardown. The debug body proxy remains anchored, non-colliding, non-touching, non-querying and massless, so presentation does not enter racer physics.
-- **R16.10 Canonical obstacle pass harness** — selectable Studio mode `R16C` reuses the exact Stage-B evidence path, verifies all unchanged canonical pieces `FlatShort`, `SmallSteps`, `SingleWallLow`, `GapSmall`, `LowTunnelWide`, adds explicit Wall evidence with HOOK/LONG_BAR, and performs 10 Heartbeat-spaced live redraws through the authoritative `LegShapeService` path. The final harness observes the existing lab and does not create or rewrite obstacle Parts.
-- Default Studio harness mode remains `G0`; `R16C` is an explicit evidence mode, not a production movement owner.
+- **R16.9 Reference camera/presentation** — the Studio G0 presentation camera uses side-oriented framing; the observer Roblox Character is hidden for the test presentation and its transparency is restored on teardown. The debug body proxy remains anchored, non-colliding, non-touching, non-querying and massless.
+- **R16.10 Canonical obstacle pass harness** — selectable Studio mode `R16C` reuses the Stage-B evidence path, verifies all unchanged canonical pieces `FlatShort`, `SmallSteps`, `SingleWallLow`, `GapSmall`, `LowTunnelWide`, adds explicit Wall evidence with HOOK/LONG_BAR, and performs 10 Heartbeat-spaced live redraws through the authoritative `LegShapeService` path.
 
-Final R16.10 code/tooling evidence before this documentation reconciliation: head `3838a994f5b5164b64f3cdee934e5bc84f7be7a4`; `Contract Verify` run `34454820796` → **149 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. These facts prove repository contracts/buildability only; they do not prove Roblox solver or visual acceptance.
+Historical R16.10 code/tooling evidence before R16.3B: head `3838a994f5b5164b64f3cdee934e5bc84f7be7a4`; `Contract Verify` run `34454820796` → **149 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. These facts do not prove Roblox solver or visual acceptance.
+
+## R16.3B current correction
+**R16.3B is the current repository correction and supersedes the R16.3A bounds-center/square-input presentation semantics. Human gate status is unchanged.**
+
+Current implementation/contract points:
+- `PhysicsConfig.StrokeProcessing` owns `RawSemanticHalfWidth = 1.75` and `RawSemanticHalfHeight = 1.0`.
+- `StrokeMath.Normalize` uses half the DrawInputRect pixel height for both axes; `ClampToRect` enforces the wide semantic input rectangle.
+- `StrokeMath.AnchorToFirstPoint` and `LegShapeService` make the first cleaned point the authoritative mechanical origin; ShapeSpec keeps size/proportions/order and does not require its bounds midpoint to be zero.
+- `SubmitStroke` payload remains `{sequence, points}`; no presentation anchor is server authority.
+- `DrawingController` keeps a bounded sequence-scoped presentation anchor so accepted visual feedback can remain where the player drew it.
+- `LegAssembly` hides physical collider boxes and renders separate nonphysical visual segments/joints.
+- debug presentation remains hidden by default behind F3.
+- unified Studio mode `R16FINAL` runs R16 evidence synchronously before `M0HumanHarness.start()` and only then prints `[DrawRacers][R16FINAL] HUMAN G0 READY`.
+
+Decision owner: `DECISION_LOG_R16_3B_STROKE_ORIGIN_REFERENCE_PARITY_2026-09-10.md`.
 
 ## Current implementation/evidence cursor
-**R16 Stage C implementation is repository-complete through R16.10. Studio Gate A — HUMAN STUDIO PENDING. Studio Gate B — HUMAN STUDIO PENDING. Studio Gate C — HUMAN STUDIO PENDING. B17/G0 remains HUMAN_GATE PENDING.**
+**R16.3B repository reconciliation is the current work item. Studio Gate A — HUMAN STUDIO PENDING. Studio Gate B — HUMAN STUDIO PENDING. Studio Gate C — HUMAN STUDIO PENDING. B17/G0 remains HUMAN_GATE PENDING.**
 
-The next Roblox Studio launch is intentionally a combined evidence pass after R16.10, matching the Product Owner override. No Studio gate is silently marked PASS by automation.
+Automation may prove repository contracts/buildability only. No Studio gate is silently marked PASS by CI.
 
 ### Studio Gate A evidence still required
 Verify current `main` locally:
@@ -112,14 +128,14 @@ Verify current `main` locally:
 - body still moves/rises/falls in X/Y from real physics rather than a scripted position lock;
 - hubs remain symmetric/fixed at the configured offsets and the body does not continuously scrape flat solely because of axle placement;
 - one accepted drawing visibly creates exactly two matching physical legs;
-- the same-size shape drawn at different DrawInputRect positions recenters to the same accepted/physical geometry, while different drawn sizes remain different sizes;
+- moving the same raw drawing around the wide DrawInputRect produces the same first-point-relative physical geometry, while different drawn sizes remain different sizes;
 - left/right gait is visually consistent with the recorded 180° phase contract and redraw does not visibly reset phase;
 - observer Roblox Character remains non-participating in racer physics.
 
 If only `HubOffsetY=-0.35` fails hub calibration while the rest of Stage A passes, the R16 design permits the explicit bounded `-0.75 / -0.35 / 0.0` comparison before any motor-value change is accepted.
 
 ### Studio Gate B evidence still required
-Use the Studio-only `R16B` evidence path, directly or via the Stage-C `R16C` aggregate, and record:
+Use the Studio-only Stage-B evidence path, directly or through `R16FINAL`, and record:
 - `[DrawRacers][R16.5] ROUND_01 FlatShort ...` with speed `4.0–7.0`, motors enabled and anti-stall false;
 - `[DrawRacers][R16.6] HOOK_01 SmallSteps ...` proving real positive Y rise;
 - `[DrawRacers][R16.6] SMALL_ROUND_01 GapSmall ...` proving real gravity-driven Y fall;
@@ -128,14 +144,15 @@ Use the Studio-only `R16B` evidence path, directly or via the Stage-C `R16C` agg
 If R16.5 speed is outside target, tune only the next permitted family in order: AngularVelocity → torque/acceleration only if needed → leg grip → body material only if still required. Re-run the same measurement after each single-family change. Do not alter obstacle geometry to manufacture a pass.
 
 ### Studio Gate C evidence now required
-Run the Studio-only `R16C` harness on current `main` and record:
-- `[DrawRacers][R16C] final reference-parity harness ready`;
-- Stage-B evidence lines from R16.5–R16.7 without runtime errors;
+Run the Studio-only unified `R16FINAL` harness on current `main` and record:
+- base Studio regression total and READY without runtime errors;
+- Stage-B evidence lines from R16.5–R16.7;
 - R16.10 Wall evidence showing at least one approved Wall shape completes the canonical wall trial;
 - R16.10 live-redraw evidence after 10 redraws with `movingRedrawPassed=true` and positive progress;
 - final `[DrawRacers][R16.10] canonical pass ... PASS`;
-- visually, side-view framing keeps the racer readable and the Roblox observer is absent from the reference shot;
-- then return to normal `G0` mode for the human feel check: upright body, physical X/Y motion, mechanical Z lock, reference-like leg behavior, redraw continuity and no DrawRacers runtime errors.
+- `[DrawRacers][R16FINAL] HUMAN G0 READY` only after the synchronous automated evidence;
+- visually, the first point is the leg hub origin, the visible line follows the accepted drawing, the body/legs remain readable from the side, and the observer is absent;
+- then complete the human G0 feel check: upright body, physical X/Y motion, mechanical Z lock, reference-like leg behavior, redraw continuity and no DrawRacers runtime errors.
 
 A failure in any one of these items keeps the corresponding gate PENDING and opens only a bounded R16 repair. It does not authorize unrelated M0.5/multiplayer/meta work.
 
@@ -160,7 +177,7 @@ ChatGPT remote GitHub main
 -> evidence back to ChatGPT
 ```
 
-Bugfixes now default to `INVESTIGATE / PLAN ONLY` under `BUGFIX_PROTOCOL.md`. No GitHub write occurs until the user approves the bounded plan. After approval, the plan becomes the scope contract; implementation uses meaningful RED→GREEN, regression/full verification, diff audit, direct-main commit and fresh CI. `/review` follows `REVIEW_PROTOCOL.md` and is read-only. `AI_WORKFLOW_QUICKSTART.md` owns the copy/paste prompts and local PowerShell/Rojo handoff.
+Bugfixes default to `INVESTIGATE / PLAN ONLY` under `BUGFIX_PROTOCOL.md` unless the Product Owner explicitly authorizes an already-bounded implementation/repair task, as in the current R16.3B completion instruction. After approval, the plan/decision becomes the scope contract; implementation uses meaningful RED→GREEN, regression/full verification, diff audit, direct-main commit and fresh CI. `/review` follows `REVIEW_PROTOCOL.md` and is read-only. `AI_WORKFLOW_QUICKSTART.md` owns copy/paste prompts and local PowerShell/Rojo handoff.
 
 Remote GitHub execution cannot assert that the user's local `C:\Dev\DrawRacers` worktree is clean. The user checks/protects local changes before pull. One task must not be concurrently implemented by remote GitHub and a local coding agent.
 
@@ -169,22 +186,22 @@ Decision owner: `DECISION_LOG_REMOTE_GITHUB_BUGFIX_WORKFLOW_2026-09-10.md`.
 ## Audit notes / remaining risk
 Current layering remains aligned with the architecture: Bootstrap is composition root; `LegShapeService` owns authoritative shape processing; `RacerRuntime` owns body/legs/stabilizer/anti-stall lifetime; `StrokeRemoteTransport` remains transport-only; no early D05 `RacerService` exists.
 
-The dominant unresolved risk is live Roblox Studio solver/feel evidence. CI and static contracts prove ownership/buildability but cannot prove measured speed, obstacle niches, camera readability or human acceptance.
+The dominant unresolved risk is live Roblox Studio solver/feel evidence. CI and static contracts can prove ownership/buildability but cannot prove measured speed, obstacle niches, camera readability or human acceptance.
 
 ## HARD STOP
 No C01, M0.5, multiplayer, meta, economy, shop, or later implementation may begin until the ordered R16 Studio evidence is completed and B17/G0 is explicitly recorded PASS or the Product Owner records another bounded gate decision.
 
 ## Next permitted task
-**Run one combined Roblox Studio evidence pass on current main: first `R16C` for Stage-B/Stage-C measurements, then restore `G0` for the human reference-feel check. Record PASS/FAIL evidence; only bounded R16 repair or R16.11 evidence freeze may follow.**
+**After repository verification is green, run one combined Roblox Studio evidence pass on current main using `R16FINAL`. Record PASS/FAIL evidence; only bounded R16 repair or R16.11 evidence freeze may follow.**
 
 ## R16 PRE-STUDIO CLOSURE P0–P6
-**Repository closure status: AUTOMATED GREEN target; Studio acceptance remains pending.**
+**Historical repository closure record; Studio acceptance remains pending.**
 
-P0 reconciles the implementation plan with R16.3A centering and current upright-body basis. P1 replaces fixed-loop B10 recovery evidence with real elapsed `<=0.25 s`. P2 isolates flat-speed evidence on `R16FlatBenchmark`. P3 records an actual below-`RecoveryKillY` trigger while preserving ShapeSpec/ShapeVersion. P4 moves deterministic spawn/contact/reset/measurement into shared `R16TrialRunner`, measures all six canonical shapes, and derives `noUniversalWinner` from real winner-set intersection. P5 requires Wall good/bad evidence and P5.1 preserves dedicated `WallContactTimeout`. P6 owns this repository/documentation closure and final full CI/toolchain verification.
+P0 reconciled the earlier implementation plan with R16.3A centering and the current upright-body basis. P1 replaced fixed-loop B10 recovery evidence with real elapsed `<=0.25 s`. P2 isolated flat-speed evidence on `R16FlatBenchmark`. P3 recorded an actual below-`RecoveryKillY` trigger while preserving ShapeSpec/ShapeVersion. P4 moved deterministic spawn/contact/reset/measurement into shared `R16TrialRunner`, measured all six canonical shapes, and derived `noUniversalWinner` from real winner-set intersection. P5 required Wall good/bad evidence and P5.1 preserved dedicated `WallContactTimeout`. P6 owned that repository/documentation closure. R16.3B now supersedes only the old bounds-center/square-input shape-origin semantics; it does not erase the historical P0–P6 evidence trail.
 
 **Studio Gate A — HUMAN STUDIO PENDING**  
 **Studio Gate B — HUMAN STUDIO PENDING**  
 **Studio Gate C — HUMAN STUDIO PENDING**  
 **B17/G0 — HUMAN_GATE PENDING**
 
-`AUTOMATED GREEN` refers only to the repository/CI contract once the current closure head verifies; it never promotes any of the human gates above.
+`AUTOMATED GREEN` may be recorded only from a fresh successful current-head CI/toolchain run; it never promotes any human gate above.
