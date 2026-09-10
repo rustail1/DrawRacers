@@ -52,6 +52,17 @@ def test_r16_2_hub_offsets_have_one_numeric_owner() -> None:
     assert "geometry.HubOffsetY" in b06
 
 
+def test_r16_2_studio_instance_contract_uses_canonical_hub_offsets() -> None:
+    studio = read("docs/65_STUDIO_DATAMODEL_INSTANCE_PROPERTY_SPEC.md")
+    hub_section = studio.split("Hub Parts:", 1)[1].split("## 4. Runtime leg assembly", 1)[0]
+
+    assert "PhysicsConfig.LegGeometry" in hub_section
+    assert "HubOffsetY = -0.35" in hub_section
+    assert "HubOffsetZAbs = 1.62" in hub_section
+    assert "(0,-0.75,-1.62)" not in hub_section
+    assert "(0,-0.75,+1.62)" not in hub_section
+
+
 def test_r16_3_one_shape_builds_two_same_xy_legs_about_fixed_pivot() -> None:
     geometry = read("src/shared/Math/GeometryMath.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
