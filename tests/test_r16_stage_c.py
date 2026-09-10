@@ -37,10 +37,14 @@ def test_r16_9_g0_camera_is_reference_side_view_and_observer_is_hidden() -> None
     presentation = read("src/client/Dev/M0G0PresentationHarness.lua")
     human = read("src/server/Tests/M0HumanHarness.lua")
 
-    assert "local CAMERA_OFFSET = Vector3.new(-6, 5, 16)" in presentation
-    assert "local CAMERA_LOOK_AHEAD = Vector3.new(7, 1, 0)" in presentation
+    assert "local CAMERA_OFFSET = Vector3.new(0, 4, 22)" in presentation
+    assert "local CAMERA_LOOK_AHEAD = Vector3.new(6, 0.8, 0)" in presentation
+    assert "local CAMERA_FIELD_OF_VIEW = 40" in presentation
     assert "camera.CameraType = Enum.CameraType.Scriptable" in presentation
+    assert "camera.FieldOfView = CAMERA_FIELD_OF_VIEW" in presentation
     assert "camera.CFrame = CFrame.lookAt(cameraPosition, target)" in presentation
+    assert "previousFieldOfView" in presentation
+    assert "camera.FieldOfView = previousFieldOfView" in presentation
 
     for token in [
         "proxy.Anchored = true",
@@ -129,6 +133,8 @@ def test_r16_stage_c_status_records_override_without_fabricating_studio_pass() -
     session = read("docs/SESSION.md")
     features = read("docs/FEATURE_LIST.md")
 
+    # Historical R16.10 evidence remains traceable; R16.3B supersedes geometry/presentation semantics
+    # without fabricating any live Studio acceptance.
     for path, doc in [("SESSION.md", session), ("FEATURE_LIST.md", features)]:
         assert "R16 Stage C implementation authorized by Product Owner" in doc, path
         assert "R16.8–R16.10" in doc, path
