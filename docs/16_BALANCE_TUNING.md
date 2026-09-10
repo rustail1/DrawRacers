@@ -127,7 +127,21 @@ No dynamic rubber-band after heat start. Table is the MEDIUM baseline; exact EAS
 | Side/Z distance | 23 studs | 18–28 |
 | Position damping time | 0.16 s | .10–.24 |
 | Look target damping time | 0.12 s | .08–.20 |
+| Vertical dead-zone | **0.50 stud** | .30–.80; D09 starting hypothesis |
+| Vertical damping time | **0.22 s** | .16–.30; D09 starting hypothesis |
+| Free-look yaw limit | **±40°** | ±30–50°; D09 starting hypothesis |
+| Free-look pitch limit | **±18°** | ±12–25°; D09 starting hypothesis |
+| Free-look return time | **0.40 s** | .30–.55; D09 starting hypothesis |
 | Max gameplay camera shake | 0.12 stud / 0.6° | Reduce Motion = 0 |
+
+Camera behavior locked by `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`:
+- production `RaceCameraController` remains a D09 task; these values do not authorize early implementation during M0;
+- the active-race camera follows a smoothed target derived from the **Local Racer world position**, not from the racer's rotational CFrame; racer roll/pitch/yaw never becomes camera roll/orientation authority;
+- smoothing must be frame-rate independent; X can converge with the normal position damping while Y uses the vertical dead-zone and vertical damping above so small solver bounce does not shake the view and meaningful climbs/falls remain visible;
+- desktop free-look is **hold RMB**, bounded by yaw/pitch limits; release automatically returns to canonical side framing using `Free-look return time`; LMB remains drawing input and is not a camera toggle;
+- touch free-look may start only from world space outside DrawCanvas and active UI; a touch that starts in DrawInputRect remains drawing-owned until end/cancel;
+- ordinary racer physics does not create implicit camera shake. `Max gameplay camera shake` applies only to deliberate presentation effects and becomes zero under Reduce Motion;
+- other racers may be visible but do not become the active-race target automatically. Spectator target policy remains owned by `74`.
 
 Exact HUD/DrawCanvas composition is `59`, and camera must frame the next obstacle above the DrawCanvas exclusion zone on every device in `57`.
 

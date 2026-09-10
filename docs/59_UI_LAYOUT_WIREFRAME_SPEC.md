@@ -3,6 +3,8 @@
 
 This file owns **where player-facing UI is placed and how large it is**. Exact ScreenGui child names/controller/focus binding are owned by `68_UI_COMPONENT_HIERARCHY_IMPLEMENTATION_SPEC.md`. `29_UI_SCREEN_FLOW_SPEC.md` owns screen behavior/state transitions; `37_LOCALIZATION_ACCESSIBILITY.md` owns accessibility/localization. Any implementation may change HOW the hierarchy is coded, but it must preserve the observable layout contract below unless a Product Owner Decision Log changes this file.
 
+Camera/rider input amendment is approved by `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`; it is sequence-gated to D09/E03 and does not change the current M0 runtime or gate.
+
 ## 1. Reference canvas and responsive modes
 - Launch orientation: **landscape only**.
 - Reference artboard: **1920×1080, 16:9**.
@@ -50,6 +52,17 @@ No cosmetic/VFX element may render above DrawCanvas input feedback or modal purc
 - Current accepted-shape thumbnail: top-right of canvas, 14% canvas width, square; informational only, no click.
 - Local preview color uses equipped Ink; invalid preview adds dashed outline, not color-only failure.
 - `StrokeResult.acceptedPoints` are first-point-anchored server authority. For player-facing continuity, `DrawingController` may reapply the sequence-scoped submitted first-point presentation anchor when rendering the accepted preview; that local presentation offset never enters ShapeSpec, collision geometry, motor physics or network authority.
+
+### Camera gesture exclusion / ownership
+This is a future D09 production contract; current M0/G0 implementation is unchanged by this document lock.
+- Desktop LMB remains the drawing pointer. LMB is never a camera toggle or orbit gesture.
+- Desktop camera free-look is **hold RMB** in allowed world space. Releasing RMB automatically returns to the canonical side/3-quarter view; no second click is required.
+- RMB free-look must not begin while pointer focus belongs to modal UI, settings, DrawCanvas or another active UI control.
+- Touch that begins inside `DrawInputRect` belongs to `DrawingController` until end/cancel, including after the finger exits the rectangle.
+- Touch that begins on another active UI control remains UI-owned until end/cancel.
+- Touch free-look may begin only when the gesture begins in world space outside DrawCanvas and active UI; ownership never switches mid-gesture merely because the finger crosses another region.
+- Camera gestures never alter the DrawCanvas semantic rectangle, stroke sampling, submission sequence or accepted preview.
+- Exact free-look angles/smoothing/return values are owned by `16`; controller ownership is `21/68`.
 
 ### World billboards
 - Each visible human racer has a compact marker above body: `#N` + truncated display name (max 12 glyphs), no chat/status text. Bots use exact label `BOT #N` and never imitate a human name/avatar.
@@ -168,4 +181,4 @@ UI is accepted only when screenshots/video pass all of:
 4. 2400×1080 wide touch landscape.
 5. low-end target from `57`.
 
-For each: no overlap, no clipped text in English, DrawCanvas never covers the next meaningful obstacle read, primary CTA is visible without scrolling, and safe-area/system bars do not occlude input.
+For each: no overlap, no clipped text in English, DrawCanvas never covers the next meaningful obstacle read, primary CTA is visible without scrolling, and safe-area/system bars do not occlude input. D09/E03 acceptance additionally verifies that world-camera gestures never steal DrawCanvas input and rider presentation does not cover the next meaningful obstacle or the local/rival leg silhouette.

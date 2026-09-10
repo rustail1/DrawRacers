@@ -3,6 +3,8 @@
 
 Цель: убрать вопрос «какие именно Instances/имена/атрибуты/группы/свойства создавать в Studio». Архитектурные владельцы = `21`; numeric physics = `16`; TrackPiece geometry = `60`; UI hierarchy = `68`.
 
+Camera/rider presentation amendment is approved by `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`. It defines future D09/E03 presentation Instances/attributes only and does not authorize creation of those runtime objects during the current M0 gate.
+
 ## 1. Root tree — exact launch names
 ```text
 ReplicatedStorage
@@ -142,8 +144,34 @@ Attributes required on racer Model:
 - `ShapeVersion:number`
 - `TrackId:string`
 - `Finished:boolean`
+- `OwnerUserId:number` for human racers once D05 production mapping exists; server-authored only.
+
+`OwnerUserId` rules:
+- human racer: exact Roblox `Player.UserId` authored by server spawn/mapping code;
+- bot racer: no human `OwnerUserId` is assigned; bots never impersonate a Player;
+- clients may use the attribute only to resolve presentation identity such as rider/name visuals;
+- the attribute never authorizes stroke, reward, finish, physics or ownership state and does not replace `RacerService`'s internal Player→RacerRuntime mapping.
 
 No authoritative Coins/MP/reward attributes are stored on Workspace instances.
+
+### E03 client rider presentation
+Beginning only at E03, `RiderPresentationController` may create client-local visual models under the existing presentation root:
+
+```text
+Workspace.Runtime.RacePresentation
+  Rider_<UserId> (Model)
+    <standardized normalized avatar visual rig>
+```
+
+Contract:
+- rider model is presentation-only and is not parented into the physical BodyCollider/LegAssembly assembly;
+- its visual transform follows the corresponding human racer presentation anchor/body observation but does not become physics authority;
+- any rider BasePart is `CanCollide=false`, `CanTouch=false`, `CanQuery=false`, `Massless=true`;
+- rider geometry never changes the `RacerBody`/`RacerLeg` collision matrix or body mass properties;
+- the active-race camera still targets the racer position, not rider head/accessories;
+- normalized scale/readability envelope and oversized appearance fallback are owned by `62`;
+- rider teardown occurs with racer/player presentation lifecycle; completed heats must not leak rider models/connections;
+- no rider object is required before E03 and this section does not authorize early M0 creation.
 
 ## 6. TrackPiece template exact structure
 Per `42/60` every `ServerStorage.TrackPieces/Piece_<Id>` is:
@@ -214,10 +242,10 @@ Canonical tags allowed at launch:
 Do not create per-level bespoke tags for behavior already expressible by TrackPiece config.
 
 ## 11. Workspace lifecycle
-`Workspace.Runtime.Tracks` and `Racers` are empty at server boot. RaceService/TrackService creates runtime content and destroys it after heat/intermission cleanup. No completed heat leaves live Constraints/Connections/Parts behind; 30-heat soak in `57` verifies this.
+`Workspace.Runtime.Tracks` and `Racers` are empty at server boot. RaceService/TrackService creates runtime content and destroys it after heat/intermission cleanup. No completed heat leaves live Constraints/Connections/Parts behind; 30-heat soak in `57` verifies this. Client-local `RacePresentation` rider visuals introduced at E03 follow the same cleanup expectation and do not become server gameplay state.
 
 ## 12. Acceptance
-PASS when a fresh synced project creates exactly these roots, TrackPiece validator recognizes all 24 pieces, 8 racers use isolated collision, runtime teardown returns object counts near baseline, and no gameplay script depends on manually hidden unversioned Studio objects outside this contract.
+PASS when a fresh synced project creates exactly these roots, TrackPiece validator recognizes all 24 pieces, 8 racers use isolated collision, runtime teardown returns object counts near baseline, and no gameplay script depends on manually hidden unversioned Studio objects outside this contract. E03 rider acceptance additionally requires one bounded nonphysical rider per visible human racer, no human avatar impersonation for bots, deterministic oversized-appearance fallback, and no effect on physical racer mass/collision.
 
 
 Exact freehand coordinate/pivot/collider mapping owner: `73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md`.

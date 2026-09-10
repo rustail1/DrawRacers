@@ -5,6 +5,8 @@
 
 > В Luau не нужно превращать всё в OOP. Здесь слово «класс» означает stateful runtime object там, где lifetime действительно полезен. Stateless вычисления остаются обычными ModuleScript-функциями.
 
+Camera/rider presentation amendment approved by `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`: production camera remains D09; `RiderPresentationController` is a future E03 presentation owner. This target contract does **not** authorize either module during the current M0/R16 gate.
+
 ---
 
 # 1. DataModel target tree
@@ -31,6 +33,7 @@ ReplicatedStorage
 │   ├── Math
 │   │   ├── StrokeMath.lua
 │   │   ├── GeometryMath.lua
+│   │   ├── CameraMath.lua
 │   │   └── TrackMath.lua
 │   └── Net
 │       └── RemoteNames.lua
@@ -85,6 +88,7 @@ StarterPlayer
         ├── InputController.lua
         ├── DrawingController.lua
         ├── RaceCameraController.lua
+        ├── RiderPresentationController.lua
         ├── HUDController.lua
         ├── ResultsController.lua
         ├── GarageController.lua
@@ -192,7 +196,7 @@ DespawnRacer(player)
 ResetAll()
 ```
 
-Does not process raw stroke math itself.
+Does not process raw stroke math itself. For human racers, production spawn is also the server-authoritative source of the `OwnerUserId` presentation attribute defined by `65`; that identifier does not replace the internal Player→RacerRuntime mapping.
 
 ---
 
@@ -281,7 +285,7 @@ PurchaseWithCoins(player, requestId, itemId)
 ApplyLoadout(racerRuntime, profile)
 ```
 
-**Invariant:** cosmetic definition never changes canonical physics collider/body dimensions/motor values.
+**Invariant:** cosmetic definition never changes canonical physics collider/body dimensions/motor values. Roblox avatar rider rendering is not an entitlement/equip owner and must not duplicate this service.
 
 ---
 
@@ -366,7 +370,7 @@ SetFinished()
 Destroy()
 ```
 
-`ApplyShape` delegates physical creation to LegShapeService/LegAssembly factory and performs atomic swap.
+`ApplyShape` delegates physical creation to LegShapeService/LegAssembly factory and performs atomic swap. It does not own camera or rider rendering.
 
 ---
 
@@ -466,6 +470,9 @@ No Instances, no remotes, no player state.
 ## GeometryMath
 Transforms `ShapeSpec` into segment transforms/sizes; no world ownership.
 
+## CameraMath
+Introduced only with D09. Pure deterministic helpers for frame-rate-independent camera smoothing, vertical dead-zone response and bounded orbit/return math. No Instances, no UserInputService, no remotes and no racer authority.
+
 ## TrackMath
 Authoring/validation math for Start→End placement, clearance and topology checks.
 
@@ -476,7 +483,7 @@ Pure modules are the easiest place for automated tests.
 # 6. Client controllers
 
 ## InputController
-Normalizes mouse/touch lifecycle into project-level pointer events. Does not know physics.
+Normalizes mouse/touch lifecycle into project-level pointer events. Does not know physics. Its current drawing-pointer contract is not expanded into a general camera manager.
 
 ## DrawingController
 Owns DrawCanvas interaction and local stroke preview.
@@ -488,6 +495,22 @@ Old active leg remains during drawing.
 
 ## RaceCameraController
 Scriptable camera. Reads replicated local racer position and race state. Owns follow/look-ahead interpolation only.
+
+D09 camera amendment: it is also the sole owner of the active-race smoothed camera target, vertical dead-zone response, bounded RMB/touch world-orbit state and automatic return to canonical side framing. It derives orientation from camera policy, never from BodyCollider rotation, never authors gameplay state, and never sends camera-orientation remotes. Exact starting values live in `16`; input priority lives in `59/68`. Spectator target policy remains `74`.
+
+## RiderPresentationController
+**First authorized task: E03. Do not create during current M0 or D09.**
+
+Owns one human rider's local visual lifecycle: Player identity → server-authored racer `OwnerUserId` lookup → standardized normalized mini-avatar visual → deterministic jockey/frog-rider pose → cleanup. It may render under `Workspace.Runtime.RacePresentation` and may read player appearance, but it has no gameplay authority.
+
+It does **not** own:
+- physical BodyCollider/LegAssembly or movement;
+- camera targeting;
+- checkpoint/finish state;
+- Draw Racers cosmetic ownership/equip;
+- server Player→RacerRuntime mapping.
+
+Any rider BaseParts are presentation-only and obey `65`: non-colliding, non-touching, non-querying and massless. The normalized visual envelope/fallback is owned by `62`; exact introduction order is `25`.
 
 ## HUDController
 Placement/progress/countdown/redraw hint. No authoritative race logic.
@@ -526,6 +549,7 @@ M2. Resolves semantic VFX/haptic feedback from `47/69`; respects Reduce Motion a
 | Cosmetic ownership | PlayerDataService |
 | Equipped cosmetic | PlayerDataService/CosmeticService |
 | Camera | local RaceCameraController |
+| Human rider visual lifecycle | local RiderPresentationController |
 | Local UI | local HUD/Results/Garage/Store/Settings controllers |
 | Audio/VFX/haptic presentation | local AudioController/FeedbackController |
 | Track definition | TrackService |
@@ -556,6 +580,8 @@ ProgressValidationService → RaceRuntime/RacerRuntime observations
 AnalyticsAdapter ← semantic events from services
 CosmeticService → PlayerDataService + RacerRuntime visuals
 MonetizationService → PlayerDataService/Reward grant path
+RaceCameraController → CameraMath + replicated local-racer/race observations
+RiderPresentationController → player appearance + server-authored racer OwnerUserId presentation lookup
 ```
 
 Rule: orchestration may depend on lower-level domain services; low-level modules never require `RaceService` back. This graph is target dependency topology, not permission to instantiate later modules early.
@@ -571,6 +597,7 @@ Without new Decision Log do not create:
 - `SaveManager` next to `PlayerDataService`;
 - second remote registry;
 - client authoritative reward/economy object;
+- broad `RacerPresentationManager` that overlaps `RiderPresentationController`, `CosmeticService` or `RaceCameraController`;
 - separate per-obstacle script family if TrackPiece config can express it;
 - one script per level.
 
@@ -590,7 +617,9 @@ Without new Decision Log do not create:
 | TrackMath/TrackService minimal | M0.5/M1 |
 | RaceRuntime/RaceService | M1 |
 | ProgressValidationService | M1 |
-| RaceCameraController/HUD | M1 |
+| CameraMath/RaceCameraController | M1 / D09 |
+| RiderPresentationController | M2 / E03 |
+| HUDController | M1 / D10 |
 | ResultsController | M1 |
 | GarageController/SettingsController | M2 |
 | AudioController/FeedbackController | M2 |

@@ -3,6 +3,8 @@
 
 This file closes the remaining art/content choices that an artist or implementer should not invent during production. `13_CONTENT_ART_AUDIO.md` owns broad content principles; `36` owns naming/import rules; `43` owns cosmetic fairness/equip; `61` owns prices/progression; `59` owns UI layout.
 
+Camera/rider presentation amendment is approved by `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`. It preserves the cube shell as the canonical racer body and adds a separate, nonphysical human rider presentation at E03; it does not authorize rider runtime during the current M0 gate.
+
 ## 1. Public identity
 - **Primary public title:** `Draw Racers`.
 - Internal project codename may remain `DrawRacers` in repository/package names.
@@ -79,6 +81,21 @@ Canonical visual body:
 - local/rival shells never exceed canonical 3×3×3 fairness envelope;
 - player display-number badge appears above body via billboard, not painted permanently on shell.
 
+The `no limbs/character rig` rule applies to the **cube shell itself**. Beginning at E03, human racers may additionally render one separate `RiderPresentation` mini-avatar above the cube. The rider is not part of the shell, collider or locomotion assembly.
+
+### Human rider presentation — E03
+- Visual direction: compact jockey/frog-rider/rodeo silhouette seated on the cube, with knees/legs visually to the sides, torso slightly forward and arms directed forward/toward the cube.
+- The first production version does not require bob/lean animation; that is later presentation polish.
+- Use a standardized/normalized avatar presentation rather than allowing arbitrary Roblox body scale to set race silhouette size.
+- Starting normalized target scale equivalent = **0.65**. Human Studio comparison sweep = **0.55 / 0.65 / 0.75**.
+- A hard visual readability envelope/fallback is mandatory. Oversized bundles, layered clothing or accessories may be simplified/omitted/scaled by a deterministic presentation rule rather than expanding racer gameplay geometry or dominating the race view.
+- Rider presentation is nonphysical and never changes BodyCollider/leg dimensions, mass, material, collision, motor, lane behavior, checkpoint/finish authority or camera target authority.
+- Rider identity is tied to the human player through the server-authored presentation mapping from `65` and rendered by `RiderPresentationController` from `21`.
+- Bots do not imitate human avatar appearance. Bot presentation remains clearly labeled `BOT #N`.
+- At 2 and 8 racers, the cube, drawn leg silhouette and upcoming obstacle must remain more readable than rider accessory detail.
+
+The canonical `3×3×3` fairness envelope still owns physical BodyCollider/body-shell dimensions. The separate rider may extend visually above the shell only inside the bounded nonphysical readability envelope approved at E03; it never changes competitive geometry.
+
 ## 8. Exact launch cosmetic catalog — 20 produced cosmetics + 1 null trail state
 All IDs below are canonical and must exist before public launch. All preserve `PhysicsProfile="STANDARD"`.
 
@@ -113,6 +130,8 @@ All IDs below are canonical and must exist before public launch. All preserve `P
 
 **Catalog count note:** `Trail_None` is a null/default equip state rather than a produced cosmetic asset. Produced launch cosmetic assets = **20** (6 bodies + 5 inks + 4 non-null trails + 5 finish FX). Runtime catalog contains **21 entries** including `Trail_None`.
 
+The Roblox avatar rider is identity presentation, not a new Draw Racers paid cosmetic category in this launch catalog. `CosmeticService` still owns Body/Ink/Trail/Finish FX ownership and equip.
+
 ## 9. Paid bundle presentation
 - Starter bundle theme: `DOODLE STARTER` — StickerBomb + Lime Ink + Spark Finish.
 - Neon bundle theme: `NEON RUSH` — NeonGrid + Spectrum Ink + Pixel Trail + Neon Burst.
@@ -134,6 +153,8 @@ Required produced assets before public launch:
 - UI panel/button/nine-slice assets matching `59` tokens;
 - VFX: shape apply, finish pop, confetti, spark, neon burst, crown burst;
 - audio categories from `47`.
+
+Rider implementation is generated from the player's normalized avatar presentation and deterministic pose/envelope contract; it does not add a new paid launch asset count. Any helper pose/rig assets introduced by implementation still follow `36/69/70` provenance rules.
 
 ## 11. Discovery creative freeze
 ### Thumbnail A — `HOOK OVER STEPS`
@@ -160,6 +181,7 @@ Creative hypothesis testing/acceptance remains `38/55 G6`; these are the exact f
 - Active-race particle lifetime <=1.0 s for normal contact/shape feedback; finish FX may run <=1.5 s after local finish.
 - Trails are capped to a visually sparse footprint and can be reduced/hidden by accessibility setting.
 - No full-screen flash brighter than 20% opacity overlay; Reduce Motion removes nonessential scale/zoom/shake.
+- Rider silhouettes/accessories are subject to the same race-readability priority: they may not cover the local/rival leg silhouette or make the next obstacle unreadable in the canonical camera framing.
 
 ## 13. Ownership and approval
-Artist may choose implementation details such as mesh topology, texture packing and UV layout. Artist may **not** independently change palette role, shell size, catalog identity, theme identity, obstacle readability, UI hierarchy, or add gameplay collision. Any such change requires the relevant owner doc/Decision Log.
+Artist may choose implementation details such as mesh topology, texture packing and UV layout. Artist may **not** independently change palette role, shell size, catalog identity, theme identity, obstacle readability, UI hierarchy, rider readability envelope, or add gameplay collision. Any such change requires the relevant owner doc/Decision Log.

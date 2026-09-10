@@ -4,6 +4,8 @@
 
 Этот файл отвечает: **что писать первым, вторым и дальше**, чтобы каждая система появлялась только когда её зависимость уже доказана.
 
+Camera/rider contract amendment: `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md` defines future D09/E03 presentation behavior but does **not** move either task earlier or alter the current M0/R16/B17 gate.
+
 ---
 
 # PHASE A — PROJECT BOOTSTRAP
@@ -110,7 +112,7 @@ One heat state container.
 No rewards yet beyond debug result. Exact lifecycle/assembly/PREP/finish-grace/DNF semantics = `74`.
 
 ### D05 RacerService player mapping/spawn
-Two players assigned isolated lanes.
+Two players assigned isolated lanes. Human racer spawn becomes the server-authoritative source of the replicated `OwnerUserId` presentation identifier from `65`; bots never impersonate a human owner id.
 
 ### D06 ProgressValidationService/checkpoint tracker
 Ordered checkpoints + finish.
@@ -123,6 +125,15 @@ Security before broader scale.
 
 ### D09 RaceCameraController
 Local racer + look-ahead + visible rival. Start camera constants from `16` and respect `59` DrawCanvas exclusion zone.
+
+Implement the production camera contract from `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`:
+- introduce pure `CameraMath` only for deterministic frame-rate-independent smoothing/dead-zone/orbit math;
+- active-race target follows Local Racer position without inheriting BodyCollider rotation/roll;
+- use stable smoothed target + vertical dead-zone/damping from `16`;
+- desktop free-look = hold RMB with bounded yaw/pitch; release returns automatically to canonical side view;
+- touch orbit can start only from world space outside DrawCanvas/active UI and never steals an active drawing pointer;
+- no camera orientation Remote/event authority;
+- verify base side view, nearby-rival and upcoming-obstacle readability in Roblox Studio.
 
 ### D10 HUDController progress/placement
 Presentation only; exact placement/size/copy = `59`.
@@ -148,6 +159,15 @@ Build exact first ten definitions from `60`; do not invent alternate launch bloc
 
 ### E03 Full 8-player readability camera/HUD pass
 Use exact presentation owners `08/59/68`; no persistence dependency yet.
+
+Extend the already-implemented D09 camera to the real 8-player readability case; do not create a second camera system. Introduce `RiderPresentationController` here, and only here, for human-racer mini-avatar presentation:
+- cube shell remains the canonical racer body from `62`;
+- rider is a separate standardized/normalized presentation-only visual keyed by server-authored `OwnerUserId`;
+- starting normalized target scale `0.65`, with Studio comparison `0.55 / 0.65 / 0.75` and a hard readability envelope/fallback for oversized appearances;
+- rider pose is the approved jockey/frog-rider seated pose; first implementation does not require bob/lean animation;
+- rider never changes racer/leg physics, collision, mass, camera authority, checkpoints/finish, rewards or Draw Racers cosmetic ownership;
+- bots retain explicit `BOT #N` identity and do not imitate human avatar riders;
+- pass 2-player and 8-player visual/readability evidence before E03 is accepted.
 
 ### E04 PlayerDataService profile lifecycle
 Implement `31` safe load, lease, schema migration, GuestSafe, cross-place transfer token/handoff and release behavior. This must exist before any FTUE completion or persistent reward can be accepted.
@@ -263,7 +283,8 @@ Examples:
 - no Shop before cosmetic/status value exists;
 - no procedural generator before authored level grammar is validated;
 - no 8-player service before the 2-player rival slice passes acceptance;
-- no seasons before session/return loop shows signal.
+- no seasons before session/return loop shows signal;
+- the camera/rider Contract Lock does not authorize `CameraMath`, `RaceCameraController` or `RiderPresentationController` before D09/E03 respectively.
 
 
 # PHASE I — FINAL PUBLIC RELEASE FREEZE

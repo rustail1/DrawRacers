@@ -11,6 +11,8 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 **Acceptance note:** A01–A04 and B01–B02 remain recorded ACCEPTED.  
 **Rule:** only one gameplay feature may be ACTIVE at a time. `SESSION.md` owns the evidence cursor; `25` owns implementation order. No C01 or later work may start without ordered R16 Studio evidence and recorded B17/G0 PASS or an explicit Product Owner gate decision.
 
+**Future presentation contract lock (2026-09-10):** `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md` approves stable production camera behavior for D09 and a separate normalized human `RiderPresentationController` for E03. These are **BACKLOG / sequence-gated**, not current M0 work. The decision does not move the current R16FINAL/B17 gate, does not authorize early `RaceCameraController`/rider runtime, and does not change racer physics/network authority.
+
 ## Bootstrap — required before M0
 - ACCEPTED — A01 Git/Rojo baseline
 - ACCEPTED — A02 shared/server/client roots
@@ -97,7 +99,7 @@ Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 - **Unified evidence route** — `R16FINAL` executes R16 Stage-C evidence synchronously before starting the human G0 harness and printing `HUMAN G0 READY`; default Studio mode remains `G0`.
 - **Studio Gate A — HUMAN STUDIO PENDING. Studio Gate B — HUMAN STUDIO PENDING. Studio Gate C — HUMAN STUDIO PENDING. B17/G0 — HUMAN_GATE PENDING.**
 
-Repository audit conclusion at this gate: no new top-level gameplay service/controller family is justified. CI includes Rojo buildability but does not replace Studio/external-tester G0 evidence.
+Repository audit conclusion at this gate: no new top-level gameplay service/controller family is justified. The approved future `RaceCameraController`/`RiderPresentationController` presentation owners remain sequence-gated and do not alter that current-M0 conclusion. CI includes Rojo buildability but does not replace Studio/external-tester G0 evidence.
 
 ## M0.5 — Adaptation Acceptance
 - BACKLOG — Mixed adaptation test track using `60` geometry
@@ -112,6 +114,7 @@ Repository audit conclusion at this gate: no new top-level gameplay service/cont
 - BACKLOG — 2 isolated lanes / no racer collision
 - BACKLOG — Rival shape visibility
 - BACKLOG — 2-player camera/HUD matching `59`
+- BACKLOG — D09 stable Local-Racer camera: smoothed target, no racer-rotation inheritance, vertical dead-zone, hold-RMB bounded free-look + automatic return (`16/21/25/59/68`)
 - BACKLOG — Fast rematch
 - BACKLOG — Network/security tests + G2
 
@@ -119,6 +122,7 @@ Repository audit conclusion at this gate: no new top-level gameplay service/cont
 - BACKLOG — 8 lane scaling
 - BACKLOG — STAGING two-place provisioning (`64/70`)
 - BACKLOG — First 10 authored tracks T01–T10 from `60/67`
+- BACKLOG — E03 8-player camera/HUD readability + normalized nonphysical human rider presentation (`21/25/62/65/68`)
 - BACKLOG — FTUE
 - BACKLOG — Lineup/results/podium exact UI from `59`
 - BACKLOG — One-tap requeue

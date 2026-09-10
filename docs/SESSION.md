@@ -164,6 +164,20 @@ R16.11 may synchronize final numbers, selected tuning values, screenshots/log ev
 ## Empirical G0 still required
 R16 completion itself does not pass B17. `55_EMPIRICAL_PRODUCT_GATE_PROTOCOL.md` still requires the fixed G0 evidence, including **6 unique external testers**. A local developer playtest is necessary technical evidence but is not the six-tester empirical gate.
 
+## Future camera/rider presentation contract lock
+**APPROVED CONTRACT / IMPLEMENTATION PENDING. Current M0 runtime and gate are unchanged.**
+
+Decision owner: `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`.
+
+Future ordered contract:
+- D09 production `RaceCameraController` follows only the Local Racer through a smoothed position target; it never inherits BodyCollider rotation, filters small vertical solver bounce through a dead-zone, supports bounded hold-RMB/world-touch free-look, and automatically returns to canonical side framing on release. Exact starting hypotheses live in `16`.
+- E03 introduces `RiderPresentationController` as a separate normalized, nonphysical human mini-avatar rider layer above the canonical cube shell. Target scale hypothesis is `0.65`, with `0.55 / 0.65 / 0.75` Studio comparison and a mandatory oversized-appearance readability fallback.
+- Production human racers expose server-authored `OwnerUserId` for presentation identity lookup once D05 exists; bots never impersonate human avatar identity.
+- Camera/rider presentation does not change BodyCollider/LegAssembly physics, ShapeSpec/stroke authority, Remote schema, checkpoint/finish authority, economy/meta or Rojo mapping.
+- `M0G0PresentationHarness` remains the current Studio-only temporary camera/presentation owner and is not modified by this Contract Lock.
+
+This approved future contract does **not** authorize `CameraMath`, `RaceCameraController` or `RiderPresentationController` during M0 and does not satisfy any human gate. The next permitted action remains the existing `R16FINAL` Studio evidence path.
+
 ## Development execution workflow — ACTIVE
 A repository-process decision was approved on 2026-09-10 for the current ChatGPT-driven workflow. This does **not** change gameplay scope or R16 gate state.
 

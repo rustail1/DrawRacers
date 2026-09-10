@@ -34,7 +34,8 @@ Human copy/paste prompts and the remote GitHub → PC → Rojo → Studio handof
 | Race state | `05`, `21`, `22`, `28`, exact lifecycle/timeouts `74` | RaceService/RaceRuntime | phase/leave/timeout/rematch |
 | Checkpoints/finish | `05`, `22`, `32` | ProgressValidationService | teleport/out-of-order rejection |
 | 2-player rival | `05`, `08`, `29`, `55` G2 | existing race + camera/HUD | G2 crossover + fairness |
-| Camera | `08`, `16`, `29`, **`59` exclusion/layout** | RaceCameraController | obstacle+rival readability |
+| Camera | `08`, `16`, `29`, **`59/68` exclusion/input**, `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md` | CameraMath + RaceCameraController | stable local follow + obstacle/rival readability + RMB/touch orbit/return |
+| Rider presentation | `21`, `25`, `62`, `65`, `68`, `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md` | RiderPresentationController | nonphysical identity binding + 2/8-player readability |
 | HUD/results | `08`, `05`, `29`, **`59/68`**, requeue timing `74` | HUD/ResultsController | exact hierarchy/layout + placement/rematch clarity |
 | 8-player scaling | `05`, `24`, `55` G3, `57` | existing systems | full heat + device/perf PASS |
 | FTUE | `08`, **`59`**, `61`, KPI plan `10`, events `46`, `55` | existing core + HUD | first-minute funnel + G4 inputs |
@@ -53,6 +54,8 @@ Human copy/paste prompts and the remote GitHub → PC → Rojo → Studio handof
 | Discovery creative | `38`, evidence `54`, **`62` first A/B/C**, `55` G6, analytics `46` | product/creative + AnalyticsAdapter | comprehension + downstream guardrails |
 | Release | `35`, `34`, `48`, `57`, `59–62`, platform `64/70`, task catalog `66`, current audit **`78`** | ops/process | staging/prod smoke + rollback + device PASS |
 | Player safety | `39`, `37` | presentation/settings | abuse/readability/accessibility check |
+
+Camera/rider sequencing note: the Decision Log is an approved future contract, not an authorization to create `CameraMath`/`RaceCameraController` before D09 or `RiderPresentationController` before E03. Current task/gate still comes from `SESSION.md`.
 
 Every task also reads `FEATURE_LIST.md`, `AGENTS.md`, `SESSION.md` and the relevant Decision Log. Do not read `_HISTORY/` for normal implementation. Historical changelogs and superseded audits are provenance only, never current owner specs.
 
