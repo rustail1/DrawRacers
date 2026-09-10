@@ -1,0 +1,96 @@
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def read(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
+
+
+def test_early_camera_rider_presentation_contract() -> None:
+    camera_math_path = ROOT / "src/shared/Math/CameraMath.lua"
+    camera_path = ROOT / "src/client/Controllers/RaceCameraController.lua"
+    rider_path = ROOT / "src/client/Controllers/RiderPresentationController.lua"
+
+    assert camera_math_path.exists(), "early presentation requires pure CameraMath"
+    assert camera_path.exists(), "early presentation requires production RaceCameraController"
+    assert rider_path.exists(), "early presentation requires RiderPresentationController"
+
+    camera_math = camera_math_path.read_text(encoding="utf-8")
+    camera = camera_path.read_text(encoding="utf-8")
+    rider = rider_path.read_text(encoding="utf-8")
+    bootstrap = read("src/client/Bootstrap.client.lua")
+    g0 = read("src/client/Dev/M0G0PresentationHarness.lua")
+
+    # Deterministic camera math must be frame-rate independent and explicitly
+    # expose the vertical dead-zone/orbit helpers used by the controller.
+    assert "function CameraMath.ExpAlpha" in camera_math
+    assert "math.exp" in camera_math
+    assert "function CameraMath.SmoothVector" in camera_math
+    assert "function CameraMath.StepVerticalDeadZone" in camera_math
+    assert "function CameraMath.ClampOrbit" in camera_math
+
+    # Exact locked starting values from doc 16 / camera decision.
+    for token in [
+        "FIELD_OF_VIEW = 60",
+        "LOOK_AHEAD = 11",
+        "CAMERA_HEIGHT = 10",
+        "SIDE_DISTANCE = 23",
+        "POSITION_DAMPING_TIME = 0.16",
+        "LOOK_TARGET_DAMPING_TIME = 0.12",
+        "VERTICAL_DEAD_ZONE = 0.50",
+        "VERTICAL_DAMPING_TIME = 0.22",
+        "ORBIT_YAW_LIMIT = 40",
+        "ORBIT_PITCH_LIMIT = 18",
+        "ORBIT_RETURN_TIME = 0.40",
+    ]:
+        assert token in camera
+
+    # Camera is local presentation only: lookup is via the replicated
+    # server-authored OwnerUserId and there is no network authority path.
+    assert 'GetAttribute("OwnerUserId")' in camera
+    assert "LocalPlayer.UserId" in camera
+    assert "BodyCollider" in camera
+    assert "body.Position" in camera
+    assert "body.CFrame" not in camera
+    assert "RemoteEvent" not in camera
+    assert "FireServer" not in camera
+
+    # Desktop orbit owns RMB only and automatically returns after release.
+    assert "Enum.UserInputType.MouseButton2" in camera
+    assert "Enum.UserInputType.MouseButton1" not in camera
+    assert "CameraMath.ClampOrbit" in camera
+    assert "ORBIT_RETURN_TIME" in camera
+
+    # Touch ownership is decided at begin from GUI/DrawInputRect hit testing.
+    assert "GetGuiObjectsAtPosition" in camera
+    assert 'Name == "DrawInputRect"' in camera or 'Name ~= "DrawInputRect"' in camera
+    assert "Enum.UserInputType.Touch" in camera
+
+    # Rider is a standardized client-only visual with a deterministic
+    # oversized-accessory fallback and no gameplay authority.
+    assert 'GetAttribute("OwnerUserId")' in rider
+    assert "GetPlayerByUserId" in rider
+    assert "ScaleTo(0.65)" in rider
+    assert 'IsA("Accessory")' in rider
+    assert "CanCollide = false" in rider
+    assert "CanTouch = false" in rider
+    assert "CanQuery = false" in rider
+    assert "Massless = true" in rider
+    assert "BodyCollider" in rider
+    assert "body.Position" in rider
+    assert "body.CFrame" not in rider
+    assert "RemoteEvent" not in rider
+    assert "FireServer" not in rider
+    assert "LegAssembly" not in rider
+    assert "RacerRuntime" not in rider
+
+    # Bootstrap composes the production owners. The old Studio harness may
+    # keep its debug proxy, but cannot remain a second active camera owner.
+    assert 'require(controllers:WaitForChild("RaceCameraController"))' in bootstrap
+    assert 'require(controllers:WaitForChild("RiderPresentationController"))' in bootstrap
+    assert "RaceCameraController.new" in bootstrap
+    assert "RiderPresentationController.new" in bootstrap
+    assert "camera.CameraType" not in g0
+    assert "camera.FieldOfView" not in g0
+    assert "camera.CFrame" not in g0
