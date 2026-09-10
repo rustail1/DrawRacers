@@ -16,8 +16,6 @@ def test_r07_b12_validates_exact_outer_payload_and_rate_limits_before_heavy_poin
     assert "unexpectedField" in studio_spec
     assert "MALFORMED_PAYLOAD" in studio_spec
 
-    # Cheap sequence/envelope/stale checks may happen first, but expensive point walking/JSON
-    # must not be repeatable at arbitrary frequency by an abusive client.
     rate_stamp = service.index("state.lastRequestAt = now")
     point_validation = service.index("validateNetworkPoints(payload.points)")
     assert rate_stamp < point_validation
@@ -47,16 +45,18 @@ def test_r07_runtime_debug_folder_uses_dev_staging_environment_gate_not_studio_o
     assert 'environment == "DEV" or environment == "STAGING"' in runtime
 
 
-def test_r07_square_semantic_draw_surface_is_visible_and_owner_docs_match_decision() -> None:
+def test_r07_r16_3b_wide_semantic_draw_surface_is_visible_and_owner_docs_match_decision() -> None:
     drawing = read("src/client/Controllers/DrawingController.lua")
     layout = read("docs/59_UI_LAYOUT_WIREFRAME_SPEC.md")
     hierarchy = read("docs/68_UI_COMPONENT_HIERARCHY_IMPLEMENTATION_SPEC.md")
 
-    assert "SemanticSquareConstraint" in drawing
+    assert "SemanticSquareConstraint" not in drawing
+    assert "R16WideDrawSurfaceConstraint" in drawing
     assert "DrawInputSurfaceStroke" in drawing
-    assert "square semantic DrawInputRect" in layout
-    assert "square semantic DrawInputRect" in hierarchy
-    assert "92% width × 82% height" not in layout
+    assert "wide semantic DrawInputRect" in layout
+    assert "wide semantic DrawInputRect" in hierarchy
+    assert "square semantic DrawInputRect" not in layout
+    assert "square semantic DrawInputRect" not in hierarchy
 
 
 def test_r07_decision_log_uses_only_canonical_collision_groups() -> None:
