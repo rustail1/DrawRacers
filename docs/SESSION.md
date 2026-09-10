@@ -1,7 +1,7 @@
 # SESSION.md — CURRENT STATE
 
 Date: 2026-09-10  
-Documentation version: **v1.4.1 R16 STAGE-B IMPLEMENTATION AUTHORIZED**
+Documentation version: **v1.4.2 R16 STAGE-B IMPLEMENTATION STATUS**
 
 ## Product state
 The product specification remains closed. CORE/pre-G0 repair **R01–R12**, bounded runtime/evidence closure **R14.1–R14.11**, planar correction **R15/R15.1**, and current reference-parity correction **R16** stay inside the already-approved B03–B16/B17 scope; they introduce **no new WHAT/WHY gameplay scope**.
@@ -63,27 +63,30 @@ Current canonical Stage-A contract:
 
 R16.3A explicitly supersedes the earlier raw-canvas-offset interpretation from pre-R16 doc 73. No automatic spoke from hub to first point is introduced.
 
-Latest fully-green automated evidence before Stage-B work: head `81c7d84c542160f07fc4fe986df89e5aa69f8f73`; `Contract Verify` run `34448666472` → **142 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. This is repository evidence only and does not satisfy Studio physics/human acceptance.
+Stage-A automated evidence before Stage-B work: head `81c7d84c542160f07fc4fe986df89e5aa69f8f73`; `Contract Verify` run `34448666472` → **142 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. This is repository evidence only and does not satisfy Studio physics/human acceptance.
 
 ## R16 Stage B authorization
 **Stage B implementation authorized by Product Owner on 2026-09-10. Studio Gate A remains HUMAN STUDIO PENDING.**
 
-This is a bounded process override, not a fabricated acceptance result. It authorizes implementation/instrumentation work for `R16.5 → R16.7` while Stage-A live solver evidence is still pending. It does **not** authorize claiming that Stage A, Stage B, B17/G0, obstacle niches, or reference feel have passed without Roblox Studio evidence.
+This is a bounded process override, not a fabricated acceptance result. It authorized implementation/instrumentation work for `R16.5 → R16.7` while Stage-A live solver evidence remains pending. It does **not** authorize claiming that Stage A, Stage B, B17/G0, obstacle niches, or reference feel have passed without Roblox Studio evidence.
 
-Stage-B rules remain:
-- tune one physics family at a time;
-- first measure the current config before changing motor/grip values;
-- no obstacle geometry changes to make a shape pass;
-- no scripted +X locomotion or scripted Y climbing;
-- anti-stall must be observed and must remain inactive during canonical ROUND flat speed measurement;
-- all Stage-B solver/feel results remain HUMAN/STUDIO PENDING until a current-main Studio run records them.
+## R16 Stage B — feel/evidence implementation
+**R16.5–R16.7: IMPLEMENTED/AUTOMATED GREEN; Studio Gate B — HUMAN STUDIO PENDING. Studio Gate A remains HUMAN STUDIO PENDING.**
+
+Repository-level implementation now includes:
+- **R16.5 Motor / Grip / Mass Feel instrumentation** — current production motor values remain `AngularVelocity=-8`, `MotorMaxTorque=35000`, `MotorMaxAcceleration=120`; existing leg material values were moved to the single `PhysicsConfig.PhysicalMaterials.LegSegment` owner without changing their numbers. `R16B` Studio harness measures `ROUND_01` only after stable contact, ignores 2 s, measures 3 s, requires +X average `4.0–7.0 studs/s`, motors enabled and `antiStallActive=false`. No motor/torque/friction value has been tuned blindly without Studio evidence.
+- **R16.6 Vertical Physics evidence path** — normal locomotion remains solver-owned in Y; `RacerStabilizer` does not write body Y/CFrame/velocities and anti-stall remains X-only. The Stage-B harness records `HOOK_01` maximum Y rise on `SmallSteps` and `SMALL_ROUND_01` Y fall on `GapSmall` using bounded evidence thresholds.
+- **R16.7 Reference Shape Matrix** — executable canonical shapes now include `ROUND_01`, `LONG_BAR_01`, `SMALL_ROUND_01`, `HOOK_01`, `ASYM_01`, `SUBOPTIMAL_01`. The Studio harness runs identical-reset comparisons for flat/steps/gap/tunnel and reports the approved niche checks: steps `+4 studs` or one higher step, gap landing or `+2 studs`, tunnel completion or `+6 studs`, SUBOPTIMAL at least `20%` worse, plus `noUniversalWinner`.
+- Studio harness selection gained `R16B`; default remains `G0`, so normal G0 behavior is not silently replaced.
+- Canonical obstacle geometry was not changed during Stage-B instrumentation.
+
+Latest Stage-B automated code evidence before this status reconciliation: head `2197882e4c641e7c1d17a6dfc538f23fd1a521e6`; `Contract Verify` run `34451426807` → **145 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. These are repository/build facts only. They do not prove the live Roblox solver meets the speed/niche thresholds.
 
 ## Current implementation/evidence cursor
-**R16 Stage B implementation — R16.5 Motor / Grip / Mass measurement and controlled tuning; Studio Gate A remains HUMAN STUDIO PENDING.**
+**R16 Stage B — Mandatory Studio Gate B — HUMAN STUDIO PENDING. Studio Gate A also remains HUMAN STUDIO PENDING because implementation progression was explicitly overridden without fabricating acceptance.**
 
 ### Studio Gate A evidence still required
 Verify current `main` locally:
-- `git pull --ff-only`, `python verify.py`, and normal Rojo build/sync complete without project errors;
 - Studio Play reaches `[StudioGate] TOTAL 13 PASS / 0 FAIL` then `READY` with no red DrawRacers runtime error;
 - B10 upright/lane regression passes under the live Roblox solver;
 - normal `laneDeviation <= 0.03`; unexplained excursion `>0.08` is FAIL;
@@ -97,11 +100,17 @@ Verify current `main` locally:
 
 If only `HubOffsetY=-0.35` fails hub calibration while the rest of Stage A passes, the R16 design permits the explicit bounded `-0.75 / -0.35 / 0.0` comparison before any motor-value change is accepted.
 
-### Stage B implementation order
-1. **R16.5 Motor / Grip / Mass Feel** — instrument current ROUND FlatShort speed first; only then change `AngularVelocity`, torque/acceleration, leg friction, and finally body friction if evidence requires it.
-2. **R16.6 Vertical Physics** — prove normal locomotion never scripts Y and record step rise/gap fall under the live solver.
-3. **R16.7 Reference Shape Matrix** — run ROUND/HOOK/ASYM/LONG_BAR/SMALL_ROUND/SUBOPTIMAL from identical resets against the fixed canonical pieces.
-4. **Mandatory Studio Gate B** — HUMAN/STUDIO evidence required before R16.8–R16.10 presentation/integration acceptance.
+### Studio Gate B evidence now required
+Use the Studio-only `R16B` harness on current main and record:
+- `[DrawRacers][R16.5] ROUND_01 FlatShort ...` with speed `4.0–7.0`, motors enabled and anti-stall false;
+- `[DrawRacers][R16.6] HOOK_01 SmallSteps ...` proving real positive Y rise;
+- `[DrawRacers][R16.6] SMALL_ROUND_01 GapSmall ...` proving real gravity-driven Y fall;
+- `[DrawRacers][R16.7] matrix ...` with steps/gap/tunnel/suboptimal/noUniversalWinner all true.
+
+If R16.5 speed is outside target, tune only the next permitted family in order: AngularVelocity → torque/acceleration only if needed → leg grip → body material only if still required. Re-run the same measurement after each single-family change. Do not alter obstacle geometry to manufacture a pass.
+
+## Next ordered work after Studio Gate B
+Only after the live Stage-B evidence is accepted may normal progression continue to R16.8 Redraw parity, R16.9 Reference Camera, and R16.10 Canonical obstacle pass, unless the Product Owner records another explicit bounded gate override.
 
 ## Empirical G0 still required
 R16 completion itself does not pass B17. `55_EMPIRICAL_PRODUCT_GATE_PROTOCOL.md` still requires the fixed G0 evidence, including **6 unique external testers**. A local developer playtest is necessary technical evidence but is not the six-tester empirical gate.
@@ -109,10 +118,10 @@ R16 completion itself does not pass B17. `55_EMPIRICAL_PRODUCT_GATE_PROTOCOL.md`
 ## Audit notes / remaining risk
 Current layering remains aligned with the architecture: Bootstrap is composition root; `LegShapeService` owns authoritative shape processing; `RacerRuntime` owns body/legs/stabilizer/anti-stall lifetime; `StrokeRemoteTransport` remains transport-only; no early D05 `RacerService` exists.
 
-The dominant unresolved risk is Roblox Studio solver/feel evidence. CI and static contracts can prove ownership/buildability but cannot prove live contact feel, obstacle niches, camera readability or human acceptance.
+The dominant unresolved risk is live Roblox Studio solver/feel evidence. CI and static contracts prove ownership/buildability but cannot prove the measured speed, obstacle niches, camera readability or human acceptance.
 
 ## HARD STOP
 No C01, M0.5, multiplayer, meta, economy, shop, or later implementation may begin until the ordered R16 gates are completed and B17/G0 is explicitly recorded PASS or the Product Owner records another bounded gate decision.
 
 ## Next permitted task
-**R16.5 Motor / Grip / Mass Feel — instrument current config, run automated contracts/CI, then obtain Studio measurement evidence before changing tuning values.**
+**Run R16 Stage-B Studio evidence on current main. If any metric FAILs, perform a one-family-at-a-time R16.5/R16.6/R16.7 bounded tuning repair; otherwise proceed only after recorded gate acceptance.**
