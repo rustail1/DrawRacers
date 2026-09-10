@@ -101,7 +101,10 @@ end
 
 local function runWallTrial(): boolean
 	local acceptance = M0SceneConfig.ReferenceAcceptance
-	local options = { contactName = "Wall" }
+	local options = {
+		contactName = "Wall",
+		contactTimeout = acceptance.WallContactTimeout,
+	}
 	local hook = R16TrialRunner.RunPiece("SingleWallLow", "HOOK_01", acceptance.WallMeasureSeconds, options)
 	local longBar = R16TrialRunner.RunPiece("SingleWallLow", "LONG_BAR_01", acceptance.WallMeasureSeconds, options)
 	local suboptimal = R16TrialRunner.RunPiece("SingleWallLow", "SUBOPTIMAL_01", acceptance.WallMeasureSeconds, options)
