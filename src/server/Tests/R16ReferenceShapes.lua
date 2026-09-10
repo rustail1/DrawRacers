@@ -47,6 +47,21 @@ local SHAPES: { [string]: { Vector2 } } = {
 		Vector2.new(0.38, 0.88),
 		Vector2.new(0.12, 0.72),
 	},
+	ASYM_01 = {
+		Vector2.new(-0.82, -0.18),
+		Vector2.new(-0.30, -0.52),
+		Vector2.new(0.18, -0.26),
+		Vector2.new(0.76, 0.08),
+		Vector2.new(0.34, 0.58),
+		Vector2.new(-0.18, 0.82),
+		Vector2.new(-0.52, 0.30),
+	},
+	SUBOPTIMAL_01 = {
+		Vector2.new(-0.42, -0.25),
+		Vector2.new(-0.15, -0.05),
+		Vector2.new(0.08, 0.22),
+		Vector2.new(0.36, 0.42),
+	},
 }
 
 function R16ReferenceShapes.Get(shapeId: string): { Vector2 }
