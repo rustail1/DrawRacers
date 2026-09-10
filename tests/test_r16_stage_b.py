@@ -14,9 +14,14 @@ def test_r16_5_tuning_has_single_material_owners_and_flat_measurement_harness() 
     runtime = read("src/server/Runtime/RacerRuntime.lua")
     harness_config = read("src/shared/Config/StudioHarnessConfig.lua")
     bootstrap = read("src/server/Bootstrap.server.lua")
-    harness = read("src/server/Tests/R16StageBHarness.lua")
-    shapes = read("src/server/Tests/R16ReferenceShapes.lua")
     session = read("docs/SESSION.md")
+
+    harness_path = ROOT / "src/server/Tests/R16StageBHarness.lua"
+    shapes_path = ROOT / "src/server/Tests/R16ReferenceShapes.lua"
+    assert harness_path.exists(), "R16.5 requires a Studio-only Stage B measurement harness"
+    assert shapes_path.exists(), "R16.5 requires canonical executable reference shapes"
+    harness = harness_path.read_text(encoding="utf-8")
+    shapes = shapes_path.read_text(encoding="utf-8")
 
     assert "PhysicalMaterials = {" in config
     assert "LegSegment = {" in config
