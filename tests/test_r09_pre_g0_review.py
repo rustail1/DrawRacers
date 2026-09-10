@@ -18,7 +18,8 @@ def test_r09_accepted_preview_is_semantic_and_touch_layout_uses_exact_doc59_toke
         "TOUCH_VALIDATION_SIZE",
         "TOUCH_HINT_POSITION",
         "TOUCH_HINT_SIZE",
-        "UDim2.fromScale(0.5, 0.675)",
+        "UDim2.fromScale(0.5, 0.685)",
+        "UDim2.fromScale(0.5, 0.615)",
         "UDim2.fromScale(0.44, 0.058)",
         "UDim2.fromScale(0.50, 0.064)",
     ]:
@@ -27,6 +28,7 @@ def test_r09_accepted_preview_is_semantic_and_touch_layout_uses_exact_doc59_toke
     assert "self._pendingStrokes[sequence] = copyPoints(previewPixels)" not in drawing
     assert "points = copySemanticPoints(semanticPoints)" in drawing
     assert "copySemanticPoints(result.acceptedPoints)" in drawing
+    assert "_presentationAnchors" in drawing
 
     apply_layout = drawing[
         drawing.index("function DrawingController:_applyLayout"):
