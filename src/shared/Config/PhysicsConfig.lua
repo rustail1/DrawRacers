@@ -36,6 +36,22 @@ return {
 		MotorMaxAcceleration = 120,
 		RightPhaseOffsetDegrees = 180,
 	},
+	PhysicalMaterials = {
+		LegSegment = {
+			Density = 1.0,
+			Friction = 1.0,
+			Elasticity = 0.02,
+			FrictionWeight = 100,
+			ElasticityWeight = 100,
+		},
+		Body = {
+			Density = 1.0,
+			Friction = 0.45,
+			Elasticity = 0.05,
+			FrictionWeight = 100,
+			ElasticityWeight = 100,
+		},
+	},
 	Stabilization = {
 		LaneNormalError = 0.03,
 		LaneHardBound = 0.08,
