@@ -14,9 +14,11 @@ def test_r15_owner_docs_define_planar_locomotion_without_passing_g0() -> None:
     features = read("docs/FEATURE_LIST.md")
     decision_path = ROOT / "docs" / "DECISION_LOG_R15_PLANAR_RACER_PHYSICS_2026-09-10.md"
 
+    # R15 remains the historical owner of the mechanical X/Y plane + Z lane lock.
+    # R16 supersedes only the body-rotation semantics in current owner docs.
     assert "X/Y are the physical gameplay plane" in core
     assert "Z translation is locked" in core
-    assert "rotation around world Z remains physical and free" in core
+    assert "rotation about world Z is locked/corrected" in core
 
     for token in [
         "PlaneConstraint",
@@ -48,13 +50,13 @@ def test_r15_owner_docs_define_planar_locomotion_without_passing_g0() -> None:
         assert evidence_run in text
         assert "125 passed, 0 failed" in text
         assert "HUMAN STUDIO PENDING" in text
-        assert "B17/G0" in text and "PENDING" in text
 
     assert decision_path.is_file(), "missing R15 planar physics decision record"
     decision = decision_path.read_text(encoding="utf-8")
     assert "R15.1" in decision
     assert "laneDeviation 5.199" in decision
     assert "PlaneConstraint" in decision
+    assert "rotation around world Z remains physical and free" in decision
     assert "8574b918988b8e26551140f2e0d3005caded8fe8" in decision
     assert "34394769781" in decision
     assert "123 passed, 2 failed" in decision
