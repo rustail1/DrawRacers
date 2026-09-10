@@ -8,6 +8,14 @@ export type ClampOptions = {
 	maxPoints: number?,
 }
 
+export type RectClampOptions = {
+	minX: number,
+	maxX: number,
+	minY: number,
+	maxY: number,
+	maxPoints: number?,
+}
+
 export type Bounds = {
 	min: Vector2,
 	max: Vector2,
@@ -60,6 +68,35 @@ function StrokeMath.Clamp(points: { Vector2 }, options: ClampOptions): ({ Vector
 	return result, nil
 end
 
+function StrokeMath.ClampToRect(points: { Vector2 }, options: RectClampOptions): ({ Vector2 }?, string?)
+	if not isFiniteNumber(options.minX)
+		or not isFiniteNumber(options.maxX)
+		or not isFiniteNumber(options.minY)
+		or not isFiniteNumber(options.maxY)
+		or options.minX > options.maxX
+		or options.minY > options.maxY
+	then
+		return nil, "INVALID_BOUNDS"
+	end
+
+	local maxPoints = options.maxPoints
+	if maxPoints ~= nil and #points > maxPoints then
+		return nil, "TOO_MANY_POINTS"
+	end
+
+	local result = table.create(#points)
+	for index, point in points do
+		if not StrokeMath.IsFinitePoint(point) then
+			return nil, "NON_FINITE_POINT"
+		end
+		result[index] = Vector2.new(
+			math.clamp(point.X, options.minX, options.maxX),
+			math.clamp(point.Y, options.minY, options.maxY)
+		)
+	end
+	return result, nil
+end
+
 function StrokeMath.Dedupe(points: { Vector2 }, minDistance: number): { Vector2 }
 	assert(isFiniteNumber(minDistance) and minDistance >= 0, "minDistance must be a finite non-negative number")
 
@@ -91,12 +128,16 @@ function StrokeMath.Normalize(points: { Vector2 }, canvasSize: Vector2): { Vecto
 	assert(StrokeMath.IsFinitePoint(canvasSize), "canvasSize must be finite")
 	assert(canvasSize.X > 0 and canvasSize.Y > 0, "canvasSize must be positive")
 
+	-- R16.3B: one pixel has the same semantic scale on X and Y. The input
+	-- rectangle height defines one full semantic diameter; extra width expands X.
+	local unit = canvasSize.Y * 0.5
+	local center = canvasSize * 0.5
 	local result = table.create(#points)
 	for index, point in points do
 		assert(StrokeMath.IsFinitePoint(point), "Normalize received a non-finite point")
 		result[index] = Vector2.new(
-			(point.X / canvasSize.X) * 2 - 1,
-			1 - (point.Y / canvasSize.Y) * 2
+			(point.X - center.X) / unit,
+			(center.Y - point.Y) / unit
 		)
 	end
 	return result
@@ -151,6 +192,20 @@ function StrokeMath.CenterOnBounds(points: { Vector2 }): { Vector2 }
 	local result = table.create(#points)
 	for index, point in points do
 		result[index] = point - center
+	end
+	return result
+end
+
+function StrokeMath.AnchorToFirstPoint(points: { Vector2 }): { Vector2 }
+	if #points == 0 then
+		return {}
+	end
+	local origin = points[1]
+	assert(StrokeMath.IsFinitePoint(origin), "AnchorToFirstPoint requires finite points")
+	local result = table.create(#points)
+	for index, point in points do
+		assert(StrokeMath.IsFinitePoint(point), "AnchorToFirstPoint received a non-finite point")
+		result[index] = point - origin
 	end
 	return result
 end
