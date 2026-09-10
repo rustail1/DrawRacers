@@ -49,3 +49,41 @@ def test_r16_5_tuning_has_single_leg_material_owner_and_flat_measurement_harness
 
     assert "Stage B implementation authorized by Product Owner" in session
     assert "Studio Gate A remains HUMAN STUDIO PENDING" in session
+
+
+def test_r16_6_vertical_motion_is_solver_owned_and_measured_in_studio() -> None:
+    stabilizer = read("src/server/Runtime/RacerStabilizer.lua")
+    anti_stall = read("src/server/Runtime/RacerAntiStall.lua")
+    scene = read("src/shared/Config/M0SceneConfig.lua")
+    harness = read("src/server/Tests/R16StageBHarness.lua")
+    shapes = read("src/server/Tests/R16ReferenceShapes.lua")
+
+    stabilizer_step = stabilizer.split("function RacerStabilizer:Step()", 1)[1].split(
+        "function RacerStabilizer:GetLaneConstraint", 1
+    )[0]
+    for forbidden in [
+        "body.Position =",
+        "body.CFrame =",
+        "AssemblyLinearVelocity =",
+        "AssemblyAngularVelocity =",
+    ]:
+        assert forbidden not in stabilizer_step
+
+    assert "Vector3.new(self.body.AssemblyMass * config.MaxAccelerationX, 0, 0)" in anti_stall
+    assert "Vector3.new(0," not in anti_stall
+
+    for token in [
+        "StepsMeasureSeconds = 10.0",
+        "StepsRiseMin = 0.25",
+        "GapMeasureSeconds = 6.0",
+        "GapFallMin = 1.0",
+    ]:
+        assert token in scene
+
+    assert "HOOK_01" in shapes
+    assert "LONG_BAR_01" in shapes
+    assert "runStepsVerticalTrial" in harness
+    assert "runGapVerticalTrial" in harness
+    assert "maxDeltaY" in harness
+    assert "minDeltaY" in harness
+    assert "[DrawRacers][R16.6]" in harness
