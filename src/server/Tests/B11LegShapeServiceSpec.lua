@@ -1,5 +1,10 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local PhysicsConfig = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
+)
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 local LegShapeService = require(script.Parent.Parent.Services:WaitForChild("LegShapeService"))
 
@@ -24,7 +29,7 @@ local SECOND_VALID_SHAPE = {
 	Vector2.new(-0.70, -0.55),
 }
 
-local CENTERING_BASE_SHAPE = {
+local ANCHOR_BASE_SHAPE = {
 	Vector2.new(-0.45, -0.20),
 	Vector2.new(-0.20, 0.35),
 	Vector2.new(0.15, 0.40),
@@ -33,7 +38,8 @@ local CENTERING_BASE_SHAPE = {
 	Vector2.new(-0.30, -0.40),
 }
 
-local CENTERING_SHIFTED_SHAPE = {
+-- Exact translation of ANCHOR_BASE_SHAPE by (+0.20,+0.45).
+local ANCHOR_SHIFTED_SHAPE = {
 	Vector2.new(-0.25, 0.25),
 	Vector2.new(0.00, 0.80),
 	Vector2.new(0.35, 0.85),
@@ -57,6 +63,7 @@ local function assertSamePointsWithTolerance(actual: { Vector2 }, expected: { Ve
 end
 
 function B11LegShapeServiceSpec.run()
+	local config = PhysicsConfig.StrokeProcessing
 	local racer = RacerRuntime.new({
 		raceId = "B11_TEST",
 		slotIndex = 4,
@@ -85,8 +92,11 @@ function B11LegShapeServiceSpec.run()
 	assert(model.Legs:FindFirstChild("RightLeg") ~= nil)
 
 	local shapeSpec = first.shapeSpec
-	assert(shapeSpec.bounds.min.X >= -1 and shapeSpec.bounds.max.X <= 1, "server clamp failed X bounds")
-	assert(shapeSpec.bounds.min.Y >= -1 and shapeSpec.bounds.max.Y <= 1, "server clamp failed Y bounds")
+	assert((shapeSpec.normalizedPoints[1] - Vector2.zero).Magnitude <= 1e-6, "first authoritative point must be the hub origin")
+	assert(shapeSpec.bounds.min.X >= -config.RawSemanticHalfWidth * 2 - 1e-6, "anchored X min escaped legal difference range")
+	assert(shapeSpec.bounds.max.X <= config.RawSemanticHalfWidth * 2 + 1e-6, "anchored X max escaped legal difference range")
+	assert(shapeSpec.bounds.min.Y >= -config.RawSemanticHalfHeight * 2 - 1e-6, "anchored Y min escaped legal difference range")
+	assert(shapeSpec.bounds.max.Y <= config.RawSemanticHalfHeight * 2 + 1e-6, "anchored Y max escaped legal difference range")
 	assert(shapeSpec.extent <= 4.5 + 1e-6, "server radial extent cap failed")
 	assert(#shapeSpec.segmentPlan > 0 and #shapeSpec.segmentPlan <= 14, "server segment plan cap failed")
 
@@ -128,41 +138,41 @@ function B11LegShapeServiceSpec.run()
 	assert(model.Legs:FindFirstChild("LeftLeg") ~= oldLeft, "second accepted shape did not rebuild LeftLeg")
 	assert(model.Legs:FindFirstChild("RightLeg") ~= oldRight, "second accepted shape did not rebuild RightLeg")
 
-	local centeringRacer = RacerRuntime.new({
-		raceId = "B11_CENTERING_TEST",
+	local anchoringRacer = RacerRuntime.new({
+		raceId = "B11_ANCHORING_TEST",
 		slotIndex = 5,
 		laneIndex = 5,
 		isBot = false,
-		trackId = "B11_CENTERING_FLAT",
+		trackId = "B11_ANCHORING_FLAT",
 		spawnCFrame = CFrame.new(-4, 8, 6),
 		laneCenterZ = 6,
 	})
-	centeringRacer:GetBody().Anchored = true
+	anchoringRacer:GetBody().Anchored = true
 
-	local centeredBase = LegShapeService.ValidateAndBuild(centeringRacer, CENTERING_BASE_SHAPE, false)
-	assert(centeredBase.accepted == true and centeredBase.shapeSpec ~= nil, "base centering shape must be accepted")
-	local baseSpec = centeredBase.shapeSpec
+	local anchoredBase = LegShapeService.ValidateAndBuild(anchoringRacer, ANCHOR_BASE_SHAPE, false)
+	assert(anchoredBase.accepted == true and anchoredBase.shapeSpec ~= nil, "base anchoring shape must be accepted")
+	local baseSpec = anchoredBase.shapeSpec
 
-	local centeredShifted = LegShapeService.ValidateAndBuild(centeringRacer, CENTERING_SHIFTED_SHAPE, false)
-	assert(centeredShifted.accepted == true and centeredShifted.shapeSpec ~= nil, "shifted centering shape must be accepted")
-	local shiftedSpec = centeredShifted.shapeSpec
+	local anchoredShifted = LegShapeService.ValidateAndBuild(anchoringRacer, ANCHOR_SHIFTED_SHAPE, false)
+	assert(anchoredShifted.accepted == true and anchoredShifted.shapeSpec ~= nil, "shifted anchoring shape must be accepted")
+	local shiftedSpec = anchoredShifted.shapeSpec
 
 	assertSamePointsWithTolerance(
 		shiftedSpec.normalizedPoints,
 		baseSpec.normalizedPoints,
 		1e-5,
-		"shifted shape must center to same normalized geometry"
+		"shifted shape must anchor to same normalized geometry"
 	)
 	local baseSize = baseSpec.bounds.max - baseSpec.bounds.min
 	local shiftedSize = shiftedSpec.bounds.max - shiftedSpec.bounds.min
-	assertClose(shiftedSize.X, baseSize.X, 1e-5, "centering must preserve shape width")
-	assertClose(shiftedSize.Y, baseSize.Y, 1e-5, "centering must preserve shape height")
-	assertClose((shiftedSpec.bounds.min.X + shiftedSpec.bounds.max.X) * 0.5, 0, 1e-5, "centered X bounds midpoint")
-	assertClose((shiftedSpec.bounds.min.Y + shiftedSpec.bounds.max.Y) * 0.5, 0, 1e-5, "centered Y bounds midpoint")
+	assertClose(shiftedSize.X, baseSize.X, 1e-5, "anchoring must preserve shape width")
+	assertClose(shiftedSize.Y, baseSize.Y, 1e-5, "anchoring must preserve shape height")
+	assert((baseSpec.normalizedPoints[1] - Vector2.zero).Magnitude <= 1e-6, "base first point must anchor to origin")
+	assert((shiftedSpec.normalizedPoints[1] - Vector2.zero).Magnitude <= 1e-6, "shifted first point must anchor to origin")
 
-	centeringRacer:Destroy()
+	anchoringRacer:Destroy()
 	racer:Destroy()
-	print("[DrawRacers][B11] authoritative LegShapeService tests PASS")
+	print("[DrawRacers][B11] authoritative R16.3B LegShapeService tests PASS")
 end
 
 return B11LegShapeServiceSpec
