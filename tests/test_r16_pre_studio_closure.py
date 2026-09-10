@@ -104,3 +104,16 @@ def test_p4_full_matrix_uses_shared_trial_runner_and_real_winner_intersection() 
     assert "local noUniversalWinner = #universalWinners == 0" in stage_b
     assert "suboptimalFlatPassed or suboptimalStepsPassed" in stage_b
     assert "stepsNichePassed and gapNichePassed and tunnelNichePassed and suboptimalPassed" not in stage_b
+
+
+def test_p5_wall_requires_suitable_success_and_suboptimal_failure() -> None:
+    stage_c = read("src/server/Tests/R16StageCHarness.lua")
+
+    assert 'R16TrialRunner = require(script.Parent:WaitForChild("R16TrialRunner"))' in stage_c
+    assert 'R16TrialRunner.RunPiece("SingleWallLow", "HOOK_01"' in stage_c
+    assert 'R16TrialRunner.RunPiece("SingleWallLow", "LONG_BAR_01"' in stage_c
+    assert 'R16TrialRunner.RunPiece("SingleWallLow", "SUBOPTIMAL_01"' in stage_c
+    assert "local wallGoodPassed = hook.completedPiece or longBar.completedPiece" in stage_c
+    assert "local wallBadPassed = suboptimal.valid and not suboptimal.completedPiece" in stage_c
+    assert "local wallPassed = wallGoodPassed and wallBadPassed" in stage_c
+    assert "wallBadPassed" in stage_c
