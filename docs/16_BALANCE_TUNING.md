@@ -37,7 +37,7 @@ Starting physical properties:
 | Stroke submit cooldown | 0.20 s | .15–.30; abuse/rate protection, not gameplay power |
 | Max stroke payload bytes | 4096 | hard validation cap |
 
-Rules: one continuous stroke per submit; invalid/tiny/stale submit leaves the current accepted shape intact; self-intersection remains legal.
+Rules: one continuous stroke per submit; invalid/tiny/stale submit leaves the current accepted shape intact; self-intersection remains legal. Per R16.3A/`73`, authoritative cleaned points are translated so their bounds midpoint is `(0,0)` before physical mapping; this translation never resizes the shape.
 
 ## 3. Motor defaults
 Use one motorized hinge per leg as `11` describes.
@@ -51,9 +51,9 @@ Use one motorized hinge per leg as `11` describes.
 Acceptance meaning matters more than numeric scale: intended SmallSteps/WallLow must be solvable by suitable legal shapes; WallHigh must not be brute-forced by every compact/round shape.
 
 ## 4. Planar lane/body stabilization defaults
-Observable contract: racer locomotion is 2.5D. X/Y are the physical gameplay plane; Z translation is locked to the racer's lane center; rotation around world Z remains physical/free; out-of-plane X/Y rotation is constrained.
+Observable contract: racer locomotion is 2.5D. X/Y are the physical gameplay plane; Z translation is locked to the racer's lane center. Under the **R16.1 upright-body contract**, rotation about world X/Y/Z is locked/corrected while X/Y translation remains physically free.
 
-Canonical R15.1 starting defaults:
+Canonical R16.1 starting defaults:
 - `LaneNormalError = 0.03`
 - `LaneHardBound = 0.08`
 - `OrientationResponsiveness = 40`
@@ -64,9 +64,12 @@ Rules:
 - `RacerStabilizer` uses a mechanical `PlaneConstraint` between the racer body attachment and an anchored, invisible, non-collidable lane-plane reference at the canonical lane-center Z.
 - The plane constraint owns only the forbidden out-of-plane Z translation. X/Y translation remains physical gameplay and receives no stabilizer propulsion.
 - `LaneNormalError = 0.03` and `LaneHardBound = 0.08` are diagnostic tolerances, not permitted lateral gameplay freedom; any unexplained excursion above `0.08` is failed Studio evidence.
-- Plane-normal orientation correction uses `PrimaryAxisParallel` to suppress out-of-plane X/Y rotation only; rotation around world Z remains physical/free.
+- Upright orientation correction uses `AlignOrientation` with `AlignType.AllAxes` and an identity attachment basis so all body axes recover to canonical upright orientation.
+- Normal body angular deviation target is `<=1.0°`; a strong-contact disturbance may transiently reach `<=3.0°` and must recover to `<=1.0°` within `0.25 s`.
+- Orientation correction may apply corrective torque only; it must not add intentional +X propulsion or scripted +Y lift.
 - No invisible side walls, no normal-operation per-Heartbeat CFrame/PivotTo projection, and no stabilizer may add intentional +X race speed.
-- R15.1 supersedes the failed R15 force-following implementation. Finite-force `AlignPosition` lane correction and its force/responsiveness/velocity tuning are no longer part of the planar contract.
+- R16.1 supersedes the R15 free-world-Z rotation contract. R15 remains historical evidence for the mechanical plane lock only, not current body-rotation semantics.
+- Finite-force `AlignPosition` lane correction and its force/responsiveness/velocity tuning are not part of the planar contract.
 
 ## 5. Anti-stall assist
 Default = **enabled only on flat/recovery surfaces**, never on obstacle pieces that test geometry.
