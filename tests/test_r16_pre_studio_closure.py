@@ -69,3 +69,35 @@ def test_p3_g0_recovery_records_real_below_threshold_trigger() -> None:
     assert "[DrawRacers][R16.6][G0] recovery triggerY=" in harness
     assert "ShapeSpec" in harness and "ShapeVersion" in harness
     assert "body.Position.Y < M0SceneConfig.RecoveryKillY" in harness
+
+
+def test_p4_full_matrix_uses_shared_trial_runner_and_real_winner_intersection() -> None:
+    runner_path = ROOT / "src/server/Tests/R16TrialRunner.lua"
+    assert runner_path.exists(), "P4 requires a shared Studio-only R16TrialRunner"
+    runner = runner_path.read_text(encoding="utf-8")
+    stage_b = read("src/server/Tests/R16StageBHarness.lua")
+
+    assert "function R16TrialRunner.RunFlat" in runner
+    assert "function R16TrialRunner.RunPiece" in runner
+    assert "function R16TrialRunner.DestroyActive" in runner
+    assert "R16ReferenceShapes.Get(shapeId)" in runner
+    assert "M0SceneConfig.ReferenceBenchmark" in runner
+
+    assert "local ALL_SHAPES = {" in stage_b
+    for shape_id in [
+        "ROUND_01",
+        "LONG_BAR_01",
+        "SMALL_ROUND_01",
+        "HOOK_01",
+        "ASYM_01",
+        "SUBOPTIMAL_01",
+    ]:
+        assert f'"{shape_id}"' in stage_b
+
+    assert "R16TrialRunner.RunFlat" in stage_b
+    assert "R16TrialRunner.RunPiece" in stage_b
+    assert "local winnerSets =" in stage_b
+    assert "local function intersectWinnerSets" in stage_b
+    assert "local noUniversalWinner = #universalWinners == 0" in stage_b
+    assert "suboptimalFlatPassed or suboptimalStepsPassed" in stage_b
+    assert "stepsNichePassed and gapNichePassed and tunnelNichePassed and suboptimalPassed" not in stage_b
