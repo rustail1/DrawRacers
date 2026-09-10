@@ -1,6 +1,7 @@
 --!strict
 
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local DebugTuningPanel = {}
@@ -71,6 +72,7 @@ function DebugTuningPanel.new(playerGui: PlayerGui)
 		gui = nil,
 		valueLabels = {},
 		connection = nil,
+		toggleConnection = nil,
 		elapsed = 0,
 	}, DebugTuningPanel)
 	return self
@@ -86,6 +88,7 @@ function DebugTuningPanel:Start()
 	gui.ResetOnSpawn = false
 	gui.IgnoreGuiInset = false
 	gui.DisplayOrder = 1000
+	gui.Enabled = false
 	gui.Parent = self.playerGui
 	self.gui = gui
 
@@ -105,7 +108,7 @@ function DebugTuningPanel:Start()
 	title.Font = Enum.Font.Code
 	title.TextSize = 14
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Text = "Draw Racers — DEV/STAGING physics"
+	title.Text = "Draw Racers — DEV/STAGING physics [F3]"
 	title.Parent = frame
 
 	for index, row in ROWS do
@@ -122,6 +125,15 @@ function DebugTuningPanel:Start()
 		label.Parent = frame
 		self.valueLabels[row.key] = label
 	end
+
+	self.toggleConnection = UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+		if gameProcessed then
+			return
+		end
+		if input.KeyCode == Enum.KeyCode.F3 and self.gui ~= nil then
+			gui.Enabled = not gui.Enabled
+		end
+	end)
 
 	self.connection = RunService.RenderStepped:Connect(function(dt)
 		self.elapsed += dt
@@ -145,6 +157,10 @@ function DebugTuningPanel:Destroy()
 	if self.connection then
 		self.connection:Disconnect()
 		self.connection = nil
+	end
+	if self.toggleConnection then
+		self.toggleConnection:Disconnect()
+		self.toggleConnection = nil
 	end
 	if self.gui then
 		self.gui:Destroy()
