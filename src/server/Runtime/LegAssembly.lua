@@ -49,6 +49,7 @@ function LegAssembly.new(params: BuildParams)
 
 	local geometry = PhysicsConfig.LegGeometry
 	local motor = PhysicsConfig.Motor
+	local legMaterial = PhysicsConfig.PhysicalMaterials.LegSegment
 	local racerModel = params.racerModel
 	local legsFolder = racerModel:FindFirstChild("Legs")
 	assert(legsFolder and legsFolder:IsA("Folder"), "racerModel missing Legs folder")
@@ -141,7 +142,13 @@ function LegAssembly.new(params: BuildParams)
 		segment.CanQuery = true
 		segment.Massless = false
 		segment.CollisionGroup = RACER_LEG_GROUP
-		segment.CustomPhysicalProperties = PhysicalProperties.new(1.0, 1.0, 0.02, 100, 100)
+		segment.CustomPhysicalProperties = PhysicalProperties.new(
+			legMaterial.Density,
+			legMaterial.Friction,
+			legMaterial.Elasticity,
+			legMaterial.FrictionWeight,
+			legMaterial.ElasticityWeight
+		)
 		if RunService:IsStudio() then
 			segment.Transparency = 0.08
 			segment.Color = if side == "Left" then Color3.fromRGB(60, 205, 255) else Color3.fromRGB(110, 235, 255)
