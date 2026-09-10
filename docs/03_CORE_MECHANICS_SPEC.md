@@ -24,8 +24,8 @@ Stroke считается invalid, если после очистки остаё
 3. Remove near-duplicates.
 4. Simplify (RDP or equivalent).
 5. Resample to bounded point count/segment length.
-6. Preserve canonical DrawCanvas-centered pivot/scale mapping exactly as `73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md`; do **not** recenter/resize by stroke bounds.
-7. Server repeats validation/clamping; client shape is never trusted.
+6. Per R16.3A/`73`, server-authoritative processing must **center the cleaned stroke on its own bounds midpoint** before physical mapping. This is translation-only: do not resize, rotate, mirror, or normalize every shape to a standard radius.
+7. Server repeats validation/clamping and returns authoritative centered accepted points; client shape is never trusted.
 
 ## C. Shape semantics
 Нет распознавания «круг/L/звезда» ради movement. Реальная geometry определяет movement. Shape classification разрешён только для analytics/debug, но не заменяет physics.
@@ -46,9 +46,9 @@ Exact hinge axis, hub offsets, starting motor sign and phase construction are `7
 - Motor должен иметь достаточно torque, чтобы geometry имела значение, но не бесконечно пробивать стены.
 
 ## F. Body behavior
-Racer locomotion is 2.5D. X/Y are the physical gameplay plane. Z translation is locked to the racer's lane center and is not player steering/gameplay; rotation around world Z remains physical and free; out-of-plane X/Y rotation is constrained.
+Racer locomotion is 2.5D. X/Y are the physical gameplay plane. Z translation is locked to the racer's lane center and is not player steering/gameplay. Under the R16.1 upright-body contract, **rotation about world Z is locked/corrected together with world X/Y rotation**; the cube does not intentionally tumble with its legs.
 
-Cube остаётся настоящим physical body внутри этой плоскости: collisions ног с Track могут заставлять его подпрыгивать, падать, наклоняться и кувыркаться вокруг world Z. Planar stabilizer не имеет права добавлять intentional +X race speed.
+Cube остаётся настоящим physical body: X/Y translation remains physically free, so collisions ног с Track могут заставлять его ехать, подпрыгивать, подниматься и падать. Upright orientation correction may apply corrective torque only; it must not provide forward propulsion or vertical lift. Вращаются для locomotion только leg assemblies.
 
 ## G. Movement source
 Основное forward movement создаётся collision ног с track. Разрешён очень слабый anti-stall assist только для предотвращения «валидная форма вообще не двигается на плоском полу»; assist не должен проходить препятствия вместо shape.
