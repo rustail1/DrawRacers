@@ -10,14 +10,8 @@ local StudioHarnessConfig = require(
 
 local M0G0PresentationHarness = {}
 
-local CAMERA_OFFSET = Vector3.new(0, 4, 22)
-local CAMERA_LOOK_AHEAD = Vector3.new(6, 0.8, 0)
-local CAMERA_FIELD_OF_VIEW = 40
-
 local connection: RBXScriptConnection? = nil
 local debugProxy: Part? = nil
-local previousCameraType: Enum.CameraType? = nil
-local previousFieldOfView: number? = nil
 
 local function findDebugBody(): BasePart?
 	local runtime = Workspace:FindFirstChild("Runtime")
@@ -74,22 +68,6 @@ local function updatePresentation()
 	proxy.Size = body.Size + Vector3.new(0.08, 0.08, 0.08)
 	proxy.CFrame = body.CFrame
 	proxy.Transparency = 0
-
-	local camera = Workspace.CurrentCamera
-	if camera == nil then
-		return
-	end
-	if previousCameraType == nil then
-		previousCameraType = camera.CameraType
-	end
-	if previousFieldOfView == nil then
-		previousFieldOfView = camera.FieldOfView
-	end
-	camera.CameraType = Enum.CameraType.Scriptable
-	camera.FieldOfView = CAMERA_FIELD_OF_VIEW
-	local target = body.Position + CAMERA_LOOK_AHEAD
-	local cameraPosition = body.Position + CAMERA_OFFSET
-	camera.CFrame = CFrame.lookAt(cameraPosition, target)
 end
 
 function M0G0PresentationHarness.start()
@@ -105,7 +83,7 @@ function M0G0PresentationHarness.start()
 
 	connection = RunService.RenderStepped:Connect(updatePresentation)
 	updatePresentation()
-	print("[DrawRacers][R16.3B] G0 side presentation harness ready")
+	print("[DrawRacers][R16.3B] G0 debug presentation harness ready")
 end
 
 function M0G0PresentationHarness.stop()
@@ -117,17 +95,6 @@ function M0G0PresentationHarness.stop()
 		debugProxy:Destroy()
 		debugProxy = nil
 	end
-	local camera = Workspace.CurrentCamera
-	if camera ~= nil then
-		if previousCameraType ~= nil then
-			camera.CameraType = previousCameraType
-		end
-		if previousFieldOfView ~= nil then
-			camera.FieldOfView = previousFieldOfView
-		end
-	end
-	previousCameraType = nil
-	previousFieldOfView = nil
 end
 
 return M0G0PresentationHarness
