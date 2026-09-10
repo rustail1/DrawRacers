@@ -10,7 +10,7 @@ Human/empirical statements in this DoD are accepted only through the fixed sampl
 - [ ] Server/local lab processing caps geometry safely.
 - [ ] Shape creates real collision geometry, not only visuals.
 - [ ] Two legs rotate via bounded motor.
-- [ ] **R16.1 upright-body acceptance:** normal angular deviation <= 1.0 degree; a strong-contact disturbance may reach <= 3.0 degrees but must return to <= 1.0 degree within 0.25 s.
+- [ ] **R16.1 upright-body acceptance:** normal angular deviation <= 1.0 degree; strong-contact disturbance <= 3.0 degrees; return to <= 1.0 degree within 0.25 s.
 - [ ] During R16.1 stabilization, X/Y translation remains physical/free; orientation correction does not provide forward propulsion or vertical lift.
 - [ ] At least 4 canonical shapes show visibly different behavior.
 - [ ] Redraw swaps without resetting racer progress.
