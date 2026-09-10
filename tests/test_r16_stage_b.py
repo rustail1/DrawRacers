@@ -126,3 +126,20 @@ def test_r16_7_reference_matrix_has_all_shapes_and_exact_comparison_rules() -> N
     assert "suboptimalPassed" in harness
     assert "noUniversalWinner" in harness
     assert "[DrawRacers][R16.7]" in harness
+
+
+def test_r16_stage_b_status_records_implementation_without_fabricating_studio_pass() -> None:
+    session = read("docs/SESSION.md")
+    features = read("docs/FEATURE_LIST.md")
+
+    for doc in [session, features]:
+        assert "R16.5–R16.7" in doc
+        assert "IMPLEMENTED/AUTOMATED GREEN" in doc
+        assert "Studio Gate B" in doc
+        assert "HUMAN STUDIO PENDING" in doc
+        assert "R16 Stage B PASS" not in doc
+        assert "Studio Gate B — PASS" not in doc
+
+    assert "Studio Gate A remains HUMAN STUDIO PENDING" in session
+    assert "Stage B implementation authorized by Product Owner" in session
+    assert "does not authorize R16.5" not in features
