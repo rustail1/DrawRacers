@@ -7,11 +7,10 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_r16_5_tuning_has_single_material_owners_and_flat_measurement_harness() -> None:
+def test_r16_5_tuning_has_single_leg_material_owner_and_flat_measurement_harness() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     scene = read("src/shared/Config/M0SceneConfig.lua")
     leg = read("src/server/Runtime/LegAssembly.lua")
-    runtime = read("src/server/Runtime/RacerRuntime.lua")
     harness_config = read("src/shared/Config/StudioHarnessConfig.lua")
     bootstrap = read("src/server/Bootstrap.server.lua")
     session = read("docs/SESSION.md")
@@ -25,9 +24,7 @@ def test_r16_5_tuning_has_single_material_owners_and_flat_measurement_harness() 
 
     assert "PhysicalMaterials = {" in config
     assert "LegSegment = {" in config
-    assert "Body = {" in config
     assert "PhysicsConfig.PhysicalMaterials.LegSegment" in leg
-    assert "PhysicsConfig.PhysicalMaterials.Body" in runtime
 
     for token in [
         "FlatIgnoreSeconds = 2.0",
