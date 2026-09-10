@@ -36,7 +36,11 @@ Check:
 - at least two shapes show clearly different useful behavior;
 - compact shape passes clearance where oversized form struggles;
 - hook/long form beats compact on climb/reach case;
-- racer does not endlessly spin from normal contacts.
+- **R16.1 upright-body acceptance:** normal angular deviation <= 1.0 degree;
+- strong-contact disturbance <= 3.0 degrees;
+- after disturbance, return to <= 1.0 degree within 0.25 s;
+- X/Y translation remains physical/free while orientation correction is active;
+- orientation correction must not add forward propulsion or vertical lift.
 
 ## Redraw
 - Old legs remain while drawing.
