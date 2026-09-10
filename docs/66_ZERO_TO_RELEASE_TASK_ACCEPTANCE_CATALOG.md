@@ -26,7 +26,7 @@ Before edit: `FEATURE_LIST → SESSION → 50 → 26 → this row → owner docs
 | B07 | one LegAssembly | `03/16/21/65/73` | normalized ShapeSpec becomes exact bounded physical segment chain around canonical hub/pivot |
 | B08 | one hinge motor | `16` | flat movement exists, motor values from defaults, no hidden +X propulsion except allowed anti-stall |
 | B09 | two legs + phase | `03/16/65/73` | exact same-XY duplicated left/right build at canonical hubs, +Z hinge axis/sign correct, phase offset starts correctly, one accepted shape controls both |
-| B10 | stabilization/lane | `16/65` | Z/pitch/roll bounds within start contract; no extra forward race power |
+| B10 | stabilization/lane | `16/65` | R16.1: X/Y translation remains physical, Z translation remains lane-locked, and BodyCollider stays upright about world X/Y/Z within current tolerance; no extra forward race power |
 | B11 | authoritative LegShapeService | `03/21/22` | client cannot create world geometry; server validates and owns ShapeSpec/build |
 | B12 | SubmitStroke/StrokeResult | `21/22` | exact remote payload, stale/rate/malformed rejection, no generic RPC |
 | B13 | atomic redraw | `03/28` | old legs remain while drawing/building; valid swap occurs atomically without teleport/reset velocity |
