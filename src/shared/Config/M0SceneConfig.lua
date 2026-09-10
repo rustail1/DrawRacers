@@ -26,8 +26,13 @@ return {
 		FlatSpeedMax = 7.0,
 		StepsMeasureSeconds = 10.0,
 		StepsRiseMin = 0.25,
+		StepsProgressAdvantage = 4.0,
 		GapMeasureSeconds = 6.0,
 		GapFallMin = 1.0,
+		GapProgressAdvantage = 2.0,
+		TunnelMeasureSeconds = 8.0,
+		TunnelProgressAdvantage = 6.0,
+		SuboptimalWorseRatio = 0.20,
 	},
 	Pieces = {
 		{
