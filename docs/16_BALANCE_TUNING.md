@@ -25,19 +25,20 @@ Starting physical properties:
 ## 2. Stroke processing defaults
 | Parameter | Default | Sweep / cap |
 |---|---:|---|
-| Raw sample min movement in normalized canvas | 0.010 | .008–.016 |
+| Raw sample min movement in semantic canvas units | 0.010 | .008–.016 |
 | Max raw points submitted | 96 | hard cap |
 | Minimum raw points before cleanup | 3 | fixed |
 | Dedupe distance | 0.012 | .008–.020 |
 | RDP epsilon | 0.022 | .015–.035 |
 | Resample target points | 12 | 9–15 |
 | Max cleaned points | 15 | hard cap |
-| Minimum cleaned polyline length | 0.18 normalized units | .14–.22 |
-| Normalized coordinate bounds | [-1,1] each axis | fixed |
+| Minimum cleaned polyline length | 0.18 semantic units | .14–.22 |
+| Raw semantic half-width | **1.75** | fixed R16.3B input contract |
+| Raw semantic half-height | **1.0** | fixed R16.3B input contract |
 | Stroke submit cooldown | 0.20 s | .15–.30; abuse/rate protection, not gameplay power |
 | Max stroke payload bytes | 4096 | hard validation cap |
 
-Rules: one continuous stroke per submit; invalid/tiny/stale submit leaves the current accepted shape intact; self-intersection remains legal. Per R16.3A/`73`, authoritative cleaned points are translated so their bounds midpoint is `(0,0)` before physical mapping; this translation never resizes the shape.
+Rules: one continuous stroke per submit; invalid/tiny/stale submit leaves the current accepted shape intact; self-intersection remains legal. **R16.3B/`73` supersedes R16.3A bounds-center semantics:** normalization is isotropic using half the visible wide DrawInputRect height as one semantic unit, raw points are clamped to X `±1.75` and Y `±1.0`, and after cleanup the authoritative shape is translated so its **first cleaned point** becomes `(0,0)`. This translation never resizes, rotates or mirrors the shape; the bounds midpoint is not required to be the hub.
 
 ## 3. Motor defaults
 Use one motorized hinge per leg as `11` describes.
