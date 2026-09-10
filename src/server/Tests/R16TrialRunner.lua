@@ -199,6 +199,9 @@ function R16TrialRunner.RunPiece(pieceId: string, shapeId: string, measureSecond
 	local acceptance = M0SceneConfig.ReferenceAcceptance
 	local piece = findPiece(pieceId)
 	local spawnX = if options ~= nil then options.spawnX else nil
+	local contactTimeout = if options ~= nil and options.contactTimeout ~= nil
+		then options.contactTimeout
+		else acceptance.TrackContactTimeout
 	if pieceId == "GapSmall" and spawnX == nil then
 		spawnX = gapSpawnX(piece)
 	end
@@ -217,7 +220,7 @@ function R16TrialRunner.RunPiece(pieceId: string, shapeId: string, measureSecond
 		completedPiece = false,
 	}
 
-	if not waitForTrackContact(racer, acceptance.TrackContactTimeout, options) then
+	if not waitForTrackContact(racer, contactTimeout, options) then
 		result.valid = false
 		R16TrialRunner.DestroyActive()
 		return result
