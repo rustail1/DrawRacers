@@ -11,15 +11,12 @@ def test_r16_8_moving_redraw_parity_is_stress_verified() -> None:
     b13 = read("src/server/Tests/B13AtomicRedrawSpec.lua")
     b14 = read("src/server/Tests/B14RedrawStressSpec.lua")
 
-    # B13 remains the atomic/rollback owner and must continue to prove phase + body state.
     assert "angularDistanceDegrees(leftPhaseAfter, leftPhaseBefore)" in b13
     assert "angularDistanceDegrees(rightPhaseAfter, rightPhaseBefore)" in b13
     assert "successful redraw teleported body CFrame" in b13
     assert "successful redraw reset AssemblyLinearVelocity" in b13
     assert "successful redraw reset AssemblyAngularVelocity" in b13
 
-    # R16.8 requires repeated redraws while the body has non-zero motion state, not only
-    # anchored abuse/stress replacement checks.
     assert "runMovingRedrawParity" in b14
     assert "for redrawIndex = 1, 10 do" in b14
     assert "movingBody.AssemblyLinearVelocity" in b14
@@ -45,7 +42,6 @@ def test_r16_9_g0_camera_is_reference_side_view_and_observer_is_hidden() -> None
     assert "camera.CameraType = Enum.CameraType.Scriptable" in presentation
     assert "camera.CFrame = CFrame.lookAt(cameraPosition, target)" in presentation
 
-    # Presentation helpers must remain visual-only and cannot enter racer physics.
     for token in [
         "proxy.Anchored = true",
         "proxy.CanCollide = false",
@@ -55,8 +51,6 @@ def test_r16_9_g0_camera_is_reference_side_view_and_observer_is_hidden() -> None
     ]:
         assert token in presentation
 
-    # The Studio observer Character must be absent from the reference camera without
-    # deleting it or changing gameplay ownership; transparency is restored on teardown.
     assert "transparency: number" in human
     assert "transparency = part.Transparency" in human
     assert "part.Transparency = 1" in human
@@ -68,23 +62,20 @@ def test_r16_10_final_harness_covers_unchanged_full_lab_and_live_redraw() -> Non
     modes = read("src/shared/Config/StudioHarnessConfig.lua")
     bootstrap = read("src/server/Bootstrap.server.lua")
     stage_b = read("src/server/Tests/R16StageBHarness.lua")
+    runner = read("src/server/Tests/R16TrialRunner.lua")
 
     stage_c_path = ROOT / "src/server/Tests/R16StageCHarness.lua"
     assert stage_c_path.exists(), "R16.10 requires a dedicated Studio-only final harness"
     stage_c = stage_c_path.read_text(encoding="utf-8")
 
-    # The final harness must be selectable without changing the normal G0 default.
     assert 'R16C = "R16C"' in modes
     assert 'Mode = "G0"' in modes
     assert 'harnessMode == "R16C"' in bootstrap
     assert 'WaitForChild("R16StageCHarness")' in bootstrap
 
-    # Stage C reuses the exact Stage-B evidence path rather than duplicating/tuning it.
     assert "function R16StageBHarness.RunEvidence(): boolean" in stage_b
     assert "R16StageBHarness.RunEvidence()" in stage_c
 
-    # Every canonical piece must be represented, including the wall that Stage B deliberately
-    # deferred. Canonical obstacle dimensions remain unchanged.
     for piece_id in [
         "FlatShort",
         "SmallSteps",
@@ -110,11 +101,14 @@ def test_r16_10_final_harness_covers_unchanged_full_lab_and_live_redraw() -> Non
     assert "runWallTrial" in stage_c
     assert '"HOOK_01"' in stage_c
     assert '"LONG_BAR_01"' in stage_c
-    assert 'waitForTrackContact(racer, acceptance.WallContactTimeout, "Wall")' in stage_c
+    assert '"SUBOPTIMAL_01"' in stage_c
+    assert "R16TrialRunner.RunPiece" in stage_c
+    assert "function R16TrialRunner.RunPiece" in runner
+    assert 'contactName = "Wall"' in stage_c
+    assert "wallGoodPassed" in stage_c
+    assert "wallBadPassed" in stage_c
     assert "wallPassed" in stage_c
 
-    # Final moving-redraw evidence must happen across real Heartbeats, while retaining all
-    # immediate atomic invariants from R16.8.
     assert "runLiveMovingRedrawTrial" in stage_c
     assert "for redrawIndex = 1, 10 do" in stage_c
     assert "RunService.Heartbeat:Wait()" in stage_c
@@ -126,7 +120,6 @@ def test_r16_10_final_harness_covers_unchanged_full_lab_and_live_redraw() -> Non
     assert "<= 5.0" in stage_c
     assert "movingRedrawPassed" in stage_c
 
-    # Studio-only evidence code may observe the lab but may not create or rewrite obstacle Parts.
     assert 'Instance.new("Part")' not in stage_c
     assert "M0SceneConfig.Pieces[" not in stage_c
     assert "[DrawRacers][R16.10] canonical pass" in stage_c
