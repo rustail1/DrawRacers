@@ -46,8 +46,6 @@ def test_r14_2_g0_presentation_harness_is_studio_only_and_non_physical() -> None
         'StudioHarnessConfig.Mode ~= "G0"',
         'GetAttribute("DebugTarget") == true',
         'FindFirstChild("BodyCollider")',
-        'CameraType = Enum.CameraType.Scriptable',
-        'CFrame.lookAt',
         'G0DebugBodyProxy',
         'CanCollide = false',
         'CanTouch = false',
@@ -55,16 +53,21 @@ def test_r14_2_g0_presentation_harness_is_studio_only_and_non_physical() -> None
         'RenderStepped',
     ]:
         assert token in harness, f"missing R14.2 presentation contract token: {token}"
+    assert "camera.CameraType" not in harness
+    assert "camera.FieldOfView" not in harness
+    assert "camera.CFrame" not in harness
     assert "RaceCameraController" not in harness
     assert "CosmeticService" not in harness
 
 
-def test_r14_2_client_bootstrap_wires_g0_presentation_without_future_camera_owner() -> None:
+def test_r14_2_client_bootstrap_wires_g0_proxy_and_production_camera_owner() -> None:
     bootstrap = read("src/client/Bootstrap.client.lua")
     assert 'WaitForChild("Dev")' in bootstrap
     assert 'WaitForChild("M0G0PresentationHarness")' in bootstrap
     assert "M0G0PresentationHarness.start()" in bootstrap
-    assert "RaceCameraController" not in bootstrap
+    assert 'require(controllers:WaitForChild("RaceCameraController"))' in bootstrap
+    assert 'require(controllers:WaitForChild("RiderPresentationController"))' in bootstrap
+    assert "startProductionPresentation()" in bootstrap
 
 
 def test_r14_3_studio_runner_aggregates_failures_under_xpcall() -> None:
@@ -100,6 +103,7 @@ def test_r14_3_client_does_not_start_studio_drawing_before_ready() -> None:
     assert 'if state == "READY" then' in bootstrap
     ready_branch = bootstrap.split('if state == "READY" then', 1)[1].split('elseif state == "BLOCKED" then', 1)[0]
     assert "drawingController:Start()" in ready_branch
+    assert "startProductionPresentation()" in ready_branch
     assert 'G0 BLOCKED — SERVER TEST FAILED' in bootstrap
     assert 'G0 TESTS RUNNING' in bootstrap
 
