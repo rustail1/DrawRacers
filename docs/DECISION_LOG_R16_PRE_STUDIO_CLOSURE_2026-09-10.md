@@ -14,6 +14,10 @@ This decision log records repository-level closure work only. It does not fabric
 - **P5 — Wall positive/negative proof**: Wall requires at least one suitable shape (`HOOK_01` or `LONG_BAR_01`) to complete and requires legal negative control `SUBOPTIMAL_01` not to complete under the same runner/reset/window. P5.1 preserves the dedicated `WallContactTimeout` through the shared runner.
 - **P6 — repository status closure**: owner status docs record P0–P6 and the final automated/toolchain result while keeping all human gates pending.
 
+## Automated closure evidence
+
+Closure code/status head `3e6ddaa723c3ddffea7fec6d3a255350dcd65541`; `Contract Verify` run `34467371410` completed SUCCESS with **158 passed, 0 failed**, Rokit/toolchain installation PASS, and **Rojo build PASS**. This evidence is repository/tooling evidence only.
+
 ## Gate state
 
 **Studio Gate A — HUMAN STUDIO PENDING**  
