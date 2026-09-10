@@ -20,12 +20,13 @@ Stroke считается invalid, если после очистки остаё
 
 ## B. Stroke processing
 1. Sample only when pointer moved enough.
-2. Clamp to DrawCanvas.
+2. Clamp to the visible wide semantic DrawInputRect.
 3. Remove near-duplicates.
 4. Simplify (RDP or equivalent).
 5. Resample to bounded point count/segment length.
-6. Per R16.3A/`73`, server-authoritative processing must **center the cleaned stroke on its own bounds midpoint** before physical mapping. This is translation-only: do not resize, rotate, mirror, or normalize every shape to a standard radius.
-7. Server repeats validation/clamping and returns authoritative centered accepted points; client shape is never trusted.
+6. Per **R16.3B/`73`**, server-authoritative processing translates the cleaned stroke so the **first cleaned point** becomes `(0,0)` before physical mapping. This is translation-only: do not resize, rotate, mirror, reverse or normalize every shape to a standard radius.
+7. The previous R16.3A rule that required the cleaned **bounds midpoint** / bounds center to become the pivot is superseded. Bounds are still validation/debug data but are not the mechanical-origin owner.
+8. Server repeats validation/clamping and returns authoritative first-point-anchored accepted points; client shape is never trusted. A sequence-scoped client presentation anchor may keep the accepted line visually where it was drawn, but that offset never enters ShapeSpec or physics.
 
 ## C. Shape semantics
 Нет распознавания «круг/L/звезда» ради movement. Реальная geometry определяет movement. Shape classification разрешён только для analytics/debug, но не заменяет physics.
@@ -35,7 +36,8 @@ Stroke считается invalid, если после очистки остаё
 - Каждая leg: Hub/LegRoot + несколько welded physical collider segments per `73/65`.
 - Вся welded leg — одна assembly.
 - Один motor/hinge на leg.
-- Visual curve может иметь больше segments, чем physics representation.
+- Visual curve может иметь больше segments, чем physics representation and is nonphysical.
+- Physical collider Parts remain hidden from presentation under R16.3B; visual Parts never collide/touch/query or add mass.
 - Canonical collision rule: **own Body↔Leg = no, own Leg↔Leg = no, any Racer↔Racer = no; Body/Leg↔Track = collide**. Exact matrix = `28/65`. Inner-hub segments may additionally set `CanCollide=false` per `73`, but no implementation may re-enable self/rival pushing.
 
 ## E. Rotation
@@ -87,3 +89,5 @@ Prototype проходит gate, только если playtesters без объ
 - самостоятельно попробовать вторую shape после плохого результата;
 - назвать хотя бы две формы с разным полезным поведением;
 - не использовать одну и ту же «палку» на всех test obstacles.
+
+Repository automation can validate the R16.3B shape/network/collider contracts, but live solver/visual acceptance remains a Roblox Studio human gate.
