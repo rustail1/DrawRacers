@@ -78,7 +78,12 @@ Hub Parts:
 - CanCollide=false;
 - CanTouch=false unless debug requires;
 - Transparency=1;
-- welded/rigidly attached to BodyCollider at exact centers from `73`: LeftHub `(0,-0.75,-1.62)`, RightHub `(0,-0.75,+1.62)` relative to BodyCollider center;
+- hub offsets are owned numerically by `PhysicsConfig.LegGeometry` / `16` and mapped mechanically by `73`:
+  - `HubOffsetX = 0.0`;
+  - `HubOffsetY = -0.35`;
+  - `HubOffsetZAbs = 1.62`;
+  - LeftHub = `(HubOffsetX, HubOffsetY, -HubOffsetZAbs)`;
+  - RightHub = `(HubOffsetX, HubOffsetY, +HubOffsetZAbs)` relative to BodyCollider center;
 - CollisionGroup=`RacerBody`.
 
 No humanoid/character controller is used for racer locomotion.
