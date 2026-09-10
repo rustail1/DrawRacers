@@ -19,6 +19,7 @@ type PartState = {
 	canTouch: boolean,
 	canQuery: boolean,
 	anchored: boolean,
+	transparency: number,
 }
 
 local started = false
@@ -39,11 +40,13 @@ local function isolatePart(part: BasePart)
 			canTouch = part.CanTouch,
 			canQuery = part.CanQuery,
 			anchored = part.Anchored,
+			transparency = part.Transparency,
 		}
 	end
 	part.CanCollide = false
 	part.CanTouch = false
 	part.CanQuery = false
+	part.Transparency = 1
 end
 
 local function disconnectCharacterDescendantWatcher()
@@ -61,15 +64,16 @@ local function restoreCharacter()
 			part.CanTouch = state.canTouch
 			part.CanQuery = state.canQuery
 			part.Anchored = state.anchored
+			part.Transparency = state.transparency
 		end
 	end
 	table.clear(isolatedPartState)
 end
 
 local function isolateCharacter(character: Model)
-	-- A newly spawned Character must not re-enable the retired Character while the
-	-- G0 racer is still alive. Keep every still-parented Character part isolated
-	-- until the harness/player is torn down; only move the descendant watcher.
+	-- A newly spawned Character must not re-enable or visually overlap the reference racer.
+	-- Keep every still-parented Character part isolated and hidden until harness teardown;
+	-- only move the descendant watcher when Roblox gives this player a newer Character.
 	disconnectCharacterDescendantWatcher()
 
 	for _, descendant in character:GetDescendants() do
