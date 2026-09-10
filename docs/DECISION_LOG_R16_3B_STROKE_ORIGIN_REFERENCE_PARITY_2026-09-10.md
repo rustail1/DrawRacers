@@ -1,7 +1,7 @@
 # DECISION LOG — R16.3B Stroke-Origin Reference Parity
 
 Date: 2026-09-10  
-Status: **APPROVED IMPLEMENTATION / HUMAN STUDIO PENDING**
+Status: **APPROVED IMPLEMENTATION / AUTOMATED GREEN / HUMAN STUDIO PENDING**
 
 ## Decision
 R16.3B supersedes the R16.3A **bounds-center** mechanical-origin rule and the earlier square semantic DrawInputRect presentation rule.
@@ -42,3 +42,13 @@ R16.11 must not freeze before Studio Gate C is actually recorded from Roblox Stu
 
 ## Superseded wording
 Any statement that the server must place the cleaned stroke's **bounds center** or bounds midpoint at the hub is historical R16.3A wording and is superseded by R16.3B. Current mechanical origin is the first cleaned authoritative point.
+
+## Automated closure evidence
+Repository-contract/toolchain closure was verified on `main` head `d479e48c7c70bab158128fcc7b3a16cc5fa67c10` by GitHub Actions `Contract Verify` run `34499960052`:
+
+- exact checkout: `d479e48c7c70bab158128fcc7b3a16cc5fa67c10`;
+- `python verify.py`: **167 passed, 0 failed**;
+- Rokit setup/install: **PASS**;
+- `rojo build default.project.json -o /tmp/DrawRacersDev.rbxlx`: **PASS** (`Built project to DrawRacersDev.rbxlx`).
+
+This is **AUTOMATED GREEN** evidence for the repository state immediately before this evidence-only documentation commit. The documentation commit itself must also receive a fresh successful current-head CI run before repository closure is claimed. None of this evidence promotes Studio Gate A/B/C or B17/G0.
