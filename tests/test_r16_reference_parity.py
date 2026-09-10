@@ -137,6 +137,21 @@ def test_r16_status_docs_track_current_stage_a_contract_without_passing_human_ga
     assert "HUMAN STUDIO PENDING" in current_features
 
 
+def test_r16_owner_docs_match_upright_and_centered_shape_contract() -> None:
+    core = read("docs/03_CORE_MECHANICS_SPEC.md")
+    tuning = read("docs/16_BALANCE_TUNING.md")
+
+    assert "center the cleaned stroke on its own bounds midpoint" in core
+    assert "do **not** recenter/resize by stroke bounds" not in core
+    assert "rotation about world Z is locked/corrected" in core
+    assert "rotation around world Z remains physical and free" not in core
+
+    assert "R16.1 upright-body contract" in tuning
+    assert "AlignType.AllAxes" in tuning
+    assert "rotation around world Z remains physical/free" not in tuning
+    assert "PrimaryAxisParallel" not in tuning
+
+
 def test_r16_4_phase_is_180_and_redraw_retains_each_side() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
