@@ -35,6 +35,8 @@ local DESKTOP_THICKNESS = 6
 local TOUCH_THICKNESS = 8
 local VALIDATION_TOAST_DURATION = 2.0
 local PRESENTATION_ANCHOR_HISTORY_MULTIPLIER = 4
+local DEFAULT_GRAPHITE_COLOR = Color3.fromRGB(23, 32, 51)
+local DRAW_SURFACE_COLOR = Color3.fromRGB(243, 240, 232)
 
 type SemanticPoint = StrokeTypes.SemanticPoint
 type SubmitStrokePayload = StrokeTypes.SubmitStrokePayload
@@ -119,7 +121,7 @@ local function drawSegment(parent: Instance, a: Vector2, b: Vector2, thickness: 
 	segment.Position = UDim2.fromOffset((a.X + b.X) * 0.5, (a.Y + b.Y) * 0.5)
 	segment.Size = UDim2.fromOffset(length, thickness)
 	segment.Rotation = math.deg(math.atan2(delta.Y, delta.X))
-	segment.BackgroundColor3 = Color3.fromRGB(55, 190, 255)
+	segment.BackgroundColor3 = DEFAULT_GRAPHITE_COLOR
 	segment.BackgroundTransparency = transparency or 0
 	segment.BorderSizePixel = 0
 	segment.ZIndex = 24
@@ -290,8 +292,8 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	drawInputRect.AnchorPoint = Vector2.new(0.5, 0.5)
 	drawInputRect.Position = UDim2.fromScale(0.5, 0.5)
 	drawInputRect.Size = DRAW_INPUT_SIZE
-	drawInputRect.BackgroundColor3 = Color3.fromRGB(31, 39, 52)
-	drawInputRect.BackgroundTransparency = 0.72
+	drawInputRect.BackgroundColor3 = DRAW_SURFACE_COLOR
+	drawInputRect.BackgroundTransparency = 0.08
 	drawInputRect.Active = true
 	drawInputRect.ClipsDescendants = true
 	drawInputRect.ZIndex = 21
@@ -322,8 +324,8 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	acceptedShapeThumbnail.AnchorPoint = Vector2.new(1, 0)
 	acceptedShapeThumbnail.Position = UDim2.fromScale(0.975, 0.025)
 	acceptedShapeThumbnail.Size = UDim2.fromScale(0.14, 0.25)
-	acceptedShapeThumbnail.BackgroundColor3 = Color3.fromRGB(13, 18, 26)
-	acceptedShapeThumbnail.BackgroundTransparency = 0.25
+	acceptedShapeThumbnail.BackgroundColor3 = DRAW_SURFACE_COLOR
+	acceptedShapeThumbnail.BackgroundTransparency = 0.08
 	acceptedShapeThumbnail.BorderSizePixel = 0
 	acceptedShapeThumbnail.ClipsDescendants = true
 	acceptedShapeThumbnail.ZIndex = 26
@@ -341,7 +343,7 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	emptyGhost.Size = UDim2.fromScale(0.24, 0.32)
 	emptyGhost.BackgroundTransparency = 1
 	emptyGhost.Text = "✎"
-	emptyGhost.TextColor3 = Color3.fromRGB(255, 255, 255)
+	emptyGhost.TextColor3 = DEFAULT_GRAPHITE_COLOR
 	emptyGhost.TextTransparency = 0.82
 	emptyGhost.TextScaled = true
 	emptyGhost.ZIndex = 22
