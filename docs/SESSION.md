@@ -1,10 +1,10 @@
 # SESSION.md — CURRENT STATE
 
 Date: 2026-09-11  
-Documentation version: **v1.5.1 R17 REFERENCE FEEL / SHARED AXLE + CAMERA + SAFE REDRAW**
+Documentation version: **v1.5.2 R17 REFERENCE FEEL / SHARED AXLE + CAMERA + SAFE REDRAW**
 
 ## R17 CURRENT OVERRIDE — canonical current state
-This section supersedes any lower historical wording that still calls R16.3B the current implementation, describes Camera/Rider as implementation-pending, or treats the historical 180-degree side offset as current. The historical R01–R16 evidence below is intentionally retained for regression traceability.
+This section supersedes any lower historical wording that still calls R16.3B the current implementation, describes Camera/Rider as implementation-pending, treats the historical 180-degree side offset as current, or names `G0` as the current Studio default. The historical R01–R16 evidence below is intentionally retained for regression traceability.
 
 Current production/reference-core facts:
 - R16.3B stroke semantics remain current: the **first cleaned point** is translated to authoritative `(0,0)` without resizing, mirroring or rotating; the wide `1.75:1` DrawInputRect remains isotropic by height.
@@ -14,11 +14,11 @@ Current production/reference-core facts:
 - Instant redraw keeps the old pair active while the replacement remains staged. A bounded **collision-safe redraw phase** search scores candidate phases against Track geometry before retire/commit; body CFrame and linear/angular velocity are not reset by the swap.
 - R17.6 Studio evidence isolates **body density**, **leg density**, **motor speed** and optional **body friction** candidate families on temporary racers. **Production tuning remains unchanged** until live Studio evidence is reviewed; `HUMAN BODY FEEL CHOICE PENDING` is the current tuning state.
 - R17.7 reuses the canonical Flat/Steps/Wall/Gap/Tunnel course across the reference shape set. `R17FINAL` remains the one-click ordered Studio evidence aggregator and exposes `[DrawRacers][R17FINAL] HUMAN REVIEW READY` only after its automated evidence sequence.
-- Committed `StudioHarnessConfig.Mode` remains `G0`; `R17FINAL` is selectable evidence mode and must not be treated as an automatic human PASS.
+- The committed `StudioHarnessConfig.Mode` is now **`R17FINAL` while R17 human review is pending**. `G0` remains selectable for the narrower historical human harness; the default change does not mark any human gate PASS.
 - Repository automation may prove source/build contracts only. Live shared-axle solver behavior, camera feel, rider pose/readability, origin/body-feel choices, Studio Gate A/B/C and B17/G0 remain **HUMAN STUDIO PENDING** / human-gated.
 - R17 owner/decision records: `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md` and `DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md`.
 
-Latest pre-documentation reference-feel automated evidence: head `633ea2bf67ada70077c5941532f0a582c00b4a02`, Contract Verify run `34634238162` → **193 passed, 0 failed**, Rokit install PASS and **Rojo build PASS**. This is repository evidence only and does not promote a Studio/human gate.
+Latest verified pre-status-sync R17 code/evidence: head `ea95d1cbe5a2b1a7c6c044c59862c470651595e8`, Contract Verify run `34637827630` → contract checks PASS, Rokit install PASS and **Rojo build PASS**. This is repository evidence only and does not promote a Studio/human gate.
 
 ## Product state
 The product specification remains closed. CORE/pre-G0 repair **R01–R12**, bounded runtime/evidence closure **R14.1–R14.11**, planar correction **R15/R15.1**, R16 reference-parity work, and the bounded R17 reference-core/shared-axle/presentation overrides stay inside the already-approved B03–B16/B17 scope; they introduce **no new WHAT/WHY gameplay scope**.
@@ -43,7 +43,7 @@ B03–B16 code and regression specs exist in `main`, but they are **not promoted
 - **R02 Drawing/Network Correctness** — visual preview sampling is decoupled from bounded semantic payload sampling; obvious too-short strokes are rejected locally; accepted-result ordering follows server truth.
 - **R03 Physics Contract** — complete semantic collision groups/matrix, no forward propulsion from stabilization, M0 lab under `Workspace.Runtime.Tracks`, and tunnel geometry relative to `Lane.TopY`.
 - **R04 Debug Correctness** — collider count reads real `Segments` folders, cleaned-point telemetry comes from accepted ShapeSpec, stuck telemetry uses the documented +X progress window, and debug targeting prefers explicit `DebugTarget` then a human racer.
-- **R05 Studio/G0 Integration** — Studio uses exactly one selectable interactive harness. Default mode is `G0`; the Studio-only `M0HumanHarness` injects a temporary Player→RacerRuntime resolver into existing `StrokeRemoteTransport`. It does not implement D05 `RacerService`.
+- **R05 Studio/G0 Integration** — Studio uses exactly one selectable interactive harness. At this historical R05 stage the default mode was `G0`; the Studio-only `M0HumanHarness` injected a temporary Player→RacerRuntime resolver into existing `StrokeRemoteTransport`. It did not implement D05 `RacerService`. R17 later changed only the current default selection to `R17FINAL` for the active acceptance pass.
 - **R06 Documentation Consistency** — repository status/docs were reconciled to the B17/G0 hard stop without claiming Studio acceptance.
 - **R07 Core Review Fixes** — exact B12 outer payload validation and abuse work-ordering, complete B16 raw/physics/motor telemetry and environment gating, plus semantic DrawInputRect ownership were tightened.
 - **R08 Final Core Closure** — touch layout changes only between strokes; the normal Roblox Character is isolated from G0 physics before racer spawn; server enforces `MinUsefulLegExtent = 0.7`; anti-stall is bounded, actual-contact based, canonical-tag based and visible as `antiStallActive`.
@@ -96,7 +96,7 @@ Repository-level implementation includes:
 - **R16.5 Motor / Grip / Mass Feel instrumentation** — production motor values remain `AngularVelocity=-8`, `MotorMaxTorque=35000`, `MotorMaxAcceleration=120`; existing leg material values live in `PhysicsConfig.PhysicalMaterials.LegSegment`. `R16B` measures `ROUND_01` after stable contact and requires +X average `4.0–7.0 studs/s`, motor enabled and `antiStallActive=false`.
 - **R16.6 Vertical Physics evidence path** — normal locomotion remains solver-owned in Y; `RacerStabilizer` does not write body Y/CFrame/velocities and anti-stall remains X-only.
 - **R16.7 Reference Shape Matrix** — executable canonical shapes include `ROUND_01`, `LONG_BAR_01`, `SMALL_ROUND_01`, `HOOK_01`, `ASYM_01`, `SUBOPTIMAL_01` and comparative flat/steps/gap/tunnel rules.
-- Studio harness selection includes `R16B`; default remains `G0`.
+- Studio harness selection includes `R16B`; at that historical Stage-B point the default remained `G0`.
 - Canonical obstacle geometry was not changed during Stage-B instrumentation.
 
 Latest Stage-B automated code evidence before Stage-C work: head `2197882e4c641e7c1d17a6dfc538f23fd1a521e6`; `Contract Verify` run `34451426807` → **145 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. These are repository/build facts only.
@@ -141,6 +141,7 @@ Current repository-side reference-feel closure before Studio:
 - redraw performs collision-safe redraw phase selection before retiring/committing the old pair and preserves body motion state;
 - R17.6 measures body density `{1.00, 0.60, 0.45, 0.35}`, leg density `{1.00, 0.60, 0.40}`, motor speed `{-8.0, -10.0, -11.5, -12.5}` and body friction `{0.45, 0.25, 0.10}` only on temporary racers; **production tuning remains unchanged** and `HUMAN BODY FEEL CHOICE PENDING`;
 - R17.7 retains the full canonical reference-course matrix and R17FINAL retains the ordered human handoff.
+- `StudioHarnessConfig.Mode = "R17FINAL"` is the current Studio default until the R17 human review is completed, specifically to prevent accidental narrow `G0` runs during this acceptance cycle.
 
 Required next Studio pass is `R17FINAL` and must record:
 - `[StudioGate] TOTAL 13 PASS / 0 FAIL` and `READY` without red DrawRacers runtime errors;
@@ -204,7 +205,7 @@ The dominant unresolved risk is live Roblox Studio solver/feel evidence. CI and 
 No C01, M0.5, multiplayer, meta, economy, shop, or later implementation may begin until the ordered R17 Studio evidence is completed and B17/G0 is explicitly recorded PASS or the Product Owner records another bounded gate decision.
 
 ## Next permitted task
-**After repository verification is green, run one combined Roblox Studio evidence pass on current main using `R17FINAL`. Record PASS/FAIL evidence; only bounded R17 repair or evidence freeze may follow.**
+**After repository verification is green, run one combined Roblox Studio evidence pass on current main using the committed `R17FINAL` default. Record PASS/FAIL evidence; only bounded R17 repair or evidence freeze may follow.**
 
 ## R16 PRE-STUDIO CLOSURE P0–P6
 **Historical repository closure record; Studio acceptance remains pending.**
