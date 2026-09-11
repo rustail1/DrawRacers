@@ -1,8 +1,10 @@
 # 24 — TESTING & QA MATRIX
 
-Статус: **ACCEPTANCE CONTRACT v1.3.4**
+Статус: **ACCEPTANCE CONTRACT v1.3.5 / R17 OVERRIDE**
 
 Чистая Console не означает готовую игру. Этот файл определяет, что именно проверять по уровням системы.
+
+R17 mechanical/presentation override supersedes the old independent-leg motor assumption. Current M0 evidence uses one shared `LegPairAssembly`, one `AxleJoint` motor, two rigid side assemblies with structural 180° offset, plus the R17 production camera owner. Human Studio gates remain **HUMAN STUDIO PENDING** until real Studio evidence is supplied.
 
 ---
 
@@ -17,10 +19,12 @@
 - Self-intersection does not crash/build unbounded geometry.
 
 ## Shape build
-- One accepted stroke builds two physical legs.
+- One accepted stroke builds two rigid physical side shapes mounted to one shared `LegPairAssembly` axle.
+- Exactly one `AxleJoint` HingeConstraint/motor drives the pair; individual `LegAssembly` sides own no motor.
+- Right side remains structurally offset by `RightPhaseOffsetDegrees = 180`; there is no runtime phase-chasing controller.
 - Segment count stays within config cap.
 - No per-segment motors.
-- Segments form rigid assembly.
+- Segments form rigid assemblies under the shared axle.
 - No explosive overlap at hub/body on canonical shapes.
 
 ## Locomotion
@@ -44,11 +48,21 @@ Check:
 
 ## Redraw
 - Old legs remain while drawing.
-- Accepted release swaps atomically.
+- Accepted release swaps the whole shared leg pair atomically.
 - Invalid release keeps old shape.
 - Body position/velocity not hard reset.
+- One axle phase is preserved across redraw; left/right do not keep independent motor phases.
+- After a successful redraw exactly one `AxleRoot` and two side leg models remain; no `*_Retiring` Instances leak.
 - Redraw while leg touching obstacle does not explode or teleport.
 - Repeated redraw stress test leaves no accumulating abandoned Instances.
+
+## R17 reference-fidelity regression
+- **R17.9 camera:** RMB/free-look yaw target is full 360° (no ±40° clamp); rendered yaw/pitch/follow remain smoothed; pitch remains bounded; release returns smoothly to canonical framing. Touch camera gesture ownership is accepted only from world-space starts outside DrawCanvas/active UI.
+- **R17.10 shared axle:** production locomotion owns one `LegPairAssembly`, one `AxleRoot`, one `AxleJoint`, one motor, and two rigid side `LegAssembly` children.
+- **R17.11 structural anti-phase:** no `PhaseLockToleranceDegrees`, `PhaseLockRecoveryTime`, `PhaseLockMaxRelativeCorrection`, `_StepLegPhaseSync`, or second motor sign exists in production. Right side is structurally 180° from left.
+- **R17.12 mounting/collision:** side socket uses the canonical cube-surface offset (`LegSocketZAbs = 1.5`) and keeps presentation parts nonphysical; no hidden body/inner-hub overlap regression.
+- **R17.14 atomic redraw:** redraw stages/replaces one shared pair, preserves one axle phase, keeps BodyCollider CFrame/linear/angular velocity intact, leaves exactly one axle root, and rolls back the complete replacement on build/commit/enable failure.
+- These automated/Studio-evidence contracts do **not** promote camera feel, body feel, rider pose/readability or B17/G0 to PASS; those remain **HUMAN STUDIO PENDING** / human-gated.
 
 ---
 
@@ -226,7 +240,9 @@ Verify:
 
 If changed `StrokeMath` → rerun all canonical shapes + invalid payload suite.
 
-If changed `LegAssembly/physics` → rerun five obstacle lab + redraw + respawn.
+If changed `LegPairAssembly/LegAssembly/physics` → rerun shared-axle invariants + five obstacle lab + redraw + respawn.
+
+If changed `RaceCameraController/CameraMath` → rerun R17.9 yaw/pitch/smoothing/input-ownership automated checks plus human Studio camera-feel pass.
 
 If changed `RaceService` → rerun start/leave/finish/timeout/rematch.
 
