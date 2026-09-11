@@ -74,7 +74,10 @@ function M0G0PresentationHarness.start()
 	if not RunService:IsStudio() then
 		return
 	end
-	if StudioHarnessConfig.Mode ~= "G0" and StudioHarnessConfig.Mode ~= "R16FINAL" then
+	if StudioHarnessConfig.Mode ~= "G0"
+		and StudioHarnessConfig.Mode ~= "R16FINAL"
+		and StudioHarnessConfig.Mode ~= "R17FINAL"
+	then
 		return
 	end
 	if connection ~= nil then
