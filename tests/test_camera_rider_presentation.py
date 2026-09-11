@@ -138,6 +138,16 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "LegAssembly" not in rider
     assert "RacerRuntime" not in rider
 
+    # Player.Character can exist before Roblox finishes applying the avatar
+    # appearance. The rider must not cache a partial clone for the lifetime of
+    # that Character; wait until HasAppearanceLoaded() before cloning it.
+    ensure_record_body = rider.split("function RiderPresentationController:_ensureRecord", 1)[1].split(
+        "function RiderPresentationController:_placeRider", 1
+    )[0]
+    appearance_loaded_index = ensure_record_body.index("player:HasAppearanceLoaded()")
+    clone_index = ensure_record_body.index("cloneCharacterVisual(character)")
+    assert appearance_loaded_index < clone_index
+
     # Bootstrap composes the production owners. The old Studio harness may
     # keep its debug proxy, but cannot remain a second active camera owner.
     assert 'require(controllers:WaitForChild("RaceCameraController"))' in bootstrap
