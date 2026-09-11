@@ -141,6 +141,10 @@ function RiderPresentationController:_ensureRecord(racer: Model, player: Player)
 		self:_destroyRecord(racer)
 		return nil
 	end
+	if not player:HasAppearanceLoaded() then
+		self:_destroyRecord(racer)
+		return nil
+	end
 
 	local existing = self._records[racer]
 	if existing ~= nil and existing.sourceCharacter == character and existing.visual.Parent ~= nil then
