@@ -11,13 +11,17 @@ def test_r16_8_moving_redraw_parity_is_stress_verified() -> None:
     b13 = read("src/server/Tests/B13AtomicRedrawSpec.lua")
     b14 = read("src/server/Tests/B14RedrawStressSpec.lua")
 
+    # B13 now proves the bounded safety-selected phase can replace exact phase
+    # preservation when the new geometry would otherwise penetrate Track.
     assert "newPair:GetPhaseDegrees()" in b13
-    assert "angularDistanceDegrees(newPair:GetPhaseDegrees(), phaseBefore)" in b13
-    assert "single axle phase was not preserved" in b13
+    assert "phaseBefore + 30" in b13
+    assert "selected safe phase was not applied" in b13
     assert "successful redraw teleported body CFrame" in b13
     assert "successful redraw reset AssemblyLinearVelocity" in b13
     assert "successful redraw reset AssemblyAngularVelocity" in b13
 
+    # The isolated high-Y B14 moving fixture has no Track overlap, so it still
+    # verifies exact phase continuity for the normal zero-penetration path.
     assert "runMovingRedrawParity" in b14
     assert "for redrawIndex = 1, 10 do" in b14
     assert "movingBody.AssemblyLinearVelocity" in b14
@@ -140,8 +144,6 @@ def test_r16_stage_c_status_records_override_without_fabricating_studio_pass() -
     session = read("docs/SESSION.md")
     features = read("docs/FEATURE_LIST.md")
 
-    # Historical R16.10 evidence remains traceable; R16.3B supersedes geometry/presentation semantics
-    # without fabricating any live Studio acceptance.
     for path, doc in [("SESSION.md", session), ("FEATURE_LIST.md", features)]:
         assert "R16 Stage C implementation authorized by Product Owner" in doc, path
         assert "R16.8–R16.10" in doc, path
