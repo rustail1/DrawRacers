@@ -12,7 +12,6 @@ local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRun
 local B10StabilizationSpec = {}
 
 local RECOVERY_WINDOW = 0.25
-local MAX_RECOVERY_SAMPLE_DT = 0.10
 local MAX_RECOVERY_ATTEMPTS = 3
 
 local function bodyAngularDeviationDegrees(body: BasePart): number
@@ -34,10 +33,15 @@ local function runUprightRecoveryAttempt(body: BasePart, recoveryCFrame: CFrame)
 	local recovered = bodyAngularDeviationDegrees(body) <= 1.0
 	while recoveryElapsed < RECOVERY_WINDOW and not recovered do
 		local dt = RunService.Heartbeat:Wait()
-		if dt > MAX_RECOVERY_SAMPLE_DT then
+		local sampleEnd = recoveryElapsed + dt
+		-- The acceptance contract is recovery by 0.25 s. A coarse Heartbeat sample is
+		-- still valid evidence when it lands inside that real deadline (for example
+		-- 0.2239 s). Only a sample that jumps past the deadline is unresolved and must
+		-- be retried; this keeps the <=0.25 s requirement unchanged.
+		if sampleEnd > RECOVERY_WINDOW then
 			return false, recoveryElapsed, bodyAngularDeviationDegrees(body), dt
 		end
-		recoveryElapsed += dt
+		recoveryElapsed = sampleEnd
 		recovered = bodyAngularDeviationDegrees(body) <= 1.0
 	end
 
@@ -107,9 +111,9 @@ function B10StabilizationSpec.run()
 	)
 
 	-- Reference-parity body contract: disturb the cube but keep it upright while the legs
-	-- remain the only rotating locomotion assemblies. A Heartbeat sample larger than the
-	-- measurement resolution cannot prove how long recovery took, so discard that attempt
-	-- and retry instead of misclassifying a Studio scheduler stall as a physics failure.
+	-- remain the only rotating locomotion assemblies. The recovery timer uses the actual
+	-- 0.25 s acceptance deadline. A scheduler jump that crosses that deadline cannot resolve
+	-- the recovery time, so only that attempt is discarded and retried.
 	local recoveryCFrame = CFrame.new(-18, 8, laneCenterZ) * CFrame.Angles(0, 0, math.rad(2.5))
 	local recoveryElapsed = 0
 	local recoveryDeviation = math.huge
@@ -132,7 +136,7 @@ function B10StabilizationSpec.run()
 	assert(
 		validRecoveryEvidence,
 		string.format(
-			"upright recovery evidence invalidated by Heartbeat stalls: attempts=%d lastDt=%.4f",
+			"upright recovery evidence invalidated because Heartbeat crossed the 0.25 s window: attempts=%d lastDt=%.4f",
 			MAX_RECOVERY_ATTEMPTS,
 			lastStallDt or -1
 		)
