@@ -80,6 +80,11 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "local camera = self._ownedCamera" in release_body
     assert "local camera = Workspace.CurrentCamera" not in release_body
 
+    # Losing Workspace.CurrentCamera is also loss of camera ownership. The
+    # controller must release the previously captured instance instead of
+    # leaving it Scriptable with stale saved state until some future camera appears.
+    assert "if camera == nil then\n\t\tself:_releaseCamera()\n\t\treturn" in camera
+
     # Desktop orbit owns RMB only and automatically returns after release.
     assert "Enum.UserInputType.MouseButton2" in camera
     assert "Enum.UserInputType.MouseButton1" not in camera
