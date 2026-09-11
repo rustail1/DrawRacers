@@ -23,6 +23,7 @@ local ORBIT_YAW_LIMIT = 40
 local ORBIT_PITCH_LIMIT = 18
 local ORBIT_RETURN_TIME = 0.40
 local ORBIT_DEGREES_PER_PIXEL = 0.25
+local FALLBACK_ASPECT_RATIO = 16 / 9
 
 local RaceCameraController = {}
 RaceCameraController.__index = RaceCameraController
@@ -187,8 +188,18 @@ function RaceCameraController:_step(dt: number)
 		)
 	end
 
+	local viewportSize = camera.ViewportSize
+	local aspectRatio = if viewportSize.Y > 0 then viewportSize.X / viewportSize.Y else FALLBACK_ASPECT_RATIO
+	local canonicalCameraX = CameraMath.ScreenAnchorCameraX(
+		LOOK_AHEAD,
+		CAMERA_HEIGHT,
+		SIDE_DISTANCE,
+		FIELD_OF_VIEW,
+		aspectRatio,
+		LOCAL_RACER_SCREEN_ANCHOR
+	)
 	local orbitRotation = CFrame.Angles(math.rad(self._orbitPitch), math.rad(self._orbitYaw), 0)
-	local baseOffset = Vector3.new(0, CAMERA_HEIGHT, SIDE_DISTANCE)
+	local baseOffset = Vector3.new(canonicalCameraX, CAMERA_HEIGHT, SIDE_DISTANCE)
 	local cameraOffset = orbitRotation:VectorToWorldSpace(baseOffset)
 	local cameraPosition = smoothedPosition + cameraOffset
 
