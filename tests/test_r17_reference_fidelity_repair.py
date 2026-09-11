@@ -55,9 +55,9 @@ def test_r17_10_production_uses_one_shared_axle_motor_for_both_rigid_sides() -> 
     assert "ActuatorType" not in leg
 
 
-def test_r17_11_phase_lock_correction_config_is_removed_in_favor_of_structural_180() -> None:
+def test_r17_11_phase_lock_correction_config_is_removed_in_favor_of_structural_cophase() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
-    assert "RightPhaseOffsetDegrees = 180" in config
+    assert "RightPhaseOffsetDegrees = 0" in config
     for obsolete in [
         "PhaseLockToleranceDegrees",
         "PhaseLockRecoveryTime",
@@ -105,6 +105,7 @@ def test_r17_contract_docs_record_shared_axle_and_unbounded_yaw_without_passing_
 
     for token in ["shared axle", "one hinge", "one motor", "360", "HUMAN STUDIO PENDING"]:
         assert token.lower() in decision.lower(), f"decision missing token: {token}"
+    assert "co-phase" in decision.lower(), "R17 decision must record the human-video co-phase correction"
     assert "LegPairAssembly" in architecture
     assert "R17.9" in qa and "R17.14" in qa
 
@@ -116,7 +117,7 @@ def test_r17_navigation_map_routes_current_shared_axle_and_full_yaw_owners() -> 
         "LegPairAssembly.lua",
         "AxleJoint",
         "one shared axle",
-        "structural 180",
+        "co-phase",
         "full 360",
         "R17FINAL",
     ]:
@@ -137,7 +138,7 @@ def test_r17_exact_geometry_and_instance_docs_use_shared_axle_contract() -> None
             "AxleJoint",
             "AxleMotorAttachment",
             "LegSocketZAbs = 1.5",
-            "structural 180",
+            "co-phase",
             "one motor",
             "HUMAN STUDIO PENDING",
         ]:
@@ -165,6 +166,8 @@ def test_r17_core_tuning_and_technical_docs_match_current_axle_and_camera() -> N
     assert "Use one motorized hinge per leg" not in tuning
     assert "one motor" in core.lower()
     assert "one motor" in tuning.lower()
+    assert "co-phase" in core.lower()
+    assert "co-phase" in tuning.lower()
 
     assert "Free-look yaw limit | **±40°**" not in tuning
     assert "full 360" in tuning.lower()
