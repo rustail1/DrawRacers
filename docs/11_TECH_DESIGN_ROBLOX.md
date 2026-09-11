@@ -48,7 +48,7 @@ Client and server can share deterministic-ish pure modules for:
 Server reruns critical validation.
 
 ## 6. Physical leg representation
-Current R17 production representation is owned by `LegPairAssembly`: one shared axle `AxleRoot` and one motorized `AxleJoint` drive both rigid side shapes. `LegAssembly` owns only each side's welded physical/visual geometry and is rigidly attached to the shared axle.
+Current R17 production representation is owned by `LegPairAssembly`: one shared axle `AxleRoot` and one `AxleJoint` motor drive both rigid side shapes. `LegAssembly` owns only each side's welded physical/visual geometry and is rigidly attached to the shared axle.
 
 Conceptually:
 `BodyCollider + one shared axle (LegPairAssembly/AxleRoot/AxleJoint) + Left/Right welded side geometry`.
