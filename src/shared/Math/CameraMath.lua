@@ -20,6 +20,20 @@ function CameraMath.SmoothVector(current: Vector3, target: Vector3, dt: number, 
 	return current:Lerp(target, alpha)
 end
 
+function CameraMath.ShortestAngleDeltaDegrees(current: number, target: number): number
+	return (target - current + 180) % 360 - 180
+end
+
+function CameraMath.SmoothAngleDegrees(current: number, target: number, dt: number, dampingTime: number): number
+	local alpha = CameraMath.ExpAlpha(dt, dampingTime)
+	return current + CameraMath.ShortestAngleDeltaDegrees(current, target) * alpha
+end
+
+function CameraMath.ClampPitch(pitchDegrees: number, pitchLimitDegrees: number): number
+	local limit = math.abs(pitchLimitDegrees)
+	return math.clamp(pitchDegrees, -limit, limit)
+end
+
 function CameraMath.StepVerticalDeadZone(
 	current: number,
 	raw: number,
@@ -37,6 +51,8 @@ function CameraMath.StepVerticalDeadZone(
 	return CameraMath.SmoothNumber(current, target, dt, dampingTime)
 end
 
+-- Retained for compatibility with older pure-math callers. Production R17.9
+-- camera control no longer clamps yaw; only pitch stays bounded.
 function CameraMath.ClampOrbit(
 	yawDegrees: number,
 	pitchDegrees: number,
