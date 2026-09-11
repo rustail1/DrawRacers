@@ -33,7 +33,7 @@ A documentation-only commit after the audited runtime base does not invalidate t
 
 **Bounded 2026-09-11 R17 presentation refresh:** Product Owner Decision Logs authorized the production `CameraMath` / `RaceCameraController` / `RiderPresentationController` slice before the normal D09/E03 cursor. The camera now owns a full 360 yaw target with smoothed rendered orbit and bounded pitch.
 
-**Bounded 2026-09-11 R17 mechanical refresh:** `LegPairAssembly.lua` is now the current production rotating-pair owner. It owns one shared axle, one `AxleJoint` HingeConstraint/motor and the structural 180 degree relation between the two rigid side `LegAssembly` children. `RacerRuntime` atomically swaps the whole pair and preserves one axle phase. This replaces the former independent left/right hinge-motor navigation rows. R16/B17 human-gate facts and later race/gameplay service absence remain unchanged.
+**Bounded 2026-09-11 R17 mechanical refresh:** `LegPairAssembly.lua` is now the current production rotating-pair owner. It owns one shared axle, one `AxleJoint` HingeConstraint/motor and the **co-phase 0 degree** relation between the two rigid side `LegAssembly` children. `RacerRuntime` atomically swaps the whole pair and preserves one axle phase. This replaces the former independent left/right hinge-motor navigation rows. R16/B17 human-gate facts and later race/gameplay service absence remain unchanged.
 
 `docs/SOURCE_MAP.md` is different: it tracks provenance/research sources. `docs/21_SYSTEM_CLASS_ARCHITECTURE.md` is different: it owns target architecture. `docs/26_HANDOFF_MAP.md` routes features to owner specs. This file is only the **current implemented code navigation cache**.
 
@@ -88,7 +88,7 @@ SubmitStroke
                  -> AxleRoot
                  -> AxleJoint (single HingeConstraint motor)
                  -> Left LegAssembly rigid side
-                 -> Right LegAssembly rigid side at structural 180
+                 -> Right LegAssembly rigid side at co-phase 0
   -> StrokeResult
   -> DrawingController authoritative accepted preview
 
@@ -138,7 +138,7 @@ This is the current active M0/R17 implementation. It remains intentionally small
 | Client composition | `src/client/Bootstrap.client.lua` | DrawHUD bootstrap, remotes lookup, controller construction, Studio gate reaction, production camera/rider start, G0/R16FINAL/R17FINAL proxy start | `InputController`, `DrawingController`, `DebugTuningPanel`, `RaceCameraController`, `RiderPresentationController`, `RemoteNames`, `StudioHarnessConfig` |
 | Pointer lifecycle | `src/client/Controllers/InputController.lua` | mouse/touch `start/move/end/cancel`, one active pointer, binding drawing surface | Roblox `UserInputService` |
 | Drawing UI + submit flow | `src/client/Controllers/DrawingController.lua` | DrawCanvas/DrawInputRect runtime UI, live/accepted/thumbnail presentation, local cleanup, pending sequences/timeouts, SubmitStroke/StrokeResult client side | `PhysicsConfig`, `StrokeMath`, `StrokeTypes`, `InputController`, remotes |
-| Production race camera | `src/client/Controllers/RaceCameraController.lua` | Local Racer position-only target, frame-rate-independent smoothing, vertical dead-zone, side framing, RMB/touch full-yaw target, bounded pitch, smooth release/return, camera capture/restore; no Remote/gameplay authority | `CameraMath`, `Workspace.Runtime.Racers`, `Players.LocalPlayer`, `UserInputService`, `PlayerGui` |
+| Production race camera | `src/client/Controllers/RaceCameraController.lua` | Local Racer position-only target, frame-rate-independent smoothing, stable horizontal/vertical dead-zone anchor, side framing, RMB/touch full-yaw target, bounded pitch, smooth release/return, camera capture/restore; no Remote/gameplay authority | `CameraMath`, `Workspace.Runtime.Racers`, `Players.LocalPlayer`, `UserInputService`, `PlayerGui` |
 | Human rider presentation | `src/client/Controllers/RiderPresentationController.lua` | client-only human rider clone keyed by `OwnerUserId`, accessory fallback, nonphysical standardized scale/pose, body-position-only placement | `Players`, `Workspace.Runtime.Racers`, `Workspace.Runtime.RacePresentation`, `RunService` |
 | Debug UI | `src/client/Controllers/DebugTuningPanel.lua` | reads replicated racer debug attributes and displays the DEV/STAGING/Studio panel | `Workspace.Runtime.Racers`, `RunService` |
 | Current G0 debug proxy | `src/client/Dev/M0G0PresentationHarness.lua` | Studio-only G0/R16FINAL/R17FINAL nonphysical body proxy; deliberately **not** a camera owner | `StudioHarnessConfig`, `Workspace.Runtime` |
@@ -155,7 +155,7 @@ Important current absence: `HUDController`, `ResultsController`, Garage/Store/Se
 | Authoritative stroke processing | `src/server/Services/LegShapeService.lua` | network envelope/points validation, sequence/rate state, stroke cleanup, authoritative ShapeSpec, build request, acceptedPoints | `PhysicsConfig`, `StrokeMath`, `GeometryMath`, `StrokeTypes`, `RacerRuntime` interface |
 | Stroke remote transport | `src/server/Services/StrokeRemoteTransport.lua` | SubmitStroke server binding, safe processor invocation, StrokeResult response | `LegShapeService`, `StrokeTypes` |
 | Racer lifetime / atomic redraw | `src/server/Runtime/RacerRuntime.lua` | RacerTemplate/current racer model, body/hub markers, current ShapeSpec/version, staging+atomic swap of one shared leg pair, one axle-phase preservation, stabilizer/anti-stall lifetime | `PhysicsConfig`, `StrokeMath`, `GeometryMath`, `CollisionGroups`, `LegPairAssembly`, `RacerStabilizer`, `RacerAntiStall` |
-| Shared rotating leg pair | `src/server/Runtime/LegPairAssembly.lua` | `AxleRoot`, single `AxleJoint` HingeConstraint/motor, side sockets, structural 180 right phase, left/right rigid side assembly lifetime, staged/commit/retire/destroy | `PhysicsConfig`, `StrokeTypes`, `CollisionGroups`, `LegAssembly` |
+| Shared rotating leg pair | `src/server/Runtime/LegPairAssembly.lua` | `AxleRoot`, single `AxleJoint` HingeConstraint/motor, side sockets, **co-phase 0** right relation, left/right rigid side assembly lifetime, staged/commit/retire/destroy | `PhysicsConfig`, `StrokeTypes`, `CollisionGroups`, `LegAssembly` |
 | One rigid leg side | `src/server/Runtime/LegAssembly.lua` | `LegRoot`, hidden welded physical collider `Segments`, separate nonphysical `VisualSegment`/`VisualJoint` presentation, fixed socket/phase transform, staged/commit/destroy; **no motor owner** | `PhysicsConfig`, `StrokeTypes`, `CollisionGroups` |
 | Upright + lane plane | `src/server/Runtime/RacerStabilizer.lua` | mechanical Z plane and upright AlignOrientation, lane deviation flags | `PhysicsConfig` |
 | Bounded recovery assist | `src/server/Runtime/RacerAntiStall.lua` | eligible-contact bounded +X anti-stall pulse only | `PhysicsConfig`, `CollectionService` |
@@ -171,12 +171,12 @@ Important current absence: production `RacerService`, `RaceService`, `TrackServi
 
 | Area | Current file | What to inspect |
 |---|---|---|
-| Core physics/stroke numbers | `src/shared/Config/PhysicsConfig.lua` | stroke-processing limits, leg geometry/socket, one shared motor, structural right phase, material, stabilization, anti-stall/recovery values |
+| Core physics/stroke numbers | `src/shared/Config/PhysicsConfig.lua` | stroke-processing limits, leg geometry/socket, one shared motor, **co-phase 0** side relation, material, stabilization, anti-stall/recovery values |
 | M0 scene/evidence numbers | `src/shared/Config/M0SceneConfig.lua` | lane/spawn/recovery, benchmark, R16 acceptance windows, canonical pieces |
 | Studio harness selection | `src/shared/Config/StudioHarnessConfig.lua` | selected Studio evidence mode; current committed default remains `G0`; `R16FINAL` and `R17FINAL` are evidence modes, not automatic human PASS |
 | Stroke pure math | `src/shared/Math/StrokeMath.lua` | clamp/dedupe/normalize/bounds/centering/simplify/resample/length |
 | Physical segment planning | `src/shared/Math/GeometryMath.lua` | normalized point mapping, radial cap, segment plan, inner-hub collision eligibility |
-| Camera pure math | `src/shared/Math/CameraMath.lua` | frame-rate-independent exponential smoothing, vertical dead-zone step, angle smoothing and pitch clamp; no gameplay authority |
+| Camera pure math | `src/shared/Math/CameraMath.lua` | frame-rate-independent exponential smoothing, horizontal/vertical dead-zone stepping, angle smoothing and pitch clamp; no gameplay authority |
 | Network/shared shape types | `src/shared/Types/StrokeTypes.lua` | SubmitStroke/StrokeResult/ShapeSpec fields |
 | Remote name registry | `src/shared/Net/RemoteNames.lua` | canonical active remote names |
 
@@ -242,7 +242,7 @@ Do not change these casually. Read their owner docs/current definitions before p
 - `SubmitStroke` / `StrokeResult` payload and names — `StrokeTypes.lua`, `RemoteNames.lua`, doc `22`;
 - authoritative `ShapeSpec` meaning — `StrokeTypes.lua`, `LegShapeService.lua`, owner `73` plus current R16/R17 decision/status docs;
 - racer body/leg ownership and dependency direction — doc `21` plus `RacerRuntime.lua` / `LegPairAssembly.lua` / `LegAssembly.lua`;
-- shared axle invariant — exactly one `AxleJoint` motor, one axle phase, structural 180 side relation; no independent per-side motor or Heartbeat phase-chasing owner;
+- shared axle invariant — exactly one `AxleJoint` motor, one axle phase, **co-phase 0** side relation; no independent per-side motor or Heartbeat phase-chasing owner;
 - collision groups/matrix — `CollisionGroups.lua`, owner `65`;
 - production camera ownership — `CameraMath.lua` + `RaceCameraController.lua`, owners `08/16/24/59/68` and R17 Decision Logs; no second active camera controller and no artificial yaw wall;
 - human rider presentation — `RiderPresentationController.lua` + `RacePresentation`; client-only/nonphysical and no gameplay authority;
