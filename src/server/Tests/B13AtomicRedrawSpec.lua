@@ -7,6 +7,7 @@ local PhysicsConfig = require(
 )
 local LegAssembly = require(script.Parent.Parent.Runtime:WaitForChild("LegAssembly"))
 local LegPairAssembly = require(script.Parent.Parent.Runtime:WaitForChild("LegPairAssembly"))
+local RedrawSpawnSafety = require(script.Parent.Parent.Runtime:WaitForChild("RedrawSpawnSafety"))
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 local LegShapeService = require(script.Parent.Parent.Services:WaitForChild("LegShapeService"))
 
@@ -157,7 +158,21 @@ function B13AtomicRedrawSpec.run()
 	assert(body.AssemblyLinearVelocity == linearBefore, "enable failure reset AssemblyLinearVelocity")
 	assert(body.AssemblyAngularVelocity == angularBefore, "enable failure reset AssemblyAngularVelocity")
 
+	-- Deterministic integration fixture: inject a safe phase decision and prove
+	-- the old pair is still active/not retiring while safety runs. Production
+	-- RedrawSpawnSafety owns the real Track-overlap scoring.
+	local originalChoosePhase = RedrawSpawnSafety.ChoosePhase
+	local safePhaseCalls = 0
+	RedrawSpawnSafety.ChoosePhase = function(_racerModel: Model, _stagedPair: any, currentPhase: number)
+		safePhaseCalls += 1
+		assert(racer:GetLegPair() == oldPair, "safe phase selection replaced old pair too early")
+		assert(oldPair:GetRoot().Name == "AxleRoot", "safe phase selection retired old pair too early")
+		return currentPhase + 30, false, 0
+	end
 	local second = LegShapeService.ValidateAndBuild(racer, SECOND_SHAPE, false)
+	RedrawSpawnSafety.ChoosePhase = originalChoosePhase
+
+	assert(safePhaseCalls == 1, "safe phase selector must run once per staged redraw")
 	assert(second.accepted == true and second.shapeVersion == 2, "valid B13 redraw must accept exactly once")
 	assert(racer:GetShapeVersion() == 2)
 	local newPair = racer:GetLegPair()
@@ -168,10 +183,13 @@ function B13AtomicRedrawSpec.run()
 	assert(body.CFrame == bodyCFrameBefore, "successful redraw teleported body CFrame")
 	assert(body.AssemblyLinearVelocity == linearBefore, "successful redraw reset AssemblyLinearVelocity")
 	assert(body.AssemblyAngularVelocity == angularBefore, "successful redraw reset AssemblyAngularVelocity")
-	assert(angularDistanceDegrees(newPair:GetPhaseDegrees(), phaseBefore) <= 0.1, "single axle phase was not preserved")
+	assert(
+		angularDistanceDegrees(newPair:GetPhaseDegrees(), phaseBefore + 30) <= 0.1,
+		"selected safe phase was not applied to replacement pair"
+	)
 
 	racer:Destroy()
-	print("[DrawRacers][B13] atomic redraw tests PASS")
+	print("[DrawRacers][B13] atomic redraw + safe phase tests PASS")
 end
 
 return B13AtomicRedrawSpec
