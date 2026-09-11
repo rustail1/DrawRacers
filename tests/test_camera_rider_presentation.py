@@ -86,6 +86,16 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "CameraMath.ClampOrbit" in camera
     assert "ORBIT_RETURN_TIME" in camera
 
+    # Orbit return is presentation lifecycle state, not racer-body state. If the
+    # racer briefly disappears after RMB release (respawn/replacement gap), the
+    # 0.40 s return must continue instead of freezing and reappearing stale.
+    step_body = camera.split("function RaceCameraController:_step(dt: number)", 1)[1].split(
+        "function RaceCameraController:Start()", 1
+    )[0]
+    return_index = step_body.index("ORBIT_RETURN_TIME")
+    racer_lookup_index = step_body.index("local body = findLocalRacerBody()")
+    assert return_index < racer_lookup_index
+
     # Touch ownership is decided at begin from GUI/DrawInputRect hit testing.
     assert "GetGuiObjectsAtPosition" in camera
     assert 'Name == "DrawInputRect"' in camera or 'Name ~= "DrawInputRect"' in camera
