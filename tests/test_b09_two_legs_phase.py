@@ -9,7 +9,7 @@ def test_b09_two_leg_same_xy_phase_contract() -> None:
     pair = (ROOT / "src" / "server" / "Runtime" / "LegPairAssembly.lua").read_text(encoding="utf-8")
     racer = (ROOT / "src" / "server" / "Runtime" / "RacerRuntime.lua").read_text(encoding="utf-8")
 
-    assert "RightPhaseOffsetDegrees = 180" in config
+    assert "RightPhaseOffsetDegrees = 0" in config
     for obsolete in [
         "PhaseLockToleranceDegrees",
         "PhaseLockRecoveryTime",
@@ -78,8 +78,8 @@ def test_b09_studio_spec_is_wired() -> None:
         "GetLegPair",
         "AxleJoint",
         "RightPhaseOffsetDegrees",
-        "structural phase difference",
-        "two-leg same-XY/phase tests PASS",
+        "co-phase structural difference",
+        "two-leg same-XY/co-phase tests PASS",
     ]:
         assert token in text, f"missing B09 Studio acceptance token: {token}"
 
