@@ -15,7 +15,7 @@ def test_b08_one_hinge_motor_contract() -> None:
         "AngularVelocity = -8.0",
         "MotorMaxTorque = 35000",
         "MotorMaxAcceleration = 120",
-        "RightPhaseOffsetDegrees = 180",
+        "RightPhaseOffsetDegrees = 0",
     ]:
         assert token in config, f"missing B08 config default: {token}"
 
