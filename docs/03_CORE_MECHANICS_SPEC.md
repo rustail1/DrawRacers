@@ -4,7 +4,7 @@
 
 > Numeric ownership is split deliberately: global physics/race/camera tuning → `16`; UI geometry → `59`; TrackPiece/launch track geometry → `60`; economy/progression → `61`; exact DrawCanvas→world/pivot/collider mapping → `73`; lifecycle time semantics → `74`; bot behavior defaults → `75`. Этот файл определяет core behavior и не создаёт второй numeric owner.
 
-> R17 mechanical override: current production leg rotation is owned by one `LegPairAssembly` with one shared axle, one `AxleJoint` and one motor. Left/right `LegAssembly` objects are rigid side geometry with a structural 180 degree relation. This supersedes the earlier independent per-side hinge/motor assumption without changing R16.3B stroke origin semantics. Live solver/visual acceptance remains HUMAN STUDIO PENDING.
+> R17 mechanical override: current production leg rotation is owned by one `LegPairAssembly` with one shared axle, one `AxleJoint` and one motor. Left/right `LegAssembly` objects are rigid side geometry mounted **co-phase (0° local phase difference)** on opposite Z sides of the cube. This supersedes both the earlier independent per-side hinge/motor assumption and the interim structural-180 interpretation; it does not change R16.3B stroke origin semantics. Live solver/visual acceptance remains HUMAN STUDIO PENDING.
 
 ## A. Drawing input
 ### Allowed
@@ -37,7 +37,7 @@ Stroke считается invalid, если после очистки остаё
 - Один stroke создаёт две duplicated rigid side shapes left/right по Z; exact coordinate/pivot/duplication semantics are `73`.
 - `LegPairAssembly` owns one shared `AxleRoot`, one `AxleJoint` and **one motor** for the pair.
 - Left/right `LegAssembly` objects contain `LegRoot` + welded physical collider segments and are rigidly mounted to the shared axle; they do not own actuators.
-- Right side is fixed at `RightPhaseOffsetDegrees = 180`, so anti-phase is structural rather than maintained by two independent motors.
+- Both side copies use `RightPhaseOffsetDegrees = 0`: they are **co-phase** on the shared axle while remaining physically separated at the left/right Z sockets.
 - Visual curve может иметь больше segments, чем physics representation and is nonphysical.
 - Physical collider Parts remain hidden from presentation under R16.3B; visual Parts never collide/touch/query or add mass.
 - Canonical collision rule: **own Body↔Leg = no, own Leg↔Leg = no, any Racer↔Racer = no; Body/Leg↔Track = collide**. Exact matrix = `28/65`. Inner-hub segments may additionally set `CanCollide=false` per `73`, but no implementation may re-enable self/rival pushing.
@@ -46,7 +46,7 @@ Stroke считается invalid, если после очистки остаё
 Exact shared hinge axis, axle/body attachment, side socket offsets, starting motor sign and structural phase construction are `73`; tuneable magnitude is `16`.
 - The shared axle постоянно вращается in racing state while an accepted shape is active.
 - Direction одинаково толкает обе rigid side shapes и racer вперёд.
-- Left/right используют зафиксированный structural 180 phase offset on the same axle.
+- Left/right use the same shared-axle angular orientation: **co-phase 0° local difference**.
 - `LegPairAssembly` has one motor; no per-side reverse sign or Heartbeat phase-chasing controller is allowed.
 - Motor должен иметь достаточно torque, чтобы geometry имела значение, но не бесконечно пробивать стены.
 
@@ -63,7 +63,7 @@ Cube остаётся настоящим physical body: X/Y translation remains 
 - Новая форма применяется после release и server validation.
 - Swap атомарный: old `LegPairAssembly` removed only when the staged replacement pair is ready/committed.
 - Body CFrame/linear/angular velocity не сбрасываются solely because of redraw.
-- The one current axle phase is preserved across redraw; the side relation remains structural 180.
+- The one current axle phase is preserved across redraw; both side copies remain co-phase at the two side sockets.
 - Failed build/commit/enable restores the old pair and must not leak retiring Instances.
 - Redraw не ставит global slow motion в multiplayer.
 
