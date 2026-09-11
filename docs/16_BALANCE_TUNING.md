@@ -2,7 +2,7 @@
 
 > Values here are **project starting defaults / tuning hypotheses**, not hidden values from Draw Climber. The implementer starts with the exact `Default` value and may sweep only inside the stated range during acceptance. Domain-specific numeric content lives in `59` UI, `60` TrackPieces, `61` economy/progression and `57` performance.
 
-R17 sequence/authority override: `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md` plus `DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md`. R17 authorizes the current production camera/rider owners during M0, one `LegPairAssembly` shared axle with one motor, and an ordered reference-core evidence pass before B17. Human Studio gates remain pending.
+R17 sequence/authority override: `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md` plus `DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md`. Human-video evidence on 2026-09-12 further corrects the side relation to **co-phase 0°** while preserving the one shared axle/one motor architecture. Human Studio gates remain pending.
 
 ## 1. Racer / collision defaults
 | Parameter | Default | Initial sweep / hard note |
@@ -15,7 +15,7 @@ R17 sequence/authority override: `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-
 | Physics point target after resample | 12 | 9–15 |
 | Max collider segments per leg | 14 | hard cap launch |
 | Visual segments per leg | 24 | 20–30 presentation only |
-| Left/right structural phase offset | 180° | fixed R17 shared-axle relation; live-solver acceptance is R17.5 |
+| Left/right local phase difference | **0° (co-phase)** | fixed current R17 reference relation; live-solver acceptance is R17.5 |
 | Side socket Z magnitude | 1.5 studs | `LegSocketZAbs`; structural shared-axle mount |
 | Inner hub no-collision radius | 0.65 studs | .55–.80 |
 
@@ -47,7 +47,7 @@ Rules: one continuous stroke per submit; invalid/tiny/stale submit leaves the cu
 R17.3 is authorized to compare first-point, bounds-center and deterministic geometry/reference-center origins in a Studio-only evidence experiment. That experiment does **not** change production origin. Only an explicit R17.4 decision after human evidence may supersede the current first-point rule.
 
 ## 3. Motor defaults
-`LegPairAssembly` owns **one shared axle and one motor** for both rigid side assemblies. There is no per-side motor tuning family and no phase-chasing correction loop. Right remains structural `RightPhaseOffsetDegrees = 180` relative to Left.
+`LegPairAssembly` owns **one shared axle and one motor** for both rigid side assemblies. There is no per-side motor tuning family and no phase-chasing correction loop. Both depth-separated side copies are **co-phase**: `RightPhaseOffsetDegrees = 0` relative to Left.
 
 | Parameter | Default | Initial sweep |
 |---|---:|---|
