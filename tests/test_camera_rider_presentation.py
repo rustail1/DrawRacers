@@ -33,6 +33,7 @@ def test_early_camera_rider_presentation_contract() -> None:
     # Exact locked starting values from doc 16 / camera decision.
     for token in [
         "FIELD_OF_VIEW = 60",
+        "LOCAL_RACER_SCREEN_ANCHOR = 0.38",
         "LOOK_AHEAD = 11",
         "CAMERA_HEIGHT = 10",
         "SIDE_DISTANCE = 23",
@@ -45,6 +46,18 @@ def test_early_camera_rider_presentation_contract() -> None:
         "ORBIT_RETURN_TIME = 0.40",
     ]:
         assert token in camera
+
+    # The canonical 0.38 horizontal screen anchor is an active composition
+    # input, not a dead constant. Pure math derives the camera's X offset from
+    # FOV/aspect + look-ahead/side distance, and the controller uses it.
+    assert "function CameraMath.ScreenAnchorCameraX" in camera_math
+    assert "verticalFovDegrees" in camera_math
+    assert "aspectRatio" in camera_math
+    assert "screenAnchor" in camera_math
+    assert "math.tan" in camera_math
+    assert "CameraMath.ScreenAnchorCameraX(" in camera
+    assert "LOCAL_RACER_SCREEN_ANCHOR" in camera.split("CameraMath.ScreenAnchorCameraX(", 1)[1]
+    assert "camera.ViewportSize" in camera
 
     # Camera is local presentation only: lookup is via the replicated
     # server-authored OwnerUserId and there is no network authority path.
