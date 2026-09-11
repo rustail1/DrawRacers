@@ -5,6 +5,8 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local RIDER_SCALE = 0.65
+local RIDER_MOUNT_X_OFFSET = -0.15
+local RIDER_MOUNT_Y_OFFSET = 0.30
 local RIDER_NAME_PREFIX = "RiderPresentation_"
 
 local RiderPresentationController = {}
@@ -55,13 +57,18 @@ local function sanitizeVisual(visual: Model)
 		humanoid:Destroy()
 	end
 
+	local root = visual:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		visual.PrimaryPart = root
+	end
+
 	for _, descendant in visual:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			descendant.CanCollide = false
 			descendant.CanTouch = false
 			descendant.CanQuery = false
 			descendant.Massless = true
-			descendant.Anchored = true
+			descendant.Anchored = descendant.Name == "HumanoidRootPart"
 			descendant.LocalTransparencyModifier = 0
 			if descendant.Name == "HumanoidRootPart" then
 				descendant.Transparency = 1
@@ -86,7 +93,7 @@ local function cloneCharacterVisual(character: Model): Model?
 	local visual = cloned :: Model
 	visual.Name = RIDER_NAME_PREFIX .. character.Name
 	sanitizeVisual(visual)
-	visual:ScaleTo(0.65)
+	visual:ScaleTo(RIDER_SCALE)
 	applyJockeyPose(visual)
 	return visual
 end
@@ -171,11 +178,14 @@ function RiderPresentationController:_ensureRecord(racer: Model, player: Player)
 	return record
 end
 
+function RiderPresentationController:_mountCFrame(body: BasePart): CFrame
+	local position = body.Position
+		+ Vector3.new(RIDER_MOUNT_X_OFFSET, body.Size.Y * 0.5 + RIDER_MOUNT_Y_OFFSET, 0)
+	return CFrame.lookAt(position, position + Vector3.xAxis, Vector3.yAxis)
+end
+
 function RiderPresentationController:_placeRider(record: RiderRecord, body: BasePart)
-	local riderHeight = record.visual:GetExtentsSize().Y
-	local position = body.Position + Vector3.new(0, body.Size.Y * 0.5 + riderHeight * 0.5, 0)
-	local facingTarget = position + Vector3.xAxis
-	record.visual:PivotTo(CFrame.lookAt(position, facingTarget, Vector3.yAxis))
+	record.visual:PivotTo(self:_mountCFrame(body))
 end
 
 function RiderPresentationController:_step()
