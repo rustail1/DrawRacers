@@ -22,15 +22,15 @@ def test_early_camera_rider_presentation_contract() -> None:
     bootstrap = read("src/client/Bootstrap.client.lua")
     g0 = read("src/client/Dev/M0G0PresentationHarness.lua")
 
-    # Deterministic camera math must be frame-rate independent and explicitly
-    # expose the vertical dead-zone/orbit helpers used by the controller.
-    assert "function CameraMath.ExpAlpha" in camera_math
-    assert "math.exp" in camera_math
-    assert "function CameraMath.SmoothVector" in camera_math
-    assert "function CameraMath.StepVerticalDeadZone" in camera_math
-    assert "function CameraMath.ClampOrbit" in camera_math
+    for token in [
+        "function CameraMath.ExpAlpha",
+        "function CameraMath.SmoothVector",
+        "function CameraMath.StepVerticalDeadZone",
+        "function CameraMath.ClampOrbit",
+        "math.exp",
+    ]:
+        assert token in camera_math
 
-    # Exact locked starting values from doc 16 / camera decision.
     for token in [
         "FIELD_OF_VIEW = 60",
         "LOCAL_RACER_SCREEN_ANCHOR = 0.38",
@@ -47,9 +47,6 @@ def test_early_camera_rider_presentation_contract() -> None:
     ]:
         assert token in camera
 
-    # The canonical 0.38 horizontal screen anchor is an active composition
-    # input, not a dead constant. Pure math derives the camera's X offset from
-    # FOV/aspect + look-ahead/side distance, and the controller uses it.
     assert "function CameraMath.ScreenAnchorCameraX" in camera_math
     assert "verticalFovDegrees" in camera_math
     assert "aspectRatio" in camera_math
@@ -59,8 +56,6 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "LOCAL_RACER_SCREEN_ANCHOR" in camera.split("CameraMath.ScreenAnchorCameraX(", 1)[1]
     assert "camera.ViewportSize" in camera
 
-    # Camera is local presentation only: lookup is via the replicated
-    # server-authored OwnerUserId and there is no network authority path.
     assert 'GetAttribute("OwnerUserId")' in camera
     assert "LocalPlayer.UserId" in camera
     assert "BodyCollider" in camera
@@ -69,9 +64,6 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "RemoteEvent" not in camera
     assert "FireServer" not in camera
 
-    # Camera lifecycle must restore the exact Camera instance that was captured.
-    # Workspace.CurrentCamera may be replaced by Roblox during lifecycle changes;
-    # restoring old type/FOV onto the replacement would corrupt its state.
     assert "_ownedCamera = nil :: Camera?" in camera
     assert "self._ownedCamera == camera" in camera
     release_body = camera.split("function RaceCameraController:_releaseCamera()", 1)[1].split(
@@ -79,20 +71,13 @@ def test_early_camera_rider_presentation_contract() -> None:
     )[0]
     assert "local camera = self._ownedCamera" in release_body
     assert "local camera = Workspace.CurrentCamera" not in release_body
-
-    # Losing Workspace.CurrentCamera is also loss of camera ownership. The
-    # controller must release the previously captured instance instead of
-    # leaving it Scriptable with stale saved state until some future camera appears.
     assert "if camera == nil then\n\t\tself:_releaseCamera()\n\t\treturn" in camera
 
-    # Desktop orbit owns RMB only and automatically returns after release.
     assert "Enum.UserInputType.MouseButton2" in camera
     assert "Enum.UserInputType.MouseButton1" not in camera
     assert "CameraMath.ClampOrbit" in camera
     assert "ORBIT_RETURN_TIME" in camera
 
-    # R17.1: desktop orbit must explicitly capture and restore the mouse instead
-    # of relying on free cursor travel. Focused text/UI still owns its input.
     for token in [
         "_previousMouseBehavior",
         "function RaceCameraController:_beginMouseOrbit()",
@@ -105,11 +90,6 @@ def test_early_camera_rider_presentation_contract() -> None:
     ]:
         assert token in camera, f"missing R17.1 camera ownership token: {token}"
 
-    # Orbit input is meaningful only while this controller has an eligible local
-    # racer to own. A pre-spawn RMB/touch gesture must not accumulate stale orbit
-    # that is suddenly applied when a later racer appears. Eligible desktop RMB
-    # is considered before the generic gameProcessed guard so Roblox/CoreScripts
-    # cannot make orbit unreachable; touch remains behind that processed guard.
     input_began_body = camera.split("UserInputService.InputBegan:Connect(function", 1)[1].split(
         "end))", 1
     )[0]
@@ -121,15 +101,8 @@ def test_early_camera_rider_presentation_contract() -> None:
     touch_claim_index = input_began_body.index("self._touchOrbitInput = input")
     assert local_racer_guard_index < mouse_branch_index < mouse_claim_index
     assert mouse_claim_index < processed_guard_index < touch_branch_index < touch_claim_index
-
-    # Mouse capture must be released on all ownership exits, not only a normal
-    # RMB-up path. This prevents Alt-Tab, racer loss, camera loss, or Destroy
-    # from leaving the user's cursor locked.
     assert camera.count("self:_endMouseOrbit()") >= 5
 
-    # Orbit return is presentation lifecycle state, not racer-body state. If the
-    # racer briefly disappears after RMB release (respawn/replacement gap), the
-    # 0.40 s return must continue instead of freezing and reappearing stale.
     step_body = camera.split("function RaceCameraController:_step(dt: number)", 1)[1].split(
         "function RaceCameraController:Start()", 1
     )[0]
@@ -137,23 +110,28 @@ def test_early_camera_rider_presentation_contract() -> None:
     racer_lookup_index = step_body.index("local body = findLocalRacerBody()")
     assert return_index < racer_lookup_index
 
-    # Touch ownership is decided at begin from GUI/DrawInputRect hit testing.
     assert "GetGuiObjectsAtPosition" in camera
     assert 'Name == "DrawInputRect"' in camera or 'Name ~= "DrawInputRect"' in camera
     assert "Enum.UserInputType.Touch" in camera
 
-    # Rider is a standardized client-only visual with a deterministic
-    # oversized-accessory fallback and no gameplay authority.
+    # R17.2 rider remains presentation-only but now has a deterministic mount
+    # and a real rig hierarchy. Only HumanoidRootPart is anchored; visible limbs
+    # stay connected by Motor6D so the jockey pose can actually deform the rig.
     assert 'GetAttribute("OwnerUserId")' in rider
     assert "GetPlayerByUserId" in rider
-    assert "ScaleTo(0.65)" in rider
+    assert "RIDER_SCALE = 0.65" in rider
+    assert "RIDER_MOUNT_X_OFFSET" in rider
+    assert "RIDER_MOUNT_Y_OFFSET" in rider
+    assert "function RiderPresentationController:_mountCFrame" in rider
+    assert "ScaleTo(RIDER_SCALE)" in rider
     assert 'IsA("Accessory")' in rider
     assert "CanCollide = false" in rider
     assert "CanTouch = false" in rider
     assert "CanQuery = false" in rider
     assert "Massless = true" in rider
-    assert "descendant.Anchored = true" in rider
-    assert 'descendant.Anchored = descendant.Name == "HumanoidRootPart"' not in rider
+    assert 'descendant.Anchored = descendant.Name == "HumanoidRootPart"' in rider
+    assert "descendant.Anchored = true" not in rider
+    assert "riderHeight * 0.5" not in rider
     assert "BodyCollider" in rider
     assert "body.Position" in rider
     assert "body.CFrame" not in rider
@@ -162,9 +140,6 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "LegAssembly" not in rider
     assert "RacerRuntime" not in rider
 
-    # Player.Character can exist before Roblox finishes applying the avatar
-    # appearance. The rider must not cache a partial clone for the lifetime of
-    # that Character; wait until HasAppearanceLoaded() before cloning it.
     ensure_record_body = rider.split("function RiderPresentationController:_ensureRecord", 1)[1].split(
         "function RiderPresentationController:_placeRider", 1
     )[0]
@@ -172,8 +147,6 @@ def test_early_camera_rider_presentation_contract() -> None:
     clone_index = ensure_record_body.index("cloneCharacterVisual(character)")
     assert appearance_loaded_index < clone_index
 
-    # Bootstrap composes the production owners. The old Studio harness may
-    # keep its debug proxy, but cannot remain a second active camera owner.
     assert 'require(controllers:WaitForChild("RaceCameraController"))' in bootstrap
     assert 'require(controllers:WaitForChild("RiderPresentationController"))' in bootstrap
     assert "RaceCameraController.new" in bootstrap
