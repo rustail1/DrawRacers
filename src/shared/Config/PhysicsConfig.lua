@@ -34,20 +34,19 @@ return {
 		SegmentOverlapAllowance = 0.06,
 		HubOffsetX = 0.0,
 		HubOffsetY = -0.35,
+		-- Legacy/debug hub markers remain slightly outside the visible cube. The
+		-- production R17 shared pair mounts its rigid side roots exactly on the
+		-- canonical 3-stud cube surfaces using LegSocketZAbs.
 		HubOffsetZAbs = 1.62,
+		LegSocketZAbs = 1.5,
 	},
 	Motor = {
 		AngularVelocity = -8.0,
 		MotorMaxTorque = 35000,
 		MotorMaxAcceleration = 120,
+		-- R17 shared-axle structural offset. This is not a phase-recovery target:
+		-- both rigid sides are welded to one axle at this fixed local separation.
 		RightPhaseOffsetDegrees = 180,
-		-- R16.4 anti-phase maintenance. Contact can load the two independent
-		-- hinges differently, so RacerRuntime applies only a bounded symmetric
-		-- velocity correction around the canonical base speed. The correction
-		-- never changes either motor's locomotion sign.
-		PhaseLockToleranceDegrees = 3.0,
-		PhaseLockRecoveryTime = 0.25,
-		PhaseLockMaxRelativeCorrection = 4.0,
 	},
 	PhysicalMaterials = {
 		LegSegment = {
