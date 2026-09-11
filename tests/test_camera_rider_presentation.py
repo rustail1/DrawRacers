@@ -25,6 +25,7 @@ def test_early_camera_rider_presentation_contract() -> None:
     for token in [
         "function CameraMath.ExpAlpha",
         "function CameraMath.SmoothVector",
+        "function CameraMath.StepDeadZoneAnchor",
         "function CameraMath.StepVerticalDeadZone",
         "function CameraMath.SmoothAngleDegrees",
         "function CameraMath.ClampPitch",
@@ -40,11 +41,13 @@ def test_early_camera_rider_presentation_contract() -> None:
         "SIDE_DISTANCE = 23",
         "POSITION_DAMPING_TIME = 0.16",
         "LOOK_TARGET_DAMPING_TIME = 0.12",
-        "VERTICAL_DEAD_ZONE = 0.50",
+        "HORIZONTAL_DEAD_ZONE = 2.50",
+        "VERTICAL_DEAD_ZONE = 1.25",
         "VERTICAL_DAMPING_TIME = 0.22",
         "ORBIT_PITCH_LIMIT = 70",
         "ORBIT_INPUT_DAMPING_TIME = 0.08",
         "ORBIT_RETURN_TIME = 0.40",
+        "_deadZoneAnchor",
         "_targetOrbitYaw",
         "_targetOrbitPitch",
     ]:
@@ -75,6 +78,7 @@ def test_early_camera_rider_presentation_contract() -> None:
     )[0]
     assert "local camera = self._ownedCamera" in release_body
     assert "local camera = Workspace.CurrentCamera" not in release_body
+    assert "self._deadZoneAnchor = nil" in release_body
     assert "if camera == nil then\n\t\tself:_releaseCamera()\n\t\treturn" in camera
 
     assert "Enum.UserInputType.MouseButton2" in camera
@@ -114,6 +118,7 @@ def test_early_camera_rider_presentation_contract() -> None:
     return_index = step_body.index("ORBIT_RETURN_TIME")
     racer_lookup_index = step_body.index("local body = findLocalRacerBody()")
     assert return_index < racer_lookup_index
+    assert step_body.count("CameraMath.StepDeadZoneAnchor(") >= 2
 
     assert "GetGuiObjectsAtPosition" in camera
     assert 'Name == "DrawInputRect"' in camera or 'Name ~= "DrawInputRect"' in camera
