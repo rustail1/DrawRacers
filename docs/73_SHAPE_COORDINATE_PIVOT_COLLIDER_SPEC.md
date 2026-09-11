@@ -1,11 +1,11 @@
 # 73 — SHAPE COORDINATE, PIVOT & COLLIDER SPEC
-Статус: **EXACT CORE GEOMETRY CONTRACT v1.4.2 / R16.3B + R17 SHARED AXLE OVERRIDE**.
+Статус: **EXACT CORE GEOMETRY CONTRACT v1.4.3 / R16.3B + R17 SHARED AXLE CO-PHASE OVERRIDE**.
 
 Цель: убрать неоднозначность между экранным stroke и физической leg assembly. Этот файл владеет точным mapping `DrawCanvas → authoritative ShapeSpec → collider segments → shared axle assembly`. `03` владеет игровым поведением, `16` — tuneable constants, `65` — Studio instance tree, `22` — network payload.
 
 > **R16.3B supersedes R16.3A bounds-center semantics.** Положение рисунка на широком DrawInputRect остаётся presentation input, но механический origin теперь определяется первым cleaned point. Старое правило «bounds center / bounds-center → hub» больше не является текущим контрактом.
 >
-> **R17 supersedes the old independent left/right hinge implementation.** The authoritative ShapeSpec mapping below is unchanged, but production rotation is now owned by one `LegPairAssembly`, one shared axle, one `AxleJoint` and one motor. The two side `LegAssembly` objects are rigid children with a structural 180 degree relation. Live solver/visual acceptance remains **HUMAN STUDIO PENDING**.
+> **R17 supersedes the old independent left/right hinge implementation.** The authoritative ShapeSpec mapping below is unchanged, but production rotation is now owned by one `LegPairAssembly`, one shared axle, one `AxleJoint` and one motor. Human video on 2026-09-12 supersedes the interim structural-180 interpretation: the two side `LegAssembly` objects are rigid **co-phase** children at opposite Z sockets with `RightPhaseOffsetDegrees = 0`. Live solver/visual acceptance remains **HUMAN STUDIO PENDING**.
 
 ## 1. Canonical 2D coordinate system
 R16.3B uses one **wide semantic DrawInputRect**. Raw semantic coordinates are:
@@ -81,7 +81,7 @@ The rigid side sockets on the shared axle are owned by `PhysicsConfig.LegGeometr
 - Left side socket Z = `-LegSocketZAbs`;
 - Right side socket Z = `+LegSocketZAbs`.
 
-Both legs use the **same first-point-anchored XY ShapeSpec geometry**. They are not mirrored/inverted in XY. The right rigid side is mounted with `RightPhaseOffsetDegrees = 180`, creating the canonical **structural 180** relation while both sides rotate with the same shared axle and one motor.
+Both legs use the **same first-point-anchored XY ShapeSpec geometry**. They are not mirrored/inverted in XY. Both rigid sides are mounted at the same local axle angle; `RightPhaseOffsetDegrees = 0`, creating the canonical **co-phase** relation while the two copies remain separated across Z.
 
 ## 5. LegPairAssembly / shared axle structure
 **DataModel hierarchy is owned by `65`**; the exact relevant runtime subtree is:
@@ -117,11 +117,11 @@ Racer_<RaceId>_<Slot> (Model)
 
 `LegPairAssembly` owns `AxleRoot`, the only `AxleJoint`, the only rotating phase, and **one motor**. `AxleJoint.Attachment0 = BodyCollider.AxleMotorAttachment`; `Attachment1 = AxleRoot.MotorAttachment`. The shared hinge axis is local/world `+Z` at neutral racer orientation.
 
-Each side `LegAssembly` owns rigid geometry only. Its `LegRoot` is welded to `AxleRoot` with `AxleWeld`; there is no per-side HingeConstraint or per-side actuator. Left uses phase `0`; Right uses `RightPhaseOffsetDegrees = 180`. Because both are welded to the same `AxleRoot`, their relative phase cannot drift independently under contact load.
+Each side `LegAssembly` owns rigid geometry only. Its `LegRoot` is welded to `AxleRoot` with `AxleWeld`; there is no per-side HingeConstraint or per-side actuator. Left uses local phase `0`; Right uses `RightPhaseOffsetDegrees = 0`. Because both are welded to the same `AxleRoot`, they stay co-phase and cannot drift independently under contact load.
 
 Initial launch motor direction remains `AngularVelocity = -8.0 rad/s`; magnitude/torque sweep is owned by `16`. Negative sign is canonical because with the local frame above it drives normal bottom contact toward `+X` travel. If API axis orientation causes opposite travel, fix the canonical shared attachment axis rather than introducing per-side hidden signs or a second motor.
 
-No Heartbeat phase-chasing controller is part of the contract. R17 structural 180 replaces the former independent-motor phase-correction approach.
+No Heartbeat phase-chasing controller is part of the contract. R17 co-phase shared rotation replaces both the former independent-motor phase-correction approach and the interim 180° local side offset.
 
 ## 6. Segment collider construction
 For each consecutive first-point-anchored point pair `A→B`:
@@ -147,7 +147,7 @@ For accepted redraw:
 1. server validates and first-point-anchors the new ShapeSpec;
 2. `RacerRuntime` captures the current **single axle phase** from the old `LegPairAssembly`;
 3. construct one new `LegPairAssembly` staged off-tree with its two rigid side assemblies and motor disabled;
-4. initialize the new `AxleRoot` at the captured axle phase; Left remains structural phase `0`, Right remains structural phase `180`;
+4. initialize the new `AxleRoot` at the captured axle phase; Left and Right both remain local phase `0` / co-phase;
 5. mark the old pair retiring, commit the staged `AxleRoot` + two sides, then enable the new pair as one transaction;
 6. if build/commit/enable fails, destroy the staged pair and restore the old pair names/state;
 7. on successful commit, destroy the retired old pair;
@@ -211,7 +211,7 @@ PASS at repository-contract level only if:
 - physical colliders are hidden and presentation visual geometry is nonphysical;
 - no default wheel/StarterShape appears when no shape exists;
 - one accepted shape creates one `LegPairAssembly`, exactly one `AxleRoot`, exactly one `AxleJoint` and one motor;
-- both rigid side assemblies consume the same ShapeSpec, with Right held at the structural 180 relation and no per-side actuator/phase chase;
+- both rigid side assemblies consume the same ShapeSpec and remain **co-phase (0° local difference)** with no per-side actuator/phase chase;
 - `LegSocketZAbs = 1.5` is the side mount offset and old hub markers do not own motors;
 - ROUND/LONG_BAR/SMALL_ROUND/HOOK/ASYM presets produce repeatable distinct physical behavior in the Studio evidence path;
 - rebuild never double-collides old+new pairs and preserves the one axle phase/body motion state;
