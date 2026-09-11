@@ -221,14 +221,16 @@ def test_r16_1_qa_matrix_uses_exact_upright_acceptance() -> None:
     assert "racer does not endlessly spin from normal contacts" not in locomotion
 
 
-def test_r16_4_phase_is_180_and_r17_makes_it_structural() -> None:
+def test_r16_historical_180_phase_is_superseded_by_r17_cophase() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
     b13 = read("src/server/Tests/B13AtomicRedrawSpec.lua")
+    decision = read("docs/DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md")
 
-    assert "RightPhaseOffsetDegrees = 180" in config
+    assert "RightPhaseOffsetDegrees = 0" in config
     assert "phaseDegrees = motor.RightPhaseOffsetDegrees" in pair
-    assert "structural phase difference" in b09
+    assert "co-phase structural difference" in b09
     assert "single axle phase was not preserved" in b13
+    assert "180" in decision and "supersed" in decision.lower() and "co-phase" in decision.lower()
     assert "_StepLegPhaseSync" not in read("src/server/Runtime/RacerRuntime.lua")
