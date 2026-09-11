@@ -89,17 +89,12 @@ local function allMotorsEnabled(model: Model): boolean
 	if legs == nil then
 		return false
 	end
-	for _, legName in { "LeftLeg", "RightLeg" } do
-		local leg = legs:FindFirstChild(legName)
-		if leg == nil then
-			return false
-		end
-		local joint = leg:FindFirstChild("HubJoint")
-		if joint == nil or not joint:IsA("HingeConstraint") or not joint.Enabled then
-			return false
-		end
+	local axleRoot = legs:FindFirstChild("AxleRoot")
+	if not (axleRoot and axleRoot:IsA("BasePart")) then
+		return false
 	end
-	return true
+	local joint = axleRoot:FindFirstChild("AxleJoint")
+	return joint ~= nil and joint:IsA("HingeConstraint") and joint.Enabled
 end
 
 function R16TrialRunner.DestroyActive()
