@@ -11,7 +11,6 @@ def test_r17_3_origin_experiment_contract() -> None:
     path = ROOT / "src/server/Tests/R17OriginExperiment.lua"
     assert path.exists(), "R17.3 requires a Studio-only mechanical-origin comparison harness"
     text = path.read_text(encoding="utf-8")
-
     for token in [
         'FIRST_POINT', 'BOUNDS_CENTER', 'GEOMETRY_CENTROID',
         'ROUND_01', 'LONG_BAR_01', 'SMALL_ROUND_01', 'HOOK_01', 'ASYM_01', 'SUBOPTIMAL_01',
@@ -45,7 +44,6 @@ def test_r17_6_body_feel_evidence_contract() -> None:
     assert path.exists(), "R17.6 requires isolated body-feel candidate sweeps"
     text = path.read_text(encoding="utf-8")
     runner = read("src/server/Tests/R16TrialRunner.lua")
-
     for token in [
         'DENSITY_CANDIDATES = { 1.00, 0.60, 0.40 }',
         'FRICTION_CANDIDATES = { 0.45, 0.25, 0.10 }',
@@ -58,15 +56,29 @@ def test_r17_6_body_feel_evidence_contract() -> None:
         'function R17BodyFeelExperiment.RunEvidence()',
     ]:
         assert token in text, f"missing R17.6 body-feel token: {token}"
-
     for token in [
         'function R16TrialRunner.RunFlatTelemetry',
         'bodyContactTime', 'legContactTime', 'airTime', 'forwardDistance', 'averageSpeed', 'stuckTime',
         'bodyOptions',
     ]:
         assert token in runner, f"R16TrialRunner missing R17 telemetry support: {token}"
-
-    # Evidence harness only: no production config mutation and no hidden propulsion.
     assert 'PhysicsConfig.LegMaterial.Density =' not in text
     assert 'PhysicsConfig.LegMaterial.Friction =' not in text
+    assert 'AssemblyLinearVelocity =' not in text
+
+
+def test_r17_7_reference_course_contract() -> None:
+    path = ROOT / "src/server/Tests/R17ReferenceCourseHarness.lua"
+    assert path.exists(), "R17.7 requires one canonical reference-course matrix"
+    text = path.read_text(encoding="utf-8")
+    for token in [
+        'ROUND_01', 'LONG_BAR_01', 'SMALL_ROUND_01', 'HOOK_01', 'ASYM_01', 'SUBOPTIMAL_01',
+        'FlatShort', 'SmallSteps', 'SingleWallLow', 'GapSmall', 'LowTunnelWide',
+        'R16TrialRunner.RunFlat', 'R16TrialRunner.RunPiece',
+        'progress', 'completedPiece', 'landedAfterGap', 'antiStallSeen',
+        '[DrawRacers][R17.7]', 'liveRedrawOwner=R16StageCHarness',
+        'function R17ReferenceCourseHarness.RunEvidence()',
+    ]:
+        assert token in text, f"missing R17.7 course token: {token}"
+    assert 'RacerRuntime.new' not in text, "R17.7 must reuse the canonical trial runner"
     assert 'AssemblyLinearVelocity =' not in text
