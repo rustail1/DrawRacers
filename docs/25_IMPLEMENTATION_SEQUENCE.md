@@ -1,10 +1,10 @@
 # 25 — IMPLEMENTATION SEQUENCE
 
-Статус: **ORDER OF OPERATIONS v1.3.4**
+Статус: **ORDER OF OPERATIONS v1.4.0 R17**
 
 Этот файл отвечает: **что писать первым, вторым и дальше**, чтобы каждая система появлялась только когда её зависимость уже доказана.
 
-Camera/rider contract amendment: `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md` defines future D09/E03 presentation behavior but does **not** move either task earlier or alter the current M0/R16/B17 gate.
+Current sequence override: `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md`. R17 reference-core work is authorized before B17 acceptance. `RaceCameraController`/`CameraMath` and provisional `RiderPresentationController` are already current M0 presentation owners under R17; D09/E03 later extend these same owners for multiplayer/readability rather than introducing duplicates. `RacerService` remains D05.
 
 ---
 
@@ -76,8 +76,39 @@ Dependency: B10+B13. Start from exact canonical geometry/defaults in `60` for Fl
 ### B16 Debug tuning panel
 Dependency: B15.
 
+## R17 — REFERENCE-CORE PARITY OVERRIDE BEFORE B17
+
+R17 is the current Product Owner override. It does not promote earlier human gates; it orders additional core evidence/fixes before B17 can be accepted.
+
+### R17.0 Contract reconcile
+Record the R17 decision and reconcile current implementation ownership. Camera/rider may exist during M0 under R17; first-point mechanical origin remains current until R17.3 evidence and an explicit R17.4 decision.
+
+### R17.1 Desktop camera input
+Use the existing `RaceCameraController`; do not create another camera owner. Hold RMB over world space with Local Racer present -> bounded orbit, mouse capture, exact mouse-state restoration, automatic smooth return. LMB remains DrawCanvas input. Touch ownership remains unchanged.
+
+### R17.2 Rider mount/pose
+Use the existing `RiderPresentationController`; no second rider manager. Establish deterministic nonphysical jockey/rodeo mount and Studio scale/readability evidence.
+
+### R17.3 Mechanical-origin experiment
+Studio-only comparison of current first-point, bounds-center and deterministic geometry/reference-center candidates using identical canonical shapes/resets. Do not alter production origin or network schema during the experiment.
+
+### R17.4 Mechanical-origin migration
+Only after R17.3 human evidence, record one explicit Product Owner origin decision and migrate the server-owned authoritative geometry consistently if the current first-point origin loses the comparison.
+
+### R17.5 Live phase-lock acceptance
+Prove actual 180-degree anti-phase stability under real hinges/contact/redraw, not only commanded motor correction. Preserve same locomotion sign and configured average motor speed.
+
+### R17.6 Body feel A/B
+Tune in isolation: density first, then friction, then collider size only if belly contact remains the proven limiter. Keep motor `-8 / 35000 / 120` unchanged during these sweeps. Record body/belly contact, leg contact, air time, distance, speed and stuck time.
+
+### R17.7 Reference course pass
+Canonical shape matrix across unchanged Flat/Steps/Wall/Gap/Tunnel plus live redraw. Require meaningful shape niches and no universal winner.
+
+### R17.8 Final core human gate
+Consolidated server regression + R16/R17 Studio/reference-feel acceptance. Only supplied human evidence may close this gate.
+
 ### B17 M0 human test + tuning log
-Run `55` G0. Do not proceed until the recorded gate is PASS or Product Owner records an explicit scope decision after the allowed rework cycles.
+Run `55` G0 only after ordered R17 work reaches R17.8 or Product Owner records another explicit gate decision. B17 remains HUMAN_GATE PENDING until recorded evidence is PASS.
 
 ---
 
@@ -123,15 +154,15 @@ Enable current Workspace server authority setting for test place; document behav
 ### D08 Malformed stroke/race remote tests
 Security before broader scale.
 
-### D09 RaceCameraController
-Local racer + look-ahead + visible rival. Start camera constants from `16` and respect `59` DrawCanvas exclusion zone.
+### D09 RaceCameraController — 2-player extension/acceptance
+Extend the existing R17 production camera owner to Local Racer + look-ahead + visible rival. Do not create a second camera/controller. Start camera constants from `16` and respect `59` DrawCanvas exclusion zone.
 
-Implement the production camera contract from `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`:
-- introduce pure `CameraMath` only for deterministic frame-rate-independent smoothing/dead-zone/orbit math;
+Preserve the production camera contract from R17 and `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`:
+- deterministic frame-rate-independent `CameraMath` remains the pure math owner;
 - active-race target follows Local Racer position without inheriting BodyCollider rotation/roll;
-- use stable smoothed target + vertical dead-zone/damping from `16`;
-- desktop free-look = hold RMB with bounded yaw/pitch; release returns automatically to canonical side view;
-- touch orbit can start only from world space outside DrawCanvas/active UI and never steals an active drawing pointer;
+- stable smoothed target + vertical dead-zone/damping from `16`;
+- desktop free-look = hold RMB with bounded yaw/pitch, cursor capture/restoration, and automatic return;
+- touch orbit starts only from world space outside DrawCanvas/active UI and never steals an active drawing pointer;
 - no camera orientation Remote/event authority;
 - verify base side view, nearby-rival and upcoming-obstacle readability in Roblox Studio.
 
@@ -157,12 +188,12 @@ No new core mechanics.
 ### E02 T01–T10 authored TrackDefinitions
 Build exact first ten definitions from `60`; do not invent alternate launch blockouts.
 
-### E03 Full 8-player readability camera/HUD pass
-Use exact presentation owners `08/59/68`; no persistence dependency yet.
+### E03 Full 8-player readability camera/HUD/rider pass
+Use exact presentation owners `08/59/68`; no persistence dependency yet. Extend the existing R17/D09 camera and R17 rider owners to the real 8-player readability case; do not create second systems.
 
-Extend the already-implemented D09 camera to the real 8-player readability case; do not create a second camera system. Introduce `RiderPresentationController` here, and only here, for human-racer mini-avatar presentation:
+Rider acceptance at E03:
 - cube shell remains the canonical racer body from `62`;
-- rider is a separate standardized/normalized presentation-only visual keyed by server-authored `OwnerUserId`;
+- rider remains a separate standardized/normalized presentation-only visual keyed by server-authored `OwnerUserId`;
 - starting normalized target scale `0.65`, with Studio comparison `0.55 / 0.65 / 0.75` and a hard readability envelope/fallback for oversized appearances;
 - rider pose is the approved jockey/frog-rider seated pose; first implementation does not require bob/lean animation;
 - rider never changes racer/leg physics, collision, mass, camera authority, checkpoints/finish, rewards or Draw Racers cosmetic ownership;
@@ -257,58 +288,3 @@ Price is hypothesis.
 Produce exact first A/B/C creatives from `62`, use evidence boundary `54`, run `55` G6; promise must match the actual first minute.
 
 No competitive power.
-
----
-
-# PHASE H — LIVEOPS FOUNDATION
-
-### H01 Config-driven course rotation
-### H02 Cosmetic collection configs
-### H03 Event modifier schema
-### H04 Measurement contract workflow
-### H05 Content buffer
-Instantiate and validate the exact first-30-day configs/objectives/rewards from `76` using `30/31/44/60/61/62/69`; no new mechanic required. Event objective progress/reward rides the existing authoritative race GrantId transaction.
-### H06 Tournament/season only if retention/social data justify
-
-Procedural/endless generator remains later unless authored-track production becomes a proven bottleneck.
-
----
-
-# Strict dependency rule
-
-Never pull a task from a later phase just because it is easy/fun.
-
-Examples:
-- no DataStore before racer core needs persist;
-- no Shop before cosmetic/status value exists;
-- no procedural generator before authored level grammar is validated;
-- no 8-player service before the 2-player rival slice passes acceptance;
-- no seasons before session/return loop shows signal;
-- the camera/rider Contract Lock does not authorize `CameraMath`, `RaceCameraController` or `RiderPresentationController` before D09/E03 respectively.
-
-
-# PHASE I — FINAL PUBLIC RELEASE FREEZE
-
-### I01 UI screenshot matrix
-Pass all `59` desktop/touch reference layouts.
-
-### I02 Content manifest completion
-All `60` T01–T20, both `62` themes, 20 produced cosmetics, audio/VFX checklist and discovery pack exist and validate through `67/69/70`.
-
-### I03 Economy/progression config verification
-Runtime values match `61`; grants/save/anti-farm tests pass.
-
-### I04 Name/IP/platform policy clearance
-`39/48/62/64` title/safety/maturity/provenance rules PASS.
-
-### I05 PROD provisioning + deployment ID binding
-Provision/bind exact two-place PROD + all SKU/assets through `64/70`; private production smoke test before public enable.
-
-### I06 QA/performance/rollback drill
-Run `24/35/57`; known-good compatible two-place rollback pair recorded.
-
-### I07 Final zero-question production audit
-Run `78_FINAL_EXECUTION_CONSISTENCY_AUDIT_v1.3.4.md`; release only on PASS.
-
-### I08 Public enable + first-hour/day monitoring
-Enable public access/discovery only after I07. Monitor `35` P0/P1, funnel, server performance and purchase errors.
