@@ -31,15 +31,16 @@ def test_p1_b10_uses_real_elapsed_quarter_second_recovery_window() -> None:
     b10 = read("src/server/Tests/B10StabilizationSpec.lua")
 
     assert "local RECOVERY_WINDOW = 0.25" in b10
-    assert "local MAX_RECOVERY_SAMPLE_DT = 0.10" in b10
     assert "local MAX_RECOVERY_ATTEMPTS = 3" in b10
     assert "for attempt = 1, MAX_RECOVERY_ATTEMPTS do" in b10
     assert "local dt = RunService.Heartbeat:Wait()" in b10
-    assert "if dt > MAX_RECOVERY_SAMPLE_DT then" in b10
-    assert "recoveryElapsed += dt" in b10
+    assert "local sampleEnd = recoveryElapsed + dt" in b10
+    assert "if sampleEnd > RECOVERY_WINDOW then" in b10
+    assert "recoveryElapsed = sampleEnd" in b10
     assert "recovered and recoveryElapsed <= RECOVERY_WINDOW" in b10
-    assert "upright recovery evidence invalidated by Heartbeat stalls" in b10
+    assert "upright recovery evidence invalidated because Heartbeat crossed the 0.25 s window" in b10
     assert "upright recovery exceeded 0.25 s" in b10
+    assert "MAX_RECOVERY_SAMPLE_DT" not in b10
     assert "recoveryElapsed += RunService.Heartbeat:Wait()" not in b10
     assert "for _ = 1, 15 do" not in b10
 
