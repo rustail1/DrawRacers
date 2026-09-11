@@ -83,6 +83,7 @@ function RaceCameraController.new(playerGui: PlayerGui)
 		_orbitYaw = 0,
 		_orbitPitch = 0,
 		_mouseOrbitHeld = false,
+		_previousMouseBehavior = nil :: Enum.MouseBehavior?,
 		_touchOrbitInput = nil :: InputObject?,
 	}, RaceCameraController)
 	return self
@@ -99,6 +100,34 @@ function RaceCameraController:_pointOwnedByUI(position: Vector2): boolean
 		end
 	end
 	return false
+end
+
+function RaceCameraController:_worldCameraInputAllowed(position: Vector2): boolean
+	if UserInputService:GetFocusedTextBox() ~= nil then
+		return false
+	end
+	return not self:_pointOwnedByUI(position)
+end
+
+function RaceCameraController:_beginMouseOrbit()
+	if self._mouseOrbitHeld then
+		return
+	end
+	self._previousMouseBehavior = UserInputService.MouseBehavior
+	self._mouseOrbitHeld = true
+	UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+end
+
+function RaceCameraController:_endMouseOrbit()
+	if not self._mouseOrbitHeld and self._previousMouseBehavior == nil then
+		return
+	end
+	self._mouseOrbitHeld = false
+	local previousMouseBehavior = self._previousMouseBehavior
+	self._previousMouseBehavior = nil
+	if previousMouseBehavior ~= nil then
+		UserInputService.MouseBehavior = previousMouseBehavior
+	end
 end
 
 function RaceCameraController:_captureCamera(camera: Camera)
@@ -154,11 +183,17 @@ function RaceCameraController:_step(dt: number)
 
 	local body = findLocalRacerBody()
 	if body == nil then
+		if self._mouseOrbitHeld then
+			self:_endMouseOrbit()
+		end
 		self:_releaseCamera()
 		return
 	end
 
 	local camera = Workspace.CurrentCamera
+	if camera == nil and self._mouseOrbitHeld then
+		self:_endMouseOrbit()
+	end
 	if camera == nil then
 		self:_releaseCamera()
 		return
@@ -222,18 +257,22 @@ function RaceCameraController:Start()
 	self._started = true
 
 	table.insert(self._connections, UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if gameProcessed then
-			return
-		end
 		if findLocalRacerBody() == nil then
 			return
 		end
+
 		if input.UserInputType == Enum.UserInputType.MouseButton2 then
 			local mousePosition = UserInputService:GetMouseLocation()
-			if not self:_pointOwnedByUI(mousePosition) then
-				self._mouseOrbitHeld = true
+			if self:_worldCameraInputAllowed(mousePosition) then
+				self:_beginMouseOrbit()
 			end
-		elseif input.UserInputType == Enum.UserInputType.Touch then
+			return
+		end
+
+		if gameProcessed then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.Touch then
 			local position = Vector2.new(input.Position.X, input.Position.Y)
 			if self._touchOrbitInput == nil and not self:_pointOwnedByUI(position) then
 				self._touchOrbitInput = input
@@ -251,10 +290,15 @@ function RaceCameraController:Start()
 
 	table.insert(self._connections, UserInputService.InputEnded:Connect(function(input: InputObject)
 		if input.UserInputType == Enum.UserInputType.MouseButton2 then
-			self._mouseOrbitHeld = false
+			self:_endMouseOrbit()
 		elseif input == self._touchOrbitInput then
 			self._touchOrbitInput = nil
 		end
+	end))
+
+	table.insert(self._connections, UserInputService.WindowFocusReleased:Connect(function()
+		self:_endMouseOrbit()
+		self._touchOrbitInput = nil
 	end))
 
 	table.insert(self._connections, RunService.RenderStepped:Connect(function(dt: number)
@@ -269,8 +313,8 @@ function RaceCameraController:Destroy()
 		return
 	end
 	self._started = false
+	self:_endMouseOrbit()
 	disconnectAll(self._connections)
-	self._mouseOrbitHeld = false
 	self._touchOrbitInput = nil
 	self:_releaseCamera()
 end
