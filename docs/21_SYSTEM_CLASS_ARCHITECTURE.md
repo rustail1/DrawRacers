@@ -1,17 +1,17 @@
 # 21 — SYSTEM & CLASS ARCHITECTURE
 
-Статус: **IMPLEMENTATION CONTRACT v1.3.4**  
+Статус: **IMPLEMENTATION CONTRACT v1.3.5 / R17 OVERRIDE**  
 Цель: заранее определить владельцев состояния, границы модулей и зависимости, чтобы Codex не создавал дублирующую архитектуру.
 
 > В Luau не нужно превращать всё в OOP. Здесь слово «класс» означает stateful runtime object там, где lifetime действительно полезен. Stateless вычисления остаются обычными ModuleScript-функциями.
 
-Camera/rider presentation amendment approved by `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`: production camera remains D09; `RiderPresentationController` is a future E03 presentation owner. This target contract does **not** authorize either module during the current M0/R16 gate.
+R17 Product Owner override is canonical for current M0 presentation work: `CameraMath` / `RaceCameraController` and `RiderPresentationController` are active provisional M0 owners under `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md`. D09 and E03 are now later multiplayer/readability extension-and-acceptance tasks for these existing owners, not their first introduction. This exception does **not** authorize unrelated later modules: in particular `RacerService` remains D05 and C01+ remains sequence-gated.
 
 ---
 
 # 1. DataModel target tree
 
-The tree below is **TARGET architecture** for the ordered production route. It **does not authorize early implementation** of modules before their task/milestone becomes active in `25/66`. In particular, **RacerService remains D05**. M0/B17 uses the existing **Studio-only injected resolver** in `M0HumanHarness`; **Do not implement RacerService before D05**.
+The tree below is **TARGET architecture** for the ordered production route. It **does not authorize early implementation** of modules before their task/milestone becomes active in `25/66`, except for the explicit R17 camera/rider override above. In particular, **RacerService remains D05**. M0/B17 uses the existing **Studio-only injected resolver** in `M0HumanHarness`; **Do not implement RacerService before D05**.
 
 ```text
 ReplicatedStorage
@@ -471,7 +471,7 @@ No Instances, no remotes, no player state.
 Transforms `ShapeSpec` into segment transforms/sizes; no world ownership.
 
 ## CameraMath
-Introduced only with D09. Pure deterministic helpers for frame-rate-independent camera smoothing, vertical dead-zone response and bounded orbit/return math. No Instances, no UserInputService, no remotes and no racer authority.
+Active under the R17 M0 reference-core override. Pure deterministic helpers for frame-rate-independent camera smoothing, vertical dead-zone response and bounded orbit/return math. No Instances, no UserInputService, no remotes and no racer authority. D09 later extends/accepts this same owner for rival/multiplayer readability rather than introducing a second camera system.
 
 ## TrackMath
 Authoring/validation math for Start→End placement, clearance and topology checks.
@@ -494,12 +494,10 @@ Flow:
 Old active leg remains during drawing.
 
 ## RaceCameraController
-Scriptable camera. Reads replicated local racer position and race state. Owns follow/look-ahead interpolation only.
-
-D09 camera amendment: it is also the sole owner of the active-race smoothed camera target, vertical dead-zone response, bounded RMB/touch world-orbit state and automatic return to canonical side framing. It derives orientation from camera policy, never from BodyCollider rotation, never authors gameplay state, and never sends camera-orientation remotes. Exact starting values live in `16`; input priority lives in `59/68`. Spectator target policy remains `74`.
+Active M0/R17 production presentation owner. Scriptable camera reads replicated Local Racer position and race state and owns smoothed follow/look-ahead, vertical dead-zone response, bounded RMB/touch world-orbit state and automatic return to canonical side framing. It derives orientation from camera policy, never from BodyCollider rotation, never authors gameplay state, and never sends camera-orientation remotes. Exact starting values live in `16`; input priority lives in `59/68`. D09 is the later 2-player/rival/readability extension and acceptance of this same owner. Spectator target policy remains `74`.
 
 ## RiderPresentationController
-**First authorized task: E03. Do not create during current M0 or D09.**
+**Active provisional M0/R17 presentation owner by Product Owner override.** E03 is the later 8-player/readability extension and acceptance task; it is no longer the first introduction of this controller.
 
 Owns one human rider's local visual lifecycle: Player identity → server-authored racer `OwnerUserId` lookup → standardized normalized mini-avatar visual → deterministic jockey/frog-rider pose → cleanup. It may render under `Workspace.Runtime.RacePresentation` and may read player appearance, but it has no gameplay authority.
 
@@ -510,7 +508,7 @@ It does **not** own:
 - Draw Racers cosmetic ownership/equip;
 - server Player→RacerRuntime mapping.
 
-Any rider BaseParts are presentation-only and obey `65`: non-colliding, non-touching, non-querying and massless. The normalized visual envelope/fallback is owned by `62`; exact introduction order is `25`.
+Any rider BaseParts are presentation-only and obey the R17 presentation contract: non-colliding, non-touching, non-querying and massless. Human pose/readability acceptance remains Studio evidence, not CI evidence.
 
 ## HUDController
 Placement/progress/countdown/redraw hint. No authoritative race logic.
@@ -584,7 +582,7 @@ RaceCameraController → CameraMath + replicated local-racer/race observations
 RiderPresentationController → player appearance + server-authored racer OwnerUserId presentation lookup
 ```
 
-Rule: orchestration may depend on lower-level domain services; low-level modules never require `RaceService` back. This graph is target dependency topology, not permission to instantiate later modules early.
+Rule: orchestration may depend on lower-level domain services; low-level modules never require `RaceService` back. This graph is target dependency topology, not permission to instantiate later modules early outside explicit recorded overrides such as R17.
 
 ---
 
@@ -617,8 +615,8 @@ Without new Decision Log do not create:
 | TrackMath/TrackService minimal | M0.5/M1 |
 | RaceRuntime/RaceService | M1 |
 | ProgressValidationService | M1 |
-| CameraMath/RaceCameraController | M1 / D09 |
-| RiderPresentationController | M2 / E03 |
+| CameraMath/RaceCameraController | M0 / R17 provisional; D09 extension/acceptance |
+| RiderPresentationController | M0 / R17 provisional; E03 extension/acceptance |
 | HUDController | M1 / D10 |
 | ResultsController | M1 |
 | GarageController/SettingsController | M2 |
@@ -633,4 +631,4 @@ Without new Decision Log do not create:
 | BotRacerController | M3 / required before public cold-start release |
 | MonetizationService | M4 |
 
-Do not bootstrap later milestone modules before their feature becomes ACTIVE.
+Do not bootstrap later milestone modules before their feature becomes ACTIVE, except where an explicit current Decision Log records a bounded Product Owner override (currently R17 camera/rider presentation only).
