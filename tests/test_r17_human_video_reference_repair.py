@@ -47,3 +47,16 @@ def test_human_video_rider_mount_aligns_seat_reference_instead_of_burying_hrp() 
     assert "body.Size.Y * 0.5 + RIDER_MOUNT_Y_OFFSET" not in rider
     assert "CanCollide = false" in rider
     assert "Massless = true" in rider
+
+
+def test_rider_step_closes_candidate_loop_before_stale_cleanup() -> None:
+    rider = read("src/client/Controllers/RiderPresentationController.lua")
+    step = rider.split("function RiderPresentationController:_step()", 1)[1].split(
+        "function RiderPresentationController:Start()", 1
+    )[0]
+
+    # Regression from the pelvis-mount edit: one `end` was dropped from the
+    # nested candidate loop, so Studio could not parse the module at all.
+    assert (
+        "\t\t\t\tend\n\t\t\tend\n\t\tend\n\tend\n\n\tlocal stale" in step
+    ), "_step must close record/player/candidate/for blocks before stale cleanup"
