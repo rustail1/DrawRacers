@@ -20,12 +20,14 @@ The retained R16.3B stroke contract still matters: after cleanup the server tran
 
 R17 changes the mechanical/presentation implementation around that stroke contract:
 - `LegPairAssembly` now owns one **shared axle**, one `AxleRoot`, one `AxleJoint` and **one motor** for both rigid side `LegAssembly` objects.
-- Left/Right consume the same ShapeSpec and keep a **structural 180** relation. There is no independent side motor and no runtime phase-chasing correction.
-- Production `RaceCameraController`/`CameraMath` are active M0 owners. Hold-RMB yaw target supports **full 360°**, pitch remains bounded, rendered orbit/return are smoothed, and racer body rotation is not camera authority.
+- Left/Right consume the same ShapeSpec and are **co-phase** on that shared axle (`RightPhaseOffsetDegrees = 0`). There is no independent side motor and no runtime phase-chasing correction.
+- Production `RaceCameraController`/`CameraMath` are active M0 owners. Hold-RMB yaw target supports **full 360°**, pitch remains bounded, rendered orbit/return are smoothed, and racer body rotation is not camera authority. Normal follow now uses a **stable two-axis dead-zone** anchor before smoothing so small body oscillation does not drag the framing every frame.
+- Instant redraw keeps the old pair live while a staged replacement evaluates a bounded **collision-safe redraw phase** search against Track geometry; only the chosen replacement is committed. Body CFrame and linear/angular velocity are not reset by the swap.
 - Production `RiderPresentationController` is active as a normalized, client-only, nonphysical human rider presentation layer.
-- `R17FINAL` is the current ordered Studio evidence aggregator; committed default Studio mode remains `G0`.
+- R17.6 evidence now isolates **body density**, **leg density**, **motor speed**, and optional **body friction** candidate families on temporary Studio racers. **Production tuning remains unchanged** until real Studio evidence selects a winner; `HUMAN BODY FEEL CHOICE PENDING` remains the state.
+- R17.7 reuses the canonical flat/steps/wall/gap/tunnel course matrix across the reference shape set; `R17FINAL` remains the current ordered Studio evidence aggregator. Committed default Studio mode remains `G0`.
 
-Pre-status-reconciliation repository evidence head `073e90cf2e4b20b5153f0b324351fb2b4e3ca205`, Contract Verify run `34622695996`: **184 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. These checks prove source contracts/buildability only; they do not prove Roblox Studio physics, camera feel, rider pose/readability or any human product gate.
+Latest pre-doc reference-feel code evidence: head `633ea2bf67ada70077c5941532f0a582c00b4a02`, Contract Verify run `34634238162`: **193 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. These checks prove source contracts/buildability only; they do not prove Roblox Studio physics, camera feel, rider pose/readability or any human product gate.
 
 Historical evidence retained for regression traceability:
 - pre-R06 baseline: **66 passed, 0 failed**;
@@ -54,10 +56,11 @@ The repair series did not add unrelated product scope:
 - **R16.2:** hub offsets remain owned by `PhysicsConfig.LegGeometry`.
 - **R16.3/R16.3B:** one drawing → two first-point-anchored authoritative side shapes; the bounds-center rule is superseded.
 - **R16.3B presentation split:** hidden authoritative physical colliders + nonphysical visible leg geometry.
-- **R16.4 historical phase target:** 180°. R17 now makes it structural with one shared axle instead of two independent motors.
+- **R16.4 historical phase target:** 180°. R17 supersedes that historical side-offset target with one shared axle and co-phase rigid copies after live reference evidence showed the 180° local offset produced the wrong visible relation.
 - **R17.3–R17.8:** origin/body/reference evidence experiments and ordered `R17FINAL` handoff.
-- **R17.9:** full-360 smoothed production free-look camera.
-- **R17.10–R17.14:** one shared `LegPairAssembly` axle/motor, structural 180, safe socket/collision contract and atomic whole-pair redraw.
+- **R17.9:** full-360 smoothed production free-look camera plus stable two-axis dead-zone normal follow.
+- **R17.10–R17.14:** one shared `LegPairAssembly` axle/motor, structural co-phase, safe socket/collision contract and atomic whole-pair redraw.
+- **Reference-feel redraw follow-up:** bounded collision-safe redraw phase selection happens before retiring the old pair, preserving body motion state.
 
 Decision records include the R01–R16 records plus `docs/DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md` and `docs/DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md`.
 
@@ -79,13 +82,13 @@ Then connect the Rojo Studio plugin to the local server shown by `rojo serve`.
 Deterministic wide-rectangle clamp/dedupe, DrawInputRect semantic coordinates, RDP simplification, open-polyline resampling, length/bounds validation and malformed/non-finite coverage. R16.3B server authority anchors the first cleaned point to `(0,0)` without resizing.
 
 ### B06–B10 — Physical locomotion foundation
-Canonical 3×3×3 racer body, **upright** body stabilization, mechanical Z lane lock, one shared R17 `LegPairAssembly` axle with one motor, two rigid side assemblies at structural 180, canonical collision policy and no hidden forward race power.
+Canonical 3×3×3 racer body, **upright** body stabilization, mechanical Z lane lock, one shared R17 `LegPairAssembly` axle with one motor, two rigid co-phase side assemblies, canonical collision policy and no hidden forward race power.
 
 ### B11–B12 — Server authority/network boundary
 `LegShapeService` validates semantic stroke intent and owns ShapeSpec/version progression. Exact semantic remotes are `SubmitStroke` and `StrokeResult`; accepted results carry server-authoritative first-point-anchored points. Client data cannot author world geometry, CFrame, segment plans, ShapeVersion or rewards.
 
 ### B13–B14 — Atomic redraw/security stress
-Replacement shared leg pair stages before commit; failed redraw preserves the previous accepted pair; redraw preserves the single live axle phase and body motion state; repeated malformed/stale/rate/size abuse is regression-covered.
+Replacement shared leg pair stages before commit; failed redraw preserves the previous accepted pair. Before commit, a bounded collision-safe redraw phase search scores the staged shape against Track geometry; the old pair remains active until a replacement phase is chosen. Redraw preserves body CFrame and linear/angular velocity, while repeated malformed/stale/rate/size abuse remains regression-covered.
 
 ### B15–B16 — Canonical lab/debug
 The M0 lab contains canonical flat/steps/wall/gap/tunnel representatives. DEV/STAGING/Studio debug telemetry exposes shape/segment/speed/motor/stuck/anti-stall/lane/checkpoint/progress information. Debug presentation is hidden by default behind F3.
@@ -98,13 +101,13 @@ Expected evidence includes:
 - `[StudioGate] TOTAL 13 PASS / 0 FAIL` and `READY`;
 - existing R16.5–R16.10 baseline evidence remains valid under the shared axle;
 - R17.3 origin-comparison output;
-- R17.5 shared-axle structural-phase output with one motor/hinge and redraw continuity;
-- R17.6 body-feel telemetry without mutating production tuning;
+- R17.5 shared-axle **co-phase** output with one motor/hinge and redraw continuity;
+- R17.6 candidate telemetry for body density, leg density, motor speed and body friction without mutating production tuning;
 - R17.7 canonical reference-course output;
 - `[DrawRacers][R17FINAL] HUMAN REVIEW READY` only after automated evidence;
-- human check: rigid left/right sides remain structurally opposite without relative bending/drift, RMB camera can rotate full 360° and returns smoothly, rider pose/readability is acceptable, body stays upright and lane-locked, and redraw does not reset body/gait.
+- human check: rigid left/right sides remain co-phase without relative bending/drift, RMB camera can rotate full 360° and returns smoothly, normal follow is stable inside the two-axis dead-zone, rider pose/readability is acceptable, body stays upright and lane-locked, and redraw does not reset body motion or visibly explode into Track geometry.
 
-**Do not mark Studio Gate A, B, C or B17/G0 PASS from CI or repository inspection.** B17/G0 still follows `docs/55_EMPIRICAL_PRODUCT_GATE_PROTOCOL.md`, including the external-tester requirement.
+**Production tuning remains unchanged until the Studio evidence is reviewed. HUMAN BODY FEEL CHOICE PENDING. Do not mark Studio Gate A, B, C or B17/G0 PASS from CI or repository inspection.** B17/G0 still follows `docs/55_EMPIRICAL_PRODUCT_GATE_PROTOCOL.md`, including the external-tester requirement.
 
 ## Working loop
 `ChatGPT/GitHub change → git status --short → git pull --ff-only origin main → Rojo build/serve → Studio playtest → PASS/FAIL evidence → next allowed item`
