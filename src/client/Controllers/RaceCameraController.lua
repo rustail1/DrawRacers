@@ -160,6 +160,7 @@ function RaceCameraController:_step(dt: number)
 
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
+		self:_releaseCamera()
 		return
 	end
 	self:_captureCamera(camera)
