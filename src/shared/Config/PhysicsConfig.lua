@@ -41,6 +41,13 @@ return {
 		MotorMaxTorque = 35000,
 		MotorMaxAcceleration = 120,
 		RightPhaseOffsetDegrees = 180,
+		-- R16.4 anti-phase maintenance. Contact can load the two independent
+		-- hinges differently, so RacerRuntime applies only a bounded symmetric
+		-- velocity correction around the canonical base speed. The correction
+		-- never changes either motor's locomotion sign.
+		PhaseLockToleranceDegrees = 3.0,
+		PhaseLockRecoveryTime = 0.25,
+		PhaseLockMaxRelativeCorrection = 4.0,
 	},
 	PhysicalMaterials = {
 		LegSegment = {
