@@ -30,8 +30,15 @@ def test_b06_racer_runtime_contract() -> None:
 
     assert "Humanoid" not in text
     assert "Motor6D" not in text
-    assert "AngularVelocity" not in text, "B06 must not pull B08 motor work forward"
-    assert "HingeConstraint" not in text, "B06 must not pull B08 hinge work forward"
+
+    # B06 owns only the racer template/runtime shell. Later B08/R16 work may
+    # legitimately orchestrate motors elsewhere in RacerRuntime, but template
+    # construction itself must not instantiate motor/hinge primitives.
+    template_section = text.split("function RacerRuntime.EnsureTemplate()", 1)[1].split(
+        "local function ensureRuntimeFolder", 1
+    )[0]
+    assert "AngularVelocity" not in template_section, "B06 template must not configure motor velocity"
+    assert "HingeConstraint" not in template_section, "B06 template must not instantiate leg hinges"
 
 
 def test_b06_studio_spec_is_wired() -> None:
