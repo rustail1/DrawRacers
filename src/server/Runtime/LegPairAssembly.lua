@@ -98,24 +98,39 @@ function LegPairAssembly.new(params: BuildParams)
 	joint.Enabled = if staged then false else params.motorEnabled == true
 	joint.Parent = axleRoot
 
-	local leftLeg = LegAssembly.new({
-		racerModel = racerModel,
-		side = "Left",
-		shapeSpec = params.shapeSpec,
-		axleRoot = axleRoot,
-		socketZ = -geometry.LegSocketZAbs,
-		phaseDegrees = 0,
-		staged = staged,
-	})
-	local rightLeg = LegAssembly.new({
-		racerModel = racerModel,
-		side = "Right",
-		shapeSpec = params.shapeSpec,
-		axleRoot = axleRoot,
-		socketZ = geometry.LegSocketZAbs,
-		phaseDegrees = motor.RightPhaseOffsetDegrees,
-		staged = staged,
-	})
+	local leftLeg = nil
+	local rightLeg = nil
+	local sideBuildOk, sideBuildError = pcall(function()
+		leftLeg = LegAssembly.new({
+			racerModel = racerModel,
+			side = "Left",
+			shapeSpec = params.shapeSpec,
+			axleRoot = axleRoot,
+			socketZ = -geometry.LegSocketZAbs,
+			phaseDegrees = 0,
+			staged = staged,
+		})
+		rightLeg = LegAssembly.new({
+			racerModel = racerModel,
+			side = "Right",
+			shapeSpec = params.shapeSpec,
+			axleRoot = axleRoot,
+			socketZ = geometry.LegSocketZAbs,
+			phaseDegrees = motor.RightPhaseOffsetDegrees,
+			staged = staged,
+		})
+	end)
+	if not sideBuildOk then
+		if leftLeg ~= nil then
+			leftLeg:Destroy()
+		end
+		if rightLeg ~= nil then
+			rightLeg:Destroy()
+		end
+		axleRoot:Destroy()
+		error(sideBuildError)
+	end
+	assert(leftLeg ~= nil and rightLeg ~= nil, "LegPairAssembly produced incomplete rigid sides")
 
 	local self = setmetatable({
 		racerModel = racerModel,
