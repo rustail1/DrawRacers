@@ -82,3 +82,38 @@ def test_r17_7_reference_course_contract() -> None:
         assert token in text, f"missing R17.7 course token: {token}"
     assert 'RacerRuntime.new' not in text, "R17.7 must reuse the canonical trial runner"
     assert 'AssemblyLinearVelocity =' not in text
+
+
+def test_r17_8_final_harness_contract() -> None:
+    path = ROOT / "src/server/Tests/R17FinalHarness.lua"
+    assert path.exists(), "R17.8 requires a one-click Studio evidence aggregator"
+    text = path.read_text(encoding="utf-8")
+    config = read("src/shared/Config/StudioHarnessConfig.lua")
+    bootstrap = read("src/server/Bootstrap.server.lua")
+
+    ordered_tokens = [
+        'R16StageCHarness.RunEvidence()',
+        'R17OriginExperiment.RunEvidence()',
+        'R17PhaseEvidence.RunEvidence()',
+        'R17BodyFeelExperiment.RunEvidence()',
+        'R17ReferenceCourseHarness.RunEvidence()',
+        'M0HumanHarness.start()',
+        '[DrawRacers][R17FINAL] HUMAN REVIEW READY',
+    ]
+    positions = [text.index(token) for token in ordered_tokens]
+    assert positions == sorted(positions), "R17FINAL evidence/human handoff order is wrong"
+
+    for token in [
+        'R16StageCHarness', 'R17OriginExperiment', 'R17PhaseEvidence',
+        'R17BodyFeelExperiment', 'R17ReferenceCourseHarness', 'M0HumanHarness',
+        'function R17FinalHarness.start()',
+    ]:
+        assert token in text, f"missing R17FINAL token: {token}"
+
+    assert 'R17FINAL = "R17FINAL"' in config
+    assert 'Mode = "G0"' in config, "R17FINAL must not become the committed default"
+    assert 'harnessMode == "R17FINAL"' in bootstrap
+    assert 'WaitForChild("R17FinalHarness")' in bootstrap
+    assert 'HUMAN REVIEW PASS' not in text
+    assert 'HUMAN ORIGIN CHOICE PASS' not in text
+    assert 'HUMAN BODY FEEL CHOICE PASS' not in text
