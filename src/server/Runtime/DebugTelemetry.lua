@@ -49,24 +49,15 @@ local function getMotorState(model: Model): (boolean, number)
 	if not legs then
 		return false, PhysicsConfig.Motor.AngularVelocity
 	end
-
-	local found = 0
-	local enabled = 0
-	local angularVelocity = PhysicsConfig.Motor.AngularVelocity
-	for _, leg in legs:GetChildren() do
-		if leg:IsA("Model") then
-			local joint = leg:FindFirstChild("HubJoint")
-			if joint and joint:IsA("HingeConstraint") then
-				found += 1
-				angularVelocity = joint.AngularVelocity
-				if joint.Enabled then
-					enabled += 1
-				end
-			end
-		end
+	local axleRoot = legs:FindFirstChild("AxleRoot")
+	if not (axleRoot and axleRoot:IsA("BasePart")) then
+		return false, PhysicsConfig.Motor.AngularVelocity
 	end
-
-	return found > 0 and enabled == found, angularVelocity
+	local joint = axleRoot:FindFirstChild("AxleJoint")
+	if not (joint and joint:IsA("HingeConstraint")) then
+		return false, PhysicsConfig.Motor.AngularVelocity
+	end
+	return joint.Enabled, joint.AngularVelocity
 end
 
 local function getNumberAttribute(model: Model, name: string, fallback: number): number
