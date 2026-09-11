@@ -78,6 +78,9 @@ if RunService:IsStudio() then
 			elseif harnessMode == "R16FINAL" then
 				local R16FinalHarness = require(testsFolder:WaitForChild("R16FinalHarness"))
 				R16FinalHarness.start()
+			elseif harnessMode == "R17FINAL" then
+				local R17FinalHarness = require(testsFolder:WaitForChild("R17FinalHarness"))
+				R17FinalHarness.start()
 			elseif harnessMode ~= "NONE" then
 				error(string.format("unknown StudioHarnessConfig.Mode %s", tostring(harnessMode)))
 			end
