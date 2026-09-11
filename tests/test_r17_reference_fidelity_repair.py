@@ -51,8 +51,6 @@ def test_r17_10_production_uses_one_shared_axle_motor_for_both_rigid_sides() -> 
     assert "leftJoint.AngularVelocity" not in racer
     assert "rightJoint.AngularVelocity" not in racer
 
-    # Side geometry is rigid presentation/collision geometry only. Motor ownership
-    # belongs to the pair, so an individual side must not create a HingeConstraint.
     assert 'Instance.new("HingeConstraint")' not in leg
     assert "ActuatorType" not in leg
 
@@ -152,3 +150,25 @@ def test_r17_exact_geometry_and_instance_docs_use_shared_axle_contract() -> None
     assert "R17" in studio
     assert "Beginning only at E03" not in studio
     assert "no rider object is required before E03" not in studio
+
+
+def test_r17_core_tuning_and_technical_docs_match_current_axle_and_camera() -> None:
+    core = read("docs/03_CORE_MECHANICS_SPEC.md")
+    tuning = read("docs/16_BALANCE_TUNING.md")
+    tech = read("docs/11_TECH_DESIGN_ROBLOX.md")
+
+    for doc_name, doc in [("03", core), ("16", tuning), ("11", tech)]:
+        assert "LegPairAssembly" in doc, f"doc {doc_name} must route current rotation to LegPairAssembly"
+        assert "shared axle" in doc.lower(), f"doc {doc_name} must describe the shared axle"
+
+    assert "Один motor/hinge на leg." not in core
+    assert "Use one motorized hinge per leg" not in tuning
+    assert "one motor" in core.lower()
+    assert "one motor" in tuning.lower()
+
+    assert "Free-look yaw limit | **±40°**" not in tuning
+    assert "full 360" in tuning.lower()
+    assert "70°" in tuning or "70" in tuning
+
+    assert "one `AxleJoint`" in tech or "one AxleJoint" in tech
+    assert "attach at current hubs/phase" not in tech
