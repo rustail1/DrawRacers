@@ -79,7 +79,7 @@ if RunService:IsStudio() then
 	local presentationStarted = false
 
 	local function applyStudioGateState()
-		local state = ReplicatedStorage:GetAttribute("DrawRacersStudioGateState")
+		local state = ReplicatedStorage:GetAttribute(STUDIO_GATE_ATTRIBUTE)
 		if state == "READY" then
 			gateBanner.Visible = false
 			startProductionPresentation()
@@ -95,19 +95,20 @@ if RunService:IsStudio() then
 				M0G0PresentationHarness.start()
 			end
 		elseif state == "BLOCKED" then
-			gateBanner.Text = "G0 BLOCKED — SERVER TEST FAILED"
+			gateBanner.Text = string.format("%s BLOCKED — SERVER TEST FAILED", StudioHarnessConfig.Mode)
 			gateBanner.Visible = true
 		else
-			gateBanner.Text = "G0 TESTS RUNNING"
+			gateBanner.Text = string.format("%s TESTS RUNNING", StudioHarnessConfig.Mode)
 			gateBanner.Visible = true
 		end
 	end
 
-	ReplicatedStorage:GetAttributeChangedSignal("DrawRacersStudioGateState"):Connect(applyStudioGateState)
+	ReplicatedStorage:GetAttributeChangedSignal(STUDIO_GATE_ATTRIBUTE):Connect(applyStudioGateState)
 	applyStudioGateState()
 else
 	startProductionPresentation()
 	drawingController:Start()
 end
 
+print("[DrawRacers][ClientGate] READY")
 print("[DrawRacers] client bootstrap ready")
