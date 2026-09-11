@@ -1,22 +1,24 @@
 # SESSION.md — CURRENT STATE
 
 Date: 2026-09-11  
-Documentation version: **v1.5.0 R17 REFERENCE CORE / SHARED AXLE + CAMERA OVERRIDE**
+Documentation version: **v1.5.1 R17 REFERENCE FEEL / SHARED AXLE + CAMERA + SAFE REDRAW**
 
 ## R17 CURRENT OVERRIDE — canonical current state
-This section supersedes any lower historical wording that still calls R16.3B the current implementation or describes Camera/Rider as implementation-pending. The historical R01–R16 evidence below is intentionally retained for regression traceability.
+This section supersedes any lower historical wording that still calls R16.3B the current implementation, describes Camera/Rider as implementation-pending, or treats the historical 180-degree side offset as current. The historical R01–R16 evidence below is intentionally retained for regression traceability.
 
 Current production/reference-core facts:
 - R16.3B stroke semantics remain current: the **first cleaned point** is translated to authoritative `(0,0)` without resizing, mirroring or rotating; the wide `1.75:1` DrawInputRect remains isotropic by height.
 - R17 mechanical override is active in production M0 code: `LegPairAssembly` owns one shared axle, one `AxleRoot`, one `AxleJoint` and **one motor** for both rigid side `LegAssembly` objects.
-- Left/Right consume the same ShapeSpec and keep a **structural 180** degree relation. There is no independent side motor and no runtime phase-chasing correction loop.
-- R17 presentation override is active in M0: production `RaceCameraController` and `RiderPresentationController` are implemented owners. The camera follows Local Racer position rather than body rotation; hold-RMB yaw target supports **full 360°** with bounded pitch and smoothed return. The rider remains client-only, normalized and nonphysical.
-- `R17FINAL` is the one-click Studio evidence aggregator. It runs existing R16 Stage-C evidence, R17 origin comparison, shared-axle phase evidence, body-feel experiment and reference-course evidence before `M0HumanHarness` and `[DrawRacers][R17FINAL] HUMAN REVIEW READY`.
+- Left/Right consume the same ShapeSpec and are **co-phase** on that shared axle (`RightPhaseOffsetDegrees = 0`). There is no independent side motor and no runtime phase-chasing correction loop.
+- R17 presentation override is active in M0: production `RaceCameraController` and `RiderPresentationController` are implemented owners. The camera follows Local Racer position rather than body rotation; normal follow uses a **stable two-axis dead-zone** anchor before smoothing, while hold-RMB yaw supports **full 360°** with bounded pitch and smoothed return. The rider remains client-only, normalized and nonphysical.
+- Instant redraw keeps the old pair active while the replacement remains staged. A bounded **collision-safe redraw phase** search scores candidate phases against Track geometry before retire/commit; body CFrame and linear/angular velocity are not reset by the swap.
+- R17.6 Studio evidence isolates **body density**, **leg density**, **motor speed** and optional **body friction** candidate families on temporary racers. **Production tuning remains unchanged** until live Studio evidence is reviewed; `HUMAN BODY FEEL CHOICE PENDING` is the current tuning state.
+- R17.7 reuses the canonical Flat/Steps/Wall/Gap/Tunnel course across the reference shape set. `R17FINAL` remains the one-click ordered Studio evidence aggregator and exposes `[DrawRacers][R17FINAL] HUMAN REVIEW READY` only after its automated evidence sequence.
 - Committed `StudioHarnessConfig.Mode` remains `G0`; `R17FINAL` is selectable evidence mode and must not be treated as an automatic human PASS.
 - Repository automation may prove source/build contracts only. Live shared-axle solver behavior, camera feel, rider pose/readability, origin/body-feel choices, Studio Gate A/B/C and B17/G0 remain **HUMAN STUDIO PENDING** / human-gated.
 - R17 owner/decision records: `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md` and `DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md`.
 
-Pre-status-reconciliation automated evidence: head `073e90cf2e4b20b5153f0b324351fb2b4e3ca205`, Contract Verify run `34622695996` → **184 passed, 0 failed**, Rokit install PASS and **Rojo build PASS**. This is repository evidence only and does not promote a Studio/human gate.
+Latest pre-documentation reference-feel automated evidence: head `633ea2bf67ada70077c5941532f0a582c00b4a02`, Contract Verify run `34634238162` → **193 passed, 0 failed**, Rokit install PASS and **Rojo build PASS**. This is repository evidence only and does not promote a Studio/human gate.
 
 ## Product state
 The product specification remains closed. CORE/pre-G0 repair **R01–R12**, bounded runtime/evidence closure **R14.1–R14.11**, planar correction **R15/R15.1**, R16 reference-parity work, and the bounded R17 reference-core/shared-axle/presentation overrides stay inside the already-approved B03–B16/B17 scope; they introduce **no new WHAT/WHY gameplay scope**.
@@ -76,7 +78,7 @@ Current retained Stage-A geometry/body contract:
 - **R16.1 Upright Body** — X/Y body translation remains physically free; Z translation remains mechanically lane-locked; rotation about world X/Y/Z is locked/corrected. Only the shared leg pair intentionally rotates for locomotion. `AlignOrientation` uses `AllAxes` with an identity attachment basis.
 - **R16.2 Hub Position** — `PhysicsConfig.LegGeometry` is the sole numeric owner: `HubOffsetX = 0.0`, `HubOffsetY = -0.35`, `HubOffsetZAbs = 1.62`; runtime consumes those values symmetrically.
 - **R16.3 / R16.3B One drawing → Two legs / First-point Origin** — after clamp/dedupe/simplify/resample, the server translates the **first cleaned point** to `(0,0)` without scaling, mirroring or rotating. The resulting first-point-anchored authoritative shape is duplicated as the same XY geometry on Left/Right. The old R16.3A bounds-center rule is superseded.
-- **R16.4 historical Twin-leg Phase requirement** — target right-minus-left phase is 180°. R17 supersedes the old independent-motor/live-per-side phase preservation mechanism with one shared axle and a structural 180 relation.
+- **R16.4 historical Twin-leg Phase requirement** — the historical target right-minus-left phase was 180°. R17 first replaced independent per-side motors with one shared axle, then live reference-video evidence superseded the 180° local side offset itself: current rigid side copies are co-phase (`RightPhaseOffsetDegrees = 0`).
 
 Historical R16.3A pre-Studio closure evidence is retained as history only. R16.3B supersedes its bounds-center mechanical-origin wording while keeping translation invariance, shape-size preservation, no hidden gameplay power and no client-authored world geometry.
 
@@ -108,7 +110,7 @@ The Product Owner explicitly requested repository implementation continue throug
 **R16.8–R16.10 implementation remains present; historical implementation status: IMPLEMENTED/AUTOMATED GREEN. Studio Gate C — HUMAN STUDIO PENDING. Studio Gate A — HUMAN STUDIO PENDING. Studio Gate B — HUMAN STUDIO PENDING.**
 
 Repository-level implementation includes:
-- **R16.8 Redraw parity** — B14 performs 10 redraws while the racer has live motion state. R17 now preserves the single shared axle phase rather than two independent side phases.
+- **R16.8 Redraw parity** — B14 performs 10 redraws while the racer has live motion state. R17 keeps one shared axle and now permits a bounded collision-safe replacement phase adjustment while preserving the body motion state.
 - **R16.9 Reference camera/presentation** — historical side-oriented Studio presentation baseline; R17 production `RaceCameraController` now owns the active camera behavior.
 - **R16.10 Canonical obstacle pass harness** — `R16C` reuses Stage-B evidence, verifies unchanged canonical pieces and performs 10 Heartbeat-spaced live redraws.
 
@@ -134,15 +136,21 @@ Decision owner: `DECISION_LOG_R16_3B_STROKE_ORIGIN_REFERENCE_PARITY_2026-09-10.m
 
 Automation may prove repository contracts/buildability only. No Studio gate is silently marked PASS by CI.
 
+Current repository-side reference-feel closure before Studio:
+- camera normal follow uses the stable two-axis dead-zone while RMB retains full-360 free-look;
+- redraw performs collision-safe redraw phase selection before retiring/committing the old pair and preserves body motion state;
+- R17.6 measures body density `{1.00, 0.60, 0.45, 0.35}`, leg density `{1.00, 0.60, 0.40}`, motor speed `{-8.0, -10.0, -11.5, -12.5}` and body friction `{0.45, 0.25, 0.10}` only on temporary racers; **production tuning remains unchanged** and `HUMAN BODY FEEL CHOICE PENDING`;
+- R17.7 retains the full canonical reference-course matrix and R17FINAL retains the ordered human handoff.
+
 Required next Studio pass is `R17FINAL` and must record:
 - `[StudioGate] TOTAL 13 PASS / 0 FAIL` and `READY` without red DrawRacers runtime errors;
 - R16.5–R16.10 baseline evidence still valid under the shared axle;
 - `[DrawRacers][R17.3]` origin comparison evidence without silently changing production origin;
-- `[DrawRacers][R17.5]` shared-axle phase evidence with one hinge/motor, structural 180 and redraw phase continuity;
-- `[DrawRacers][R17.6]` body-feel candidate telemetry without mutating production tuning;
+- `[DrawRacers][R17.5]` shared-axle phase evidence with one hinge/motor, structural co-phase behavior and redraw continuity;
+- `[DrawRacers][R17.6]` body density / leg density / motor speed / body friction candidate telemetry without mutating production tuning;
 - `[DrawRacers][R17.7]` reference-course evidence;
 - `[DrawRacers][R17FINAL] HUMAN REVIEW READY` only after the ordered evidence;
-- human visual/feel check of rigid twin sides, no relative leg bending/drift, full-360 RMB camera, smooth return, readable rider pose, physical X/Y + mechanical Z lock, redraw continuity and no unexpected runtime errors.
+- human visual/feel check of rigid co-phase twin sides, no relative leg bending/drift, full-360 RMB camera, stable two-axis dead-zone normal follow, smooth return, readable rider pose, physical X/Y + mechanical Z lock, collision-safe redraw continuity and no unexpected runtime errors.
 
 A failure in any item keeps the corresponding gate PENDING and opens only a bounded repair. It does not authorize unrelated M0.5/multiplayer/meta work.
 
@@ -162,7 +170,7 @@ Decision owners: `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md` plus `DE
 Current contract:
 - production `RaceCameraController` and `CameraMath` are active M0 owners; D09 later extends/accepts the same owner for multiplayer/rival readability rather than introducing a second camera;
 - production `RiderPresentationController` is active as a separate normalized nonphysical human mini-avatar layer; E03 later extends/accepts the same owner for 8-player readability rather than introducing a duplicate owner;
-- camera follows Local Racer position only, not BodyCollider rotation; RMB yaw target is full 360°, pitch is bounded, release returns smoothly;
+- camera follows Local Racer position only, not BodyCollider rotation; normal follow uses a stable two-axis dead-zone anchor before smoothing; RMB yaw target is full 360°, pitch is bounded, release returns smoothly;
 - rider target scale hypothesis remains `0.65`; visuals remain nonphysical and never affect BodyCollider/LegPairAssembly/LegAssembly physics;
 - human racers use server-authored `OwnerUserId` for presentation lookup in the current Studio/harness path; bots do not impersonate a Player;
 - camera/rider presentation does not change ShapeSpec/stroke authority, remote schema, checkpoint/finish authority, economy/meta or Rojo mapping;
@@ -188,7 +196,7 @@ Remote GitHub execution cannot assert that the user's local `C:\Dev\DrawRacers` 
 Decision owner: `DECISION_LOG_REMOTE_GITHUB_BUGFIX_WORKFLOW_2026-09-10.md`.
 
 ## Audit notes / remaining risk
-Current layering remains aligned with the architecture: Bootstrap is composition root; `LegShapeService` owns authoritative shape processing; `RacerRuntime` owns body/shared pair/stabilizer/anti-stall lifetime; `LegPairAssembly` owns the one shared axle/motor; `StrokeRemoteTransport` remains transport-only; no early D05 `RacerService` exists.
+Current layering remains aligned with the architecture: Bootstrap is composition root; `LegShapeService` owns authoritative shape processing; `RacerRuntime` owns body/shared pair/stabilizer/anti-stall lifetime; `LegPairAssembly` owns the one shared axle/motor; `StrokeRemoteTransport` remains transport-only; no early D05 `RacerService` exists. Safe redraw phase scoring is pre-commit evidence/placement logic and does not transfer shape authority to the client.
 
 The dominant unresolved risk is live Roblox Studio solver/feel evidence. CI and static contracts can prove ownership/buildability but cannot prove measured speed, obstacle niches, camera readability, rider pose or human acceptance.
 
