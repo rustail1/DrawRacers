@@ -119,15 +119,21 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert 'Name == "DrawInputRect"' in camera or 'Name ~= "DrawInputRect"' in camera
     assert "Enum.UserInputType.Touch" in camera
 
-    # R17.2 rider remains presentation-only but now has a deterministic mount
-    # and a real rig hierarchy. Only HumanoidRootPart is anchored; visible limbs
-    # stay connected by Motor6D so the jockey pose can actually deform the rig.
+    # Rider remains presentation-only. Human video evidence replaced the raw
+    # HRP +0.30 placement with a deterministic pelvis/torso seat reference so
+    # the visible avatar is seated above the cube instead of buried inside it.
     assert 'GetAttribute("OwnerUserId")' in rider
     assert "GetPlayerByUserId" in rider
     assert "RIDER_SCALE = 0.65" in rider
     assert "RIDER_MOUNT_X_OFFSET" in rider
-    assert "RIDER_MOUNT_Y_OFFSET" in rider
-    assert "function RiderPresentationController:_mountCFrame" in rider
+    assert "RIDER_SEAT_CLEARANCE" in rider
+    assert "seatPart: BasePart" in rider
+    assert 'FindFirstChild("LowerTorso")' in rider
+    assert 'FindFirstChild("Torso")' in rider
+    assert "function RiderPresentationController:_targetSeatCFrame" in rider
+    assert "seatPart.Size.Y * 0.5" in rider
+    assert "record.visual:GetPivot():ToObjectSpace(record.seatPart.CFrame)" in rider
+    assert "targetSeat * localSeat:Inverse()" in rider
     assert "ScaleTo(RIDER_SCALE)" in rider
     assert 'IsA("Accessory")' in rider
     assert "CanCollide = false" in rider
@@ -137,6 +143,7 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert 'descendant.Anchored = descendant.Name == "HumanoidRootPart"' in rider
     assert "descendant.Anchored = true" not in rider
     assert "riderHeight * 0.5" not in rider
+    assert "RIDER_MOUNT_Y_OFFSET" not in rider
     assert "BodyCollider" in rider
     assert "body.Position" in rider
     assert "body.CFrame" not in rider
@@ -146,11 +153,12 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "RacerRuntime" not in rider
 
     ensure_record_body = rider.split("function RiderPresentationController:_ensureRecord", 1)[1].split(
-        "function RiderPresentationController:_placeRider", 1
+        "function RiderPresentationController:_targetSeatCFrame", 1
     )[0]
     appearance_loaded_index = ensure_record_body.index("player:HasAppearanceLoaded()")
     clone_index = ensure_record_body.index("cloneCharacterVisual(character)")
-    assert appearance_loaded_index < clone_index
+    seat_index = ensure_record_body.index("findSeatPart(visual)")
+    assert appearance_loaded_index < clone_index < seat_index
 
     assert 'require(controllers:WaitForChild("RaceCameraController"))' in bootstrap
     assert 'require(controllers:WaitForChild("RiderPresentationController"))' in bootstrap
