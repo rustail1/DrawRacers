@@ -74,7 +74,6 @@ def test_r16_3b_draw_ui_uses_full_wide_surface_and_sequence_scoped_presentation_
     assert "presentationAnchor" in drawing
     assert "sequence" in drawing
     assert "StrokeMath.Normalize" in drawing
-    # The receiver may be a local alias; the contract is that the visible wide DrawInputRect is bound.
     assert "inputController:Bind(drawInputRect)" in drawing
 
 
@@ -146,9 +145,10 @@ def test_r16_3b_r16final_orders_automated_evidence_before_human_ready() -> None:
     assert 'StudioHarnessConfig.Mode == "R16FINAL"' in client_bootstrap
 
 
-def test_r16_3b_preserves_two_leg_phase_and_core_physics_tuning() -> None:
+def test_r16_3b_preserves_shape_and_core_physics_tuning_under_r17_shared_axle() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
 
     for token in [
         "AngularVelocity = -8.0",
@@ -163,9 +163,12 @@ def test_r16_3b_preserves_two_leg_phase_and_core_physics_tuning() -> None:
     ]:
         assert token in config
 
-    assert runtime.count("shapeSpec = shapeSpec") >= 2
-    assert "initialPhaseDegrees = leftPhaseDegrees" in runtime
-    assert "initialPhaseDegrees = rightPhaseDegrees" in runtime
+    assert "LegPairAssembly.new" in runtime
+    assert "shapeSpec = shapeSpec" in runtime
+    assert 'side = "Left"' in pair and 'side = "Right"' in pair
+    assert "shapeSpec = params.shapeSpec" in pair
+    assert "RightPhaseOffsetDegrees" in pair
+    assert pair.count('Instance.new("HingeConstraint")') == 1
 
 
 def test_r16_3b_b14_separates_physical_and_visual_part_accounting() -> None:
