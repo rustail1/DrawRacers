@@ -109,3 +109,20 @@ def test_r17_contract_docs_record_shared_axle_and_unbounded_yaw_without_passing_
         assert token.lower() in decision.lower(), f"decision missing token: {token}"
     assert "LegPairAssembly" in architecture
     assert "R17.9" in qa and "R17.14" in qa
+
+
+def test_r17_navigation_map_routes_current_shared_axle_and_full_yaw_owners() -> None:
+    navigation = read("docs/ARCHITECTURE_MAP.md")
+
+    for token in [
+        "LegPairAssembly.lua",
+        "AxleJoint",
+        "one shared axle",
+        "structural 180",
+        "full 360",
+        "R17FINAL",
+    ]:
+        assert token.lower() in navigation.lower(), f"navigation map missing current R17 token: {token}"
+
+    assert "one HingeConstraint motor per leg" not in navigation
+    assert "RMB/touch bounded orbit" not in navigation
