@@ -128,8 +128,9 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "RIDER_MOUNT_X_OFFSET" in rider
     assert "RIDER_SEAT_CLEARANCE" in rider
     assert "seatPart: BasePart" in rider
-    assert 'FindFirstChild("LowerTorso")' in rider
-    assert 'FindFirstChild("Torso")' in rider
+    assert '"LowerTorso"' in rider
+    assert '"Torso"' in rider
+    assert "FindFirstChild(name, true)" in rider
     assert "function RiderPresentationController:_targetSeatCFrame" in rider
     assert "seatPart.Size.Y * 0.5" in rider
     assert "record.visual:GetPivot():ToObjectSpace(record.seatPart.CFrame)" in rider
