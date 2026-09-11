@@ -17,8 +17,11 @@ def test_reference_feel_camera_uses_stable_two_axis_dead_zone_anchor() -> None:
     assert "_deadZoneAnchor" in camera
     assert camera.count("CameraMath.StepDeadZoneAnchor(") >= 2
 
-    assert "self._deadZoneAnchor.X" in camera
-    assert "self._deadZoneAnchor.Y" in camera
+    # Verify the controller reads the stable anchor on both gameplay axes
+    # without requiring one exact private-expression spelling.
+    assert "local anchor = self._deadZoneAnchor" in camera
+    assert "anchor.X" in camera
+    assert "anchor.Y" in camera
     assert "self._smoothedPosition" in camera
     assert "self._deadZoneAnchor" in camera.split("CameraMath.SmoothVector", 1)[1]
 
