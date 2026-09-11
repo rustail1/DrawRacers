@@ -66,16 +66,18 @@ def test_r16_2_studio_instance_contract_uses_canonical_hub_offsets() -> None:
 def test_r16_3_one_shape_builds_two_same_xy_legs_about_fixed_pivot() -> None:
     geometry = read("src/shared/Math/GeometryMath.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
     leg = read("src/server/Runtime/LegAssembly.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
 
     assert "local mapped = point * geometry.LegCanvasHalfSpan" in geometry
     assert "MaxLegExtentFromHub" in geometry
-    assert "stagedLeftLeg = LegAssembly.new" in runtime
-    assert "stagedRightLeg = LegAssembly.new" in runtime
-    assert runtime.count("shapeSpec = shapeSpec") >= 2
-    assert "root.CFrame = hub.CFrame" in leg
-    assert "assertSamePoints(leftLeg:GetMappedPoints(), rightLeg:GetMappedPoints())" in b09
+    assert "stagedLegPair = LegPairAssembly.new" in runtime
+    assert "shapeSpec = shapeSpec" in runtime
+    assert 'side = "Left"' in pair and 'side = "Right"' in pair
+    assert "shapeSpec = params.shapeSpec" in pair
+    assert '"AxleWeld"' in leg
+    assert "assertSamePoints(left:GetMappedPoints(), right:GetMappedPoints())" in b09
 
     apply_shape_spec = runtime.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split(
         "function RacerRuntime:ApplyShape", 1
@@ -219,13 +221,14 @@ def test_r16_1_qa_matrix_uses_exact_upright_acceptance() -> None:
     assert "racer does not endlessly spin from normal contacts" not in locomotion
 
 
-def test_r16_4_phase_is_180_and_redraw_retains_each_side() -> None:
+def test_r16_4_phase_is_180_and_r17_makes_it_structural() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
     b13 = read("src/server/Tests/B13AtomicRedrawSpec.lua")
 
     assert "RightPhaseOffsetDegrees = 180" in config
-    assert "angularDistanceDegrees" in b09
-    assert "phase difference" in b09
-    assert "angularDistanceDegrees(leftPhaseAfter, leftPhaseBefore)" in b13
-    assert "angularDistanceDegrees(rightPhaseAfter, rightPhaseBefore)" in b13
+    assert "phaseDegrees = motor.RightPhaseOffsetDegrees" in pair
+    assert "structural phase difference" in b09
+    assert "single axle phase was not preserved" in b13
+    assert "_StepLegPhaseSync" not in read("src/server/Runtime/RacerRuntime.lua")
