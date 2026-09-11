@@ -23,8 +23,9 @@ export type BuildParams = {
 	racerModel: Model,
 	side: string,
 	shapeSpec: ShapeSpec,
-	motorEnabled: boolean?,
-	initialPhaseDegrees: number?,
+	axleRoot: Part,
+	socketZ: number,
+	phaseDegrees: number?,
 	staged: boolean?,
 }
 
@@ -51,12 +52,13 @@ local function configureVisualPart(visual: Part, color: Color3)
 	visual.CastShadow = false
 end
 
-local function weldVisualToRoot(root: Part, visual: Part)
+local function weldParts(name: string, part0: BasePart, part1: BasePart, parent: Instance)
 	local weld = Instance.new("WeldConstraint")
-	weld.Name = "RootWeld"
-	weld.Part0 = root
-	weld.Part1 = visual
-	weld.Parent = visual
+	weld.Name = name
+	weld.Part0 = part0
+	weld.Part1 = part1
+	weld.Parent = parent
+	return weld
 end
 
 function LegAssembly.new(params: BuildParams)
@@ -65,30 +67,22 @@ function LegAssembly.new(params: BuildParams)
 	assert(type(params.shapeSpec.segmentPlan) == "table", "shapeSpec missing segmentPlan")
 	assert(#params.shapeSpec.segmentPlan > 0, "LegAssembly requires at least one planned segment")
 	assert(#params.shapeSpec.segmentPlan <= PhysicsConfig.LegGeometry.MaxColliderSegmentsPerLeg, "shapeSpec segmentPlan exceeds collider cap")
+	assert(params.axleRoot:IsA("Part"), "LegAssembly requires shared axle root")
 
 	CollisionGroups.ensure()
 
 	local geometry = PhysicsConfig.LegGeometry
-	local motor = PhysicsConfig.Motor
 	local legMaterial = PhysicsConfig.PhysicalMaterials.LegSegment
 	local racerModel = params.racerModel
 	local legsFolder = racerModel:FindFirstChild("Legs")
 	assert(legsFolder and legsFolder:IsA("Folder"), "racerModel missing Legs folder")
 
 	local side = params.side
-	local hubName = if side == "Left" then "LeftHub" else "RightHub"
 	local legName = if side == "Left" then "LeftLeg" else "RightLeg"
-	local initialPhaseDegrees = params.initialPhaseDegrees or 0
+	local phaseDegrees = params.phaseDegrees or 0
 	local staged = params.staged == true
 	local visualColor = if side == "Left" then BACK_VISUAL_COLOR else FRONT_VISUAL_COLOR
 	local visualThickness = geometry.PhysicalLegSegmentThickness * 0.78
-
-	local hub = racerModel:FindFirstChild(hubName)
-	assert(hub and hub:IsA("Part"), string.format("racerModel missing %s", hubName))
-	local hubAttachment = hub:FindFirstChild("MotorAttachment")
-	assert(hubAttachment and hubAttachment:IsA("Attachment"), string.format("%s missing MotorAttachment", hubName))
-	hubAttachment.Axis = Vector3.zAxis
-	hubAttachment.SecondaryAxis = Vector3.yAxis
 
 	if not staged then
 		local existing = legsFolder:FindFirstChild(legName)
@@ -100,7 +94,7 @@ function LegAssembly.new(params: BuildParams)
 	local model = Instance.new("Model")
 	model.Name = legName
 	model:SetAttribute("Side", side)
-	model:SetAttribute("InitialPhaseDegrees", initialPhaseDegrees)
+	model:SetAttribute("StructuralPhaseDegrees", phaseDegrees)
 	if not staged then
 		model.Parent = legsFolder
 	end
@@ -108,7 +102,9 @@ function LegAssembly.new(params: BuildParams)
 	local root = Instance.new("Part")
 	root.Name = "LegRoot"
 	root.Size = Vector3.new(0.2, 0.2, 0.2)
-	root.CFrame = hub.CFrame * CFrame.Angles(0, 0, math.rad(initialPhaseDegrees))
+	root.CFrame = params.axleRoot.CFrame
+		* CFrame.Angles(0, 0, math.rad(phaseDegrees))
+		* CFrame.new(0, 0, params.socketZ)
 	root.Anchored = false
 	root.CanCollide = false
 	root.CanTouch = false
@@ -118,22 +114,7 @@ function LegAssembly.new(params: BuildParams)
 	root.CollisionGroup = RACER_LEG_GROUP
 	root.Parent = model
 
-	local rootAttachment = Instance.new("Attachment")
-	rootAttachment.Name = "MotorAttachment"
-	rootAttachment.Axis = Vector3.zAxis
-	rootAttachment.SecondaryAxis = Vector3.yAxis
-	rootAttachment.Parent = root
-
-	local joint = Instance.new("HingeConstraint")
-	joint.Name = "HubJoint"
-	joint.Attachment0 = hubAttachment
-	joint.Attachment1 = rootAttachment
-	joint.ActuatorType = Enum.ActuatorType.Motor
-	joint.AngularVelocity = motor.AngularVelocity
-	joint.MotorMaxTorque = motor.MotorMaxTorque
-	joint.MotorMaxAcceleration = motor.MotorMaxAcceleration
-	joint.Enabled = params.motorEnabled == true
-	joint.Parent = model
+	weldParts("AxleWeld", params.axleRoot, root, root)
 
 	local segmentsFolder = Instance.new("Folder")
 	segmentsFolder.Name = "Segments"
@@ -172,26 +153,9 @@ function LegAssembly.new(params: BuildParams)
 			legMaterial.FrictionWeight,
 			legMaterial.ElasticityWeight
 		)
-		-- R16.3B separates physical truth from presentation. Collider boxes remain
-		-- authoritative but are never the visible leg artwork.
 		segment.Transparency = 1
 		segment.Parent = segmentsFolder
-
-		local weld = Instance.new("WeldConstraint")
-		weld.Name = "RootWeld"
-		weld.Part0 = root
-		weld.Part1 = segment
-		weld.Parent = segment
-
-		local visual = Instance.new("Part")
-		visual.Name = string.format("VisualSegment_%02d", planned.index)
-		visual.Shape = Enum.PartType.Cylinder
-		visual.Size = Vector3.new(mappedLength + geometry.SegmentOverlapAllowance, visualThickness, visualThickness)
-		visual.CFrame = makeSegmentCFrame(root.CFrame, a, b)
-		configureVisualPart(visual, visualColor)
-		visual.Parent = visualFolder
-		weldVisualToRoot(root, visual)
-
+		weldParts("RootWeld", root, segment, segment)
 		table.insert(segments, segment)
 	end
 
@@ -206,16 +170,29 @@ function LegAssembly.new(params: BuildParams)
 		visual.CFrame = root.CFrame * CFrame.new(point.X, point.Y, 0)
 		configureVisualPart(visual, visualColor)
 		visual.Parent = visualFolder
-		weldVisualToRoot(root, visual)
+		weldParts("RootWeld", root, visual, visual)
+	end
+
+	for _, planned in params.shapeSpec.segmentPlan do
+		local a = planned.a
+		local b = planned.b
+		local mappedLength = (b - a).Magnitude
+		local visual = Instance.new("Part")
+		visual.Name = string.format("VisualSegment_%02d", planned.index)
+		visual.Shape = Enum.PartType.Cylinder
+		visual.Size = Vector3.new(mappedLength + geometry.SegmentOverlapAllowance, visualThickness, visualThickness)
+		visual.CFrame = makeSegmentCFrame(root.CFrame, a, b)
+		configureVisualPart(visual, visualColor)
+		visual.Parent = visualFolder
+		weldParts("RootWeld", root, visual, visual)
 	end
 
 	local self = setmetatable({
 		model = model,
 		root = root,
-		joint = joint,
 		segments = segments,
 		mappedPoints = mappedPoints,
-		initialPhaseDegrees = initialPhaseDegrees,
+		phaseDegrees = phaseDegrees,
 		legsFolder = legsFolder,
 		committed = not staged,
 		destroyed = false,
@@ -234,11 +211,6 @@ function LegAssembly:GetRoot(): Part
 	return self.root
 end
 
-function LegAssembly:GetJoint(): HingeConstraint
-	assert(not self.destroyed, "LegAssembly is destroyed")
-	return self.joint
-end
-
 function LegAssembly:GetSegments(): { Part }
 	assert(not self.destroyed, "LegAssembly is destroyed")
 	return self.segments
@@ -249,9 +221,9 @@ function LegAssembly:GetMappedPoints(): { Vector2 }
 	return self.mappedPoints
 end
 
-function LegAssembly:GetInitialPhaseDegrees(): number
+function LegAssembly:GetStructuralPhaseDegrees(): number
 	assert(not self.destroyed, "LegAssembly is destroyed")
-	return self.initialPhaseDegrees
+	return self.phaseDegrees
 end
 
 function LegAssembly:IsCommitted(): boolean
@@ -269,9 +241,10 @@ function LegAssembly:Commit()
 	self.committed = true
 end
 
-function LegAssembly:SetEnabled(enabled: boolean)
+function LegAssembly:SetRetiring(retiring: boolean)
 	assert(not self.destroyed, "LegAssembly is destroyed")
-	self.joint.Enabled = enabled
+	local baseName = if self.model:GetAttribute("Side") == "Left" then "LeftLeg" else "RightLeg"
+	self.model.Name = if retiring then baseName .. "_Retiring" else baseName
 end
 
 function LegAssembly:Destroy()
@@ -284,7 +257,6 @@ function LegAssembly:Destroy()
 	end
 	self.model = nil
 	self.root = nil
-	self.joint = nil
 	self.legsFolder = nil
 	table.clear(self.segments)
 	table.clear(self.mappedPoints)
