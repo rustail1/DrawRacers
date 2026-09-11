@@ -43,13 +43,17 @@ Client and server can share deterministic-ish pure modules for:
 - dedupe;
 - RDP simplify;
 - resample;
-- center/normalize;
+- first-point anchoring / bounded mapping per `73`;
 - collider segment construction plan.
 Server reruns critical validation.
 
 ## 6. Physical leg representation
-Recommended prototype:
-`Hub BasePart + N simple capsule/box-like Part segments + WeldConstraints + one HingeConstraint Motor`.
+Current R17 production representation is owned by `LegPairAssembly`: one shared axle `AxleRoot` and one motorized `AxleJoint` drive both rigid side shapes. `LegAssembly` owns only each side's welded physical/visual geometry and is rigidly attached to the shared axle.
+
+Conceptually:
+`BodyCollider + one shared axle (LegPairAssembly/AxleRoot/AxleJoint) + Left/Right welded side geometry`.
+
+The right side is structurally fixed at the canonical `180°` phase relative to the left side. Do not create independent per-side hinge motors or runtime phase-chasing correction.
 
 Do NOT make every point a motor. Separate:
 - visual curve: smoother/more segments;
@@ -66,7 +70,7 @@ EditableMesh is optional later for visuals; it is not required for the locked co
 Exact implementation matrix is `65`; gameplay edge-case owner is `28`. There is no alternate “own-assembly collision” policy.
 
 ## 8. Redraw swap
-Build next shape off/disabled → validate → attach at current hubs/phase → enable → remove old. Avoid frame where racer has no legs due to failed build.
+Build one staged replacement `LegPairAssembly` with its shared axle disabled → validate/commit at the current authoritative racer transform while preserving the current shared axle phase → enable the new pair → retire/destroy the old pair atomically. Avoid a frame where both old and new colliders can push the racer, and avoid a frame where a failed build removes the working pair.
 
 ## 9. Lane constraint
 Gameplay is 2.5D: X forward, Y vertical, Z fixed around lane center. Use constraint/force strategy that preserves physical bounce but prevents drift into neighbor lane.
