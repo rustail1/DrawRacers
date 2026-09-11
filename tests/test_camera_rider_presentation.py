@@ -26,7 +26,8 @@ def test_early_camera_rider_presentation_contract() -> None:
         "function CameraMath.ExpAlpha",
         "function CameraMath.SmoothVector",
         "function CameraMath.StepVerticalDeadZone",
-        "function CameraMath.ClampOrbit",
+        "function CameraMath.SmoothAngleDegrees",
+        "function CameraMath.ClampPitch",
         "math.exp",
     ]:
         assert token in camera_math
@@ -41,11 +42,14 @@ def test_early_camera_rider_presentation_contract() -> None:
         "LOOK_TARGET_DAMPING_TIME = 0.12",
         "VERTICAL_DEAD_ZONE = 0.50",
         "VERTICAL_DAMPING_TIME = 0.22",
-        "ORBIT_YAW_LIMIT = 40",
-        "ORBIT_PITCH_LIMIT = 18",
+        "ORBIT_PITCH_LIMIT = 70",
+        "ORBIT_INPUT_DAMPING_TIME = 0.08",
         "ORBIT_RETURN_TIME = 0.40",
+        "_targetOrbitYaw",
+        "_targetOrbitPitch",
     ]:
         assert token in camera
+    assert "ORBIT_YAW_LIMIT" not in camera
 
     assert "function CameraMath.ScreenAnchorCameraX" in camera_math
     assert "verticalFovDegrees" in camera_math
@@ -75,7 +79,8 @@ def test_early_camera_rider_presentation_contract() -> None:
 
     assert "Enum.UserInputType.MouseButton2" in camera
     assert "Enum.UserInputType.MouseButton1" not in camera
-    assert "CameraMath.ClampOrbit" in camera
+    assert "CameraMath.ClampPitch" in camera
+    assert "CameraMath.SmoothAngleDegrees" in camera
     assert "ORBIT_RETURN_TIME" in camera
 
     for token in [
