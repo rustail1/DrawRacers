@@ -36,7 +36,9 @@ def test_r07_b16_reports_raw_physics_point_counts_and_actual_motor_state() -> No
     assert "DebugMotorEnabled" in telemetry
     assert "DebugMotorEnabled" in panel
     assert "DebugMotorEnabled" in studio_spec
-    assert "HubJoint" in telemetry
+    assert "AxleRoot" in telemetry
+    assert "AxleJoint" in telemetry
+    assert "AxleJoint" in studio_spec
 
 
 def test_r07_runtime_debug_folder_uses_dev_staging_environment_gate_not_studio_only() -> None:
