@@ -57,6 +57,7 @@ if RunService:IsStudio() then
 	if specsPassed then
 		local function startSelectedHarness()
 			local harnessMode = StudioHarnessConfig.Mode
+			print(string.format("[DrawRacers][StudioGate] selected mode=%s", tostring(harnessMode)))
 			if harnessMode == "G0" then
 				local M0HumanHarness = require(testsFolder:WaitForChild("M0HumanHarness"))
 				M0HumanHarness.start()
@@ -89,7 +90,7 @@ if RunService:IsStudio() then
 		local harnessOk, harnessError = xpcall(startSelectedHarness, debug.traceback)
 		if specsPassed and harnessOk then
 			ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "READY")
-			print("[DrawRacers][StudioGate] READY")
+			print("[DrawRacers][StudioGate] SERVER READY — client bootstrap must also report [ClientGate] READY")
 		else
 			ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "BLOCKED")
 			warn("[DrawRacers][StudioGate] harness start failed: " .. tostring(harnessError))
