@@ -11,6 +11,10 @@ def test_r14_9_ci_still_runs_contracts_then_pinned_rojo_build() -> None:
     workflow = read(".github/workflows/contract-verify.yml")
     rokit = read("rokit.toml")
 
+    assert "actions/checkout@v5" in workflow
+    assert "actions/setup-python@v6" in workflow
+    assert "actions/checkout@v4" not in workflow
+    assert "actions/setup-python@v5" not in workflow
     assert "python verify.py" in workflow
     assert "paradoxum-games/setup-rokit@v3" in workflow
     assert "rokit install --no-trust-check" in workflow
