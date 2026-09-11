@@ -36,17 +36,38 @@ local function contactMatches(part: BasePart, options: any?): boolean
 	return string.sub(part.Name, 1, #prefix) == prefix
 end
 
+local function partTouchesTrack(part: BasePart, model: Model, options: any?): boolean
+	if not part.CanTouch then
+		return false
+	end
+	for _, touchingPart in part:GetTouchingParts() do
+		if not touchingPart:IsDescendantOf(model)
+			and touchingPart.CollisionGroup == "Track"
+			and contactMatches(touchingPart, options)
+		then
+			return true
+		end
+	end
+	return false
+end
+
 local function hasTrackContact(model: Model, options: any?): boolean
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("BasePart") and descendant.CanTouch then
-			for _, touchingPart in descendant:GetTouchingParts() do
-				if not touchingPart:IsDescendantOf(model)
-					and touchingPart.CollisionGroup == "Track"
-					and contactMatches(touchingPart, options)
-				then
-					return true
-				end
-			end
+		if descendant:IsA("BasePart") and partTouchesTrack(descendant, model, options) then
+			return true
+		end
+	end
+	return false
+end
+
+local function legsTouchTrack(model: Model, options: any?): boolean
+	local legs = model:FindFirstChild("Legs")
+	if legs == nil then
+		return false
+	end
+	for _, descendant in legs:GetDescendants() do
+		if descendant:IsA("BasePart") and partTouchesTrack(descendant, model, options) then
+			return true
 		end
 	end
 	return false
@@ -93,8 +114,6 @@ local function finishSpawn(racer: any, shapeId: string): any
 	local model = racer:GetModel()
 	model:SetAttribute("R16Trial", true)
 	racer:ApplyShape(R16ReferenceShapes.Get(shapeId), true)
-	-- Internal Studio/test shapes intentionally bypass the network version increment.
-	-- Give anti-stall the same semantic state as a racer with one accepted shape.
 	model:SetAttribute("ShapeVersion", 1)
 	return racer
 end
@@ -189,6 +208,97 @@ function R16TrialRunner.RunFlat(shapeId: string): any
 	result.speed = result.progress / math.max(elapsed, 1e-6)
 	result.maxDeltaY = maxY - startY
 	result.minDeltaY = minY - startY
+	result.motorsEnabled = allMotorsEnabled(model)
+	R16TrialRunner.DestroyActive()
+	return result
+end
+
+-- R17 evidence-only API. bodyOptions are applied only to this temporary racer,
+-- which is destroyed at the end of the trial; production PhysicsConfig is never mutated.
+function R16TrialRunner.RunFlatTelemetry(shapeId: string, bodyOptions: any): any
+	assert(RunService:IsStudio(), "R16TrialRunner is Studio-only")
+	R16TrialRunner.DestroyActive()
+	local benchmark = M0SceneConfig.ReferenceBenchmark
+	local acceptance = M0SceneConfig.ReferenceAcceptance
+	local racer = RacerRuntime.new({
+		raceId = "R17_BODY_FEEL_TRIAL",
+		slotIndex = 6,
+		laneIndex = 1,
+		isBot = true,
+		trackId = "M0_R17_BODY_FEEL",
+		spawnCFrame = CFrame.new(benchmark.SpawnX, benchmark.SpawnY, benchmark.CenterZ),
+		laneCenterZ = benchmark.CenterZ,
+	})
+	finishSpawn(racer, shapeId)
+	local model = racer:GetModel()
+	local body = racer:GetBody()
+	local baselineProperties = body.CustomPhysicalProperties
+	assert(baselineProperties ~= nil, "BodyCollider must have CustomPhysicalProperties")
+
+	local density = bodyOptions.density or baselineProperties.Density
+	local friction = bodyOptions.friction or baselineProperties.Friction
+	local colliderSize = bodyOptions.colliderSize or body.Size.X
+	body.CustomPhysicalProperties = PhysicalProperties.new(
+		density,
+		friction,
+		baselineProperties.Elasticity,
+		baselineProperties.FrictionWeight,
+		baselineProperties.ElasticityWeight
+	)
+	body.Size = Vector3.new(colliderSize, colliderSize, colliderSize)
+
+	local contactOptions = { contactName = benchmark.Name }
+	local result = {
+		valid = true,
+		duration = 0,
+		bodyContactTime = 0,
+		legContactTime = 0,
+		airTime = 0,
+		forwardDistance = 0,
+		averageSpeed = 0,
+		stuckTime = 0,
+		antiStallSeen = false,
+		motorsEnabled = false,
+	}
+
+	if not waitForTrackContact(racer, acceptance.TrackContactTimeout, contactOptions) then
+		result.valid = false
+		R16TrialRunner.DestroyActive()
+		return result
+	end
+
+	local settleElapsed = 0
+	while settleElapsed < acceptance.FlatIgnoreSeconds do
+		settleElapsed += RunService.Heartbeat:Wait()
+	end
+
+	local startX = body.Position.X
+	local elapsed = 0
+	while elapsed < acceptance.FlatMeasureSeconds do
+		local dt = RunService.Heartbeat:Wait()
+		elapsed += dt
+		local bodyContact = partTouchesTrack(body, model, contactOptions)
+		local legContact = legsTouchTrack(model, contactOptions)
+		if bodyContact then
+			result.bodyContactTime += dt
+		end
+		if legContact then
+			result.legContactTime += dt
+		end
+		if not bodyContact and not legContact then
+			result.airTime += dt
+		end
+		if math.abs(body.AssemblyLinearVelocity.X) < 0.5 then
+			result.stuckTime += dt
+		end
+		if model:GetAttribute("AntiStallActive") == true then
+			result.antiStallSeen = true
+		end
+	end
+
+	result.duration = elapsed
+	result.forwardDistance = body.Position.X - startX
+	result.averageSpeed = result.forwardDistance / math.max(elapsed, 1e-6)
 	result.motorsEnabled = allMotorsEnabled(model)
 	R16TrialRunner.DestroyActive()
 	return result
