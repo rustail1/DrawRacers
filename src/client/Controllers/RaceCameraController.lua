@@ -147,6 +147,11 @@ function RaceCameraController:_applyOrbitDelta(delta: Vector2)
 end
 
 function RaceCameraController:_step(dt: number)
+	if not self._mouseOrbitHeld and self._touchOrbitInput == nil then
+		self._orbitYaw = CameraMath.SmoothNumber(self._orbitYaw, 0, dt, ORBIT_RETURN_TIME)
+		self._orbitPitch = CameraMath.SmoothNumber(self._orbitPitch, 0, dt, ORBIT_RETURN_TIME)
+	end
+
 	local body = findLocalRacerBody()
 	if body == nil then
 		self:_releaseCamera()
@@ -174,11 +179,6 @@ function RaceCameraController:_step(dt: number)
 		)
 		local nextZ = CameraMath.SmoothNumber(current.Z, rawPosition.Z, dt, POSITION_DAMPING_TIME)
 		self._smoothedPosition = Vector3.new(nextX, nextY, nextZ)
-	end
-
-	if not self._mouseOrbitHeld and self._touchOrbitInput == nil then
-		self._orbitYaw = CameraMath.SmoothNumber(self._orbitYaw, 0, dt, ORBIT_RETURN_TIME)
-		self._orbitPitch = CameraMath.SmoothNumber(self._orbitPitch, 0, dt, ORBIT_RETURN_TIME)
 	end
 
 	local smoothedPosition = self._smoothedPosition :: Vector3
