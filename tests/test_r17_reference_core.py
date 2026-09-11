@@ -25,16 +25,19 @@ def test_r17_3_origin_experiment_contract() -> None:
 
 def test_r17_5_live_phase_evidence_contract() -> None:
     path = ROOT / "src/server/Tests/R17PhaseEvidence.lua"
-    assert path.exists(), "R17.5 requires live hinge phase evidence"
+    assert path.exists(), "R17.5 requires live shared-axle phase evidence"
     text = path.read_text(encoding="utf-8")
     for token in [
         'RacerRuntime', 'R16ReferenceShapes', 'RunService.Heartbeat:Wait()',
-        'PHASE_TARGET_DEGREES = 180', 'STEADY_ERROR_LIMIT = 5', 'EXCURSION_ERROR_LIMIT = 10',
-        'MAX_EXCURSION_SECONDS = 0.25', 'injectDrift', 'measurePhaseWindow', 'motorSignSafe',
-        'averageMotorVelocity', 'redraw', '[DrawRacers][R17.5]',
+        'PHASE_TARGET_DEGREES = 180', 'STRUCTURAL_ERROR_LIMIT = 0.15', 'MEASURE_SECONDS = 1.25',
+        'structuralPhaseErrorDegrees', 'countHinges', 'GetLegPair', 'GetPhaseDegrees',
+        'AxleJoint', 'redrawDelta <= 1.0', 'singleMotorSafe', 'axleTravel',
+        'shared-axle phase evidence starting', '[DrawRacers][R17.5]',
         'function R17PhaseEvidence.RunEvidence()',
     ]:
-        assert token in text, f"missing R17.5 phase evidence token: {token}"
+        assert token in text, f"missing R17.5 structural phase evidence token: {token}"
+    for obsolete in ['injectDrift', '_StepLegPhaseSync', 'PhaseLockRecoveryTime', 'averageMotorVelocity']:
+        assert obsolete not in text
     assert 'AngularVelocity = -PhysicsConfig.Motor.AngularVelocity' not in text
     assert 'FireServer' not in text
 
