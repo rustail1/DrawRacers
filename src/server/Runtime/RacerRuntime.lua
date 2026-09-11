@@ -156,6 +156,10 @@ local function captureLegPhaseDegrees(leg: any, hub: Part, fallbackDegrees: numb
 	return math.deg(z)
 end
 
+local function signedAngularDeltaDegrees(targetDegrees: number, currentDegrees: number): number
+	return (targetDegrees - currentDegrees + 180) % 360 - 180
+end
+
 local function makeInternalShapeSpec(normalizedPoints: { Vector2 }): ShapeSpec
 	-- R16.3B test/reference shapes use the same mechanical-origin semantics as
 	-- player shapes: the first point is the hub-relative origin.
@@ -231,9 +235,16 @@ function RacerRuntime.new(params: SpawnParams)
 		rightLeg = nil,
 		stabilizer = stabilizer,
 		antiStall = antiStall,
+		phaseSyncConnection = nil :: RBXScriptConnection?,
 		currentShapeSpec = nil :: ShapeSpec?,
 		destroyed = false,
 	}, RacerRuntime)
+
+	self.phaseSyncConnection = RunService.Heartbeat:Connect(function()
+		if not self.destroyed then
+			self:_StepLegPhaseSync()
+		end
+	end)
 
 	return self
 end
@@ -272,6 +283,62 @@ function RacerRuntime:GetCurrentShapeSpec(): ShapeSpec?
 	return self.currentShapeSpec
 end
 
+function RacerRuntime:_StepLegPhaseSync()
+	if self.destroyed or self.model == nil or self.leftLeg == nil or self.rightLeg == nil then
+		return
+	end
+
+	local leftJoint = self.leftLeg:GetJoint()
+	local rightJoint = self.rightLeg:GetJoint()
+	local motor = PhysicsConfig.Motor
+	local baseAngularVelocity = motor.AngularVelocity
+
+	if not leftJoint.Enabled or not rightJoint.Enabled then
+		leftJoint.AngularVelocity = baseAngularVelocity
+		rightJoint.AngularVelocity = baseAngularVelocity
+		return
+	end
+
+	local leftHub = self.model:FindFirstChild("LeftHub")
+	local rightHub = self.model:FindFirstChild("RightHub")
+	if not (leftHub and leftHub:IsA("Part") and rightHub and rightHub:IsA("Part")) then
+		return
+	end
+
+	local leftPhaseDegrees = captureLegPhaseDegrees(self.leftLeg, leftHub, 0)
+	local rightPhaseDegrees = captureLegPhaseDegrees(self.rightLeg, rightHub, motor.RightPhaseOffsetDegrees)
+	local currentDifference = (rightPhaseDegrees - leftPhaseDegrees + 360) % 360
+	local phaseErrorDegrees = signedAngularDeltaDegrees(motor.RightPhaseOffsetDegrees, currentDifference)
+
+	if math.abs(phaseErrorDegrees) <= motor.PhaseLockToleranceDegrees then
+		leftJoint.AngularVelocity = baseAngularVelocity
+		rightJoint.AngularVelocity = baseAngularVelocity
+		return
+	end
+
+	local relativeCorrection = math.clamp(
+		math.rad(phaseErrorDegrees) / motor.PhaseLockRecoveryTime,
+		-motor.PhaseLockMaxRelativeCorrection,
+		motor.PhaseLockMaxRelativeCorrection
+	)
+	local halfCorrection = relativeCorrection * 0.5
+	local leftVelocity = baseAngularVelocity - halfCorrection
+	local rightVelocity = baseAngularVelocity + halfCorrection
+
+	-- Keep both hinges in the canonical locomotion direction. The phase lock is
+	-- allowed to bias their speeds symmetrically, never to reverse one wheel.
+	if baseAngularVelocity < 0 then
+		leftVelocity = math.min(leftVelocity, -0.001)
+		rightVelocity = math.min(rightVelocity, -0.001)
+	elseif baseAngularVelocity > 0 then
+		leftVelocity = math.max(leftVelocity, 0.001)
+		rightVelocity = math.max(rightVelocity, 0.001)
+	end
+
+	leftJoint.AngularVelocity = leftVelocity
+	rightJoint.AngularVelocity = rightVelocity
+end
+
 function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolean?)
 	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
 	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table", "shapeSpec missing segmentPlan")
@@ -288,11 +355,7 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 	local oldLeftLeg = self.leftLeg
 	local oldRightLeg = self.rightLeg
 	local leftPhaseDegrees = captureLegPhaseDegrees(oldLeftLeg, leftHub, 0)
-	local rightPhaseDegrees = captureLegPhaseDegrees(
-		oldRightLeg,
-		rightHub,
-		PhysicsConfig.Motor.RightPhaseOffsetDegrees
-	)
+	local rightPhaseDegrees = leftPhaseDegrees + PhysicsConfig.Motor.RightPhaseOffsetDegrees
 
 	local stagedLeftLeg = nil
 	local stagedRightLeg = nil
@@ -374,7 +437,7 @@ function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: bo
 end
 
 function RacerRuntime:ApplyValidatedShape(shapeSpec: ShapeSpec, motorEnabled: boolean?)
-	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
+	assert(not self.destroyed and self.model ~= nil, "ApplyValidatedShape requires live RacerRuntime")
 	assert(type(shapeSpec) == "table", "ApplyValidatedShape requires ShapeSpec")
 	assert(type(shapeSpec.version) == "number", "ShapeSpec missing numeric version")
 	assert(type(shapeSpec.normalizedPoints) == "table", "ShapeSpec missing normalizedPoints")
@@ -400,6 +463,10 @@ function RacerRuntime:Destroy()
 	end
 
 	self.destroyed = true
+	if self.phaseSyncConnection then
+		self.phaseSyncConnection:Disconnect()
+		self.phaseSyncConnection = nil
+	end
 	if self.leftLeg then
 		self.leftLeg:Destroy()
 		self.leftLeg = nil
