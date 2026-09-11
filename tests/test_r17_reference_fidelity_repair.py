@@ -126,3 +126,29 @@ def test_r17_navigation_map_routes_current_shared_axle_and_full_yaw_owners() -> 
 
     assert "one HingeConstraint motor per leg" not in navigation
     assert "RMB/touch bounded orbit" not in navigation
+
+
+def test_r17_exact_geometry_and_instance_docs_use_shared_axle_contract() -> None:
+    geometry = read("docs/73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md")
+    studio = read("docs/65_STUDIO_DATAMODEL_INSTANCE_PROPERTY_SPEC.md")
+
+    for doc_name, doc in [("73", geometry), ("65", studio)]:
+        for token in [
+            "LegPairAssembly",
+            "AxleRoot",
+            "AxleJoint",
+            "AxleMotorAttachment",
+            "LegSocketZAbs = 1.5",
+            "structural 180",
+            "one motor",
+            "HUMAN STUDIO PENDING",
+        ]:
+            assert token.lower() in doc.lower(), f"doc {doc_name} missing current R17 token: {token}"
+
+        assert "HubJoint" not in doc, f"doc {doc_name} still specifies obsolete per-side HubJoint"
+        assert "Hinge motor rotates LegRoot" not in doc, f"doc {doc_name} still gives a side LegRoot its own motor"
+
+    assert "R17" in geometry
+    assert "R17" in studio
+    assert "Beginning only at E03" not in studio
+    assert "no rider object is required before E03" not in studio
