@@ -17,7 +17,11 @@ local CAMERA_HEIGHT = 10
 local SIDE_DISTANCE = 23
 local POSITION_DAMPING_TIME = 0.16
 local LOOK_TARGET_DAMPING_TIME = 0.12
-local VERTICAL_DEAD_ZONE = 0.50
+-- Reference-feel starting hypothesis. The stable anchor does not move while the
+-- racer stays inside these world-space bands; Studio evidence may tune the
+-- widths later without changing the ownership model.
+local HORIZONTAL_DEAD_ZONE = 2.50
+local VERTICAL_DEAD_ZONE = 1.25
 local VERTICAL_DAMPING_TIME = 0.22
 local ORBIT_PITCH_LIMIT = 70
 local ORBIT_INPUT_DAMPING_TIME = 0.08
@@ -78,6 +82,7 @@ function RaceCameraController.new(playerGui: PlayerGui)
 		_ownedCamera = nil :: Camera?,
 		_previousCameraType = nil :: Enum.CameraType?,
 		_previousFieldOfView = nil :: number?,
+		_deadZoneAnchor = nil :: Vector3?,
 		_smoothedPosition = nil :: Vector3?,
 		_smoothedLookTarget = nil :: Vector3?,
 		_targetOrbitYaw = 0,
@@ -162,6 +167,7 @@ function RaceCameraController:_releaseCamera()
 	self._ownedCamera = nil
 	self._previousCameraType = nil
 	self._previousFieldOfView = nil
+	self._deadZoneAnchor = nil
 	self._smoothedPosition = nil
 	self._smoothedLookTarget = nil
 	self._targetOrbitYaw = 0
@@ -211,20 +217,31 @@ function RaceCameraController:_step(dt: number)
 	self:_captureCamera(camera)
 
 	local rawPosition = body.Position
-	if self._smoothedPosition == nil then
+	if self._deadZoneAnchor == nil then
+		self._deadZoneAnchor = rawPosition
 		self._smoothedPosition = rawPosition
 	else
-		local current = self._smoothedPosition
-		local nextX = CameraMath.SmoothNumber(current.X, rawPosition.X, dt, POSITION_DAMPING_TIME)
-		local nextY = CameraMath.StepVerticalDeadZone(
+		local anchor = self._deadZoneAnchor
+		local nextAnchorX = CameraMath.StepDeadZoneAnchor(anchor.X, rawPosition.X, HORIZONTAL_DEAD_ZONE)
+		local nextAnchorY = CameraMath.StepDeadZoneAnchor(anchor.Y, rawPosition.Y, VERTICAL_DEAD_ZONE)
+		-- Lane Z is mechanically constrained. Keep the camera's side anchor stable
+		-- instead of feeding tiny solver Z errors back into presentation.
+		self._deadZoneAnchor = Vector3.new(nextAnchorX, nextAnchorY, anchor.Z)
+
+		local current = self._smoothedPosition or self._deadZoneAnchor
+		local nextPosition = CameraMath.SmoothVector(
+			current,
+			self._deadZoneAnchor,
+			dt,
+			POSITION_DAMPING_TIME
+		)
+		local nextY = CameraMath.SmoothNumber(
 			current.Y,
-			rawPosition.Y,
-			VERTICAL_DEAD_ZONE,
+			self._deadZoneAnchor.Y,
 			dt,
 			VERTICAL_DAMPING_TIME
 		)
-		local nextZ = CameraMath.SmoothNumber(current.Z, rawPosition.Z, dt, POSITION_DAMPING_TIME)
-		self._smoothedPosition = Vector3.new(nextX, nextY, nextZ)
+		self._smoothedPosition = Vector3.new(nextPosition.X, nextY, nextPosition.Z)
 	end
 
 	local smoothedPosition = self._smoothedPosition :: Vector3
