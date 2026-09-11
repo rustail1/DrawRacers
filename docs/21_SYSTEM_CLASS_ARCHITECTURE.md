@@ -5,13 +5,13 @@
 
 > В Luau не нужно превращать всё в OOP. Здесь слово «класс» означает stateful runtime object там, где lifetime действительно полезен. Stateless вычисления остаются обычными ModuleScript-функциями.
 
-R17 Product Owner override is canonical for current M0 presentation work: `CameraMath` / `RaceCameraController` and `RiderPresentationController` are active provisional M0 owners under `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md`. D09 and E03 are now later multiplayer/readability extension-and-acceptance tasks for these existing owners, not their first introduction. This exception does **not** authorize unrelated later modules: in particular `RacerService` remains D05 and C01+ remains sequence-gated.
+R17 Product Owner override is canonical for current M0 reference work. Presentation owners `CameraMath` / `RaceCameraController` and `RiderPresentationController` are active provisional M0 owners under `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md`; the mechanical reference-fidelity override under `DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md` makes `LegPairAssembly` the production owner of one shared axle, one `AxleJoint` motor and the structural 180° relation between the two rigid side `LegAssembly` children. D09 and E03 are later multiplayer/readability extension-and-acceptance tasks for the existing presentation owners, not their first introduction. These bounded R17 exceptions do **not** authorize unrelated later modules: in particular `RacerService` remains D05 and C01+ remains sequence-gated.
 
 ---
 
 # 1. DataModel target tree
 
-The tree below is **TARGET architecture** for the ordered production route. It **does not authorize early implementation** of modules before their task/milestone becomes active in `25/66`, except for the explicit R17 camera/rider override above. In particular, **RacerService remains D05**. M0/B17 uses the existing **Studio-only injected resolver** in `M0HumanHarness`; **Do not implement RacerService before D05**.
+The tree below is **TARGET architecture** for the ordered production route. It **does not authorize early implementation** of modules before their task/milestone becomes active in `25/66`, except for the explicit bounded R17 overrides above. In particular, **RacerService remains D05**. M0/B17 uses the existing **Studio-only injected resolver** in `M0HumanHarness`; **Do not implement RacerService before D05**.
 
 ```text
 ReplicatedStorage
@@ -75,6 +75,7 @@ ServerScriptService
 ├── Runtime
 │   ├── RaceRuntime.lua
 │   ├── RacerRuntime.lua
+│   ├── LegPairAssembly.lua
 │   ├── LegAssembly.lua
 │   ├── TrackRuntime.lua
 │   ├── CheckpointTracker.lua
@@ -201,14 +202,14 @@ Does not process raw stroke math itself. For human racers, production spawn is a
 ---
 
 ## LegShapeService
-**Owns:** authoritative stroke validation and conversion `StrokePayload → ShapeSpec → LegAssembly pair`.
+**Owns:** authoritative stroke validation and conversion `StrokePayload → ShapeSpec → LegPairAssembly`.
 
 ```text
 ValidateAndBuild(player, racerRuntime, payload) -> Result
 DestroyShape(shapeVersion)
 ```
 
-Internally uses pure `StrokeMath` and `LegAssembly` constructor.
+Internally uses pure `StrokeMath`/`GeometryMath` and asks `RacerRuntime` to atomically replace the current shared `LegPairAssembly`. `LegAssembly` is only the rigid side-geometry constructor used by the pair; it is not an independent motor owner.
 
 Does NOT decide race placement/reward.
 
@@ -355,7 +356,8 @@ Owns:
 player
 model/body
 laneRuntime
-leftLeg/rightLeg
+legPair
+leftLeg/rightLeg aliases to rigid pair children
 shapeVersion
 checkpointTracker
 finished
@@ -364,13 +366,14 @@ respawning
 
 ```text
 ApplyShape(shapeSpec)
-SetMotorEnabled(enabled)
+ApplyValidatedShape(shapeSpec)
+GetLegPair()
 RespawnAt(checkpoint)
 SetFinished()
 Destroy()
 ```
 
-`ApplyShape` delegates physical creation to LegShapeService/LegAssembly factory and performs atomic swap. It does not own camera or rider rendering.
+`ApplyShape` / `ApplyValidatedShape` stage and atomically replace one shared `LegPairAssembly`. Redraw preserves the current single axle phase and BodyCollider motion state; failed build/commit/enable restores the previous pair. `RacerRuntime` does not run a Heartbeat phase-chasing controller and does not own camera or rider rendering.
 
 ---
 
@@ -400,27 +403,67 @@ Invariant: no teleport/rubber-band/hidden physics boost. Policy values are froze
 
 ---
 
-## LegAssembly
-One per physical leg.
+## LegPairAssembly
+One per currently accepted racer shape. This is the R17 mechanical owner for the rotating pair.
 
-Owns actual Instances:
+Owns actual Instances/state:
 ```text
-hub
-hinge
-segments[]
-visuals[]
-model
+AxleRoot
+AxleJoint (single HingeConstraint)
+one motor configuration
+leftLeg/rightLeg rigid LegAssembly children
+single current axle phase
 ```
 
+Conceptual/runtime contract:
 ```text
-new(shapeSpec, side, mount)
-Mount()
-SetPhase(angle)
+new(racerModel, shapeSpec, motorEnabled?, initialPhaseDegrees?, staged?)
+GetRoot()
+GetJoint()
+GetLeftLeg()
+GetRightLeg()
+GetPhaseDegrees()
+Commit()
 SetEnabled(bool)
+SetRetiring(bool)
 Destroy()
 ```
 
-One leg = one rotating rigid assembly + one motor. Never one motor per segment.
+Invariants:
+- exactly one `AxleJoint` motor drives both sides;
+- both side shapes use the same authoritative ShapeSpec and locomotion direction;
+- right side is mounted at `RightPhaseOffsetDegrees = 180` relative to left, structurally, not by continuous velocity correction;
+- side sockets use the canonical `LegSocketZAbs` surface offset;
+- redraw swaps the whole pair atomically and preserves one axle phase;
+- no second hidden hinge/motor may be introduced in a side `LegAssembly`.
+
+---
+
+## LegAssembly
+One per rigid visual/physical side of a `LegPairAssembly`.
+
+Owns actual side Instances:
+```text
+LegRoot
+segments[]
+visuals[]
+model
+socket mount / fixed phase transform relative to AxleRoot
+```
+
+Conceptual/runtime contract:
+```text
+new(racerModel, side, shapeSpec, axleRoot, socketZ, phaseDegrees, staged?)
+GetRoot()
+GetMappedPoints()
+GetSegments()
+GetModel()
+Commit()
+SetRetiring(bool)
+Destroy()
+```
+
+`LegAssembly` owns **no HingeConstraint and no motor**. Its physical segments are rigidly welded to its `LegRoot`; the `LegRoot` is rigidly mounted to the pair's `AxleRoot`. Presentation geometry remains non-colliding/non-touching/non-querying/massless. The pair, not either side, owns rotation and motor lifetime.
 
 ---
 
@@ -471,7 +514,7 @@ No Instances, no remotes, no player state.
 Transforms `ShapeSpec` into segment transforms/sizes; no world ownership.
 
 ## CameraMath
-Active under the R17 M0 reference-core override. Pure deterministic helpers for frame-rate-independent camera smoothing, vertical dead-zone response and bounded orbit/return math. No Instances, no UserInputService, no remotes and no racer authority. D09 later extends/accepts this same owner for rival/multiplayer readability rather than introducing a second camera system.
+Active under the R17 M0 reference-core override. Pure deterministic helpers for frame-rate-independent camera smoothing, vertical dead-zone response and orbit/return math. No Instances, no UserInputService, no remotes and no racer authority. R17.9 allows full 360° yaw target while keeping pitch bounded and rendered motion smoothed. D09 later extends/accepts this same owner for rival/multiplayer readability rather than introducing a second camera system.
 
 ## TrackMath
 Authoring/validation math for Start→End placement, clearance and topology checks.
@@ -494,7 +537,7 @@ Flow:
 Old active leg remains during drawing.
 
 ## RaceCameraController
-Active M0/R17 production presentation owner. Scriptable camera reads replicated Local Racer position and race state and owns smoothed follow/look-ahead, vertical dead-zone response, bounded RMB/touch world-orbit state and automatic return to canonical side framing. It derives orientation from camera policy, never from BodyCollider rotation, never authors gameplay state, and never sends camera-orientation remotes. Exact starting values live in `16`; input priority lives in `59/68`. D09 is the later 2-player/rival/readability extension and acceptance of this same owner. Spectator target policy remains `74`.
+Active M0/R17 production presentation owner. Scriptable camera reads replicated Local Racer position and race state and owns smoothed follow/look-ahead, vertical dead-zone response, full-yaw RMB/touch world-orbit target state and automatic return to canonical side framing. The rendered orbit is smoothed; pitch remains bounded. It derives orientation from camera policy, never from BodyCollider rotation, never authors gameplay state, and never sends camera-orientation remotes. Exact starting values live in `16`; input priority lives in `59/68`. D09 is the later 2-player/rival/readability extension and acceptance of this same owner. Spectator target policy remains `74`.
 
 ## RiderPresentationController
 **Active provisional M0/R17 presentation owner by Product Owner override.** E03 is the later 8-player/readability extension and acceptance task; it is no longer the first introduction of this controller.
@@ -502,7 +545,7 @@ Active M0/R17 production presentation owner. Scriptable camera reads replicated 
 Owns one human rider's local visual lifecycle: Player identity → server-authored racer `OwnerUserId` lookup → standardized normalized mini-avatar visual → deterministic jockey/frog-rider pose → cleanup. It may render under `Workspace.Runtime.RacePresentation` and may read player appearance, but it has no gameplay authority.
 
 It does **not** own:
-- physical BodyCollider/LegAssembly or movement;
+- physical BodyCollider/LegPairAssembly/LegAssembly or movement;
 - camera targeting;
 - checkpoint/finish state;
 - Draw Racers cosmetic ownership/equip;
@@ -539,6 +582,8 @@ M2. Resolves semantic VFX/haptic feedback from `47/69`; respects Reduce Motion a
 |---|---|
 | Raw pointer path before submit | local DrawingController |
 | Accepted normalized ShapeSpec | server LegShapeService |
+| Shared axle / motor / structural left-right phase | server LegPairAssembly |
+| Side collider + visible leg geometry | server LegAssembly under LegPairAssembly |
 | Physical racer | server authority / server authoritative simulation |
 | Race phase | RaceService/RaceRuntime |
 | Placement | RaceRuntime after ProgressValidation |
@@ -572,7 +617,9 @@ M2. Resolves semantic VFX/haptic feedback from `47/69`; respects Reduce Motion a
                         |
                  LegShapeService
                     /       \
-              StrokeMath   LegAssembly
+              StrokeMath   LegPairAssembly
+                                |
+                           LegAssembly
 
 ProgressValidationService → RaceRuntime/RacerRuntime observations
 AnalyticsAdapter ← semantic events from services
@@ -592,6 +639,7 @@ Without new Decision Log do not create:
 - `GameManager`;
 - `MultiplayerManager`;
 - `PhysicsManager`;
+- a second axle/phase-sync manager beside `LegPairAssembly`;
 - `SaveManager` next to `PlayerDataService`;
 - second remote registry;
 - client authoritative reward/economy object;
@@ -608,7 +656,8 @@ Without new Decision Log do not create:
 | StrokeMath | M0 |
 | InputController | M0 |
 | DrawingController | M0 |
-| LegAssembly | M0 |
+| LegPairAssembly | M0 / R17 shared-axle override |
+| LegAssembly | M0; rigid side geometry under LegPairAssembly |
 | LegShapeService | M0 |
 | RacerRuntime | M0 |
 | RacerService | M1 / D05 |
@@ -631,4 +680,4 @@ Without new Decision Log do not create:
 | BotRacerController | M3 / required before public cold-start release |
 | MonetizationService | M4 |
 
-Do not bootstrap later milestone modules before their feature becomes ACTIVE, except where an explicit current Decision Log records a bounded Product Owner override (currently R17 camera/rider presentation only).
+Do not bootstrap later milestone modules before their feature becomes ACTIVE, except where an explicit current Decision Log records a bounded Product Owner override (currently R17 camera/rider presentation plus the R17 shared-axle mechanical override).
