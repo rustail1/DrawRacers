@@ -11,8 +11,9 @@ def test_r16_8_moving_redraw_parity_is_stress_verified() -> None:
     b13 = read("src/server/Tests/B13AtomicRedrawSpec.lua")
     b14 = read("src/server/Tests/B14RedrawStressSpec.lua")
 
-    assert "angularDistanceDegrees(leftPhaseAfter, leftPhaseBefore)" in b13
-    assert "angularDistanceDegrees(rightPhaseAfter, rightPhaseBefore)" in b13
+    assert "newPair:GetPhaseDegrees()" in b13
+    assert "angularDistanceDegrees(newPair:GetPhaseDegrees(), phaseBefore)" in b13
+    assert "single axle phase was not preserved" in b13
     assert "successful redraw teleported body CFrame" in b13
     assert "successful redraw reset AssemblyLinearVelocity" in b13
     assert "successful redraw reset AssemblyAngularVelocity" in b13
@@ -24,13 +25,14 @@ def test_r16_8_moving_redraw_parity_is_stress_verified() -> None:
     assert "bodyCFrameBeforeRedraw" in b14
     assert "linearBeforeRedraw" in b14
     assert "angularBeforeRedraw" in b14
-    assert "leftPhaseBeforeRedraw" in b14
-    assert "rightPhaseBeforeRedraw" in b14
-    assert "angularDistanceDegrees(leftPhaseAfterRedraw, leftPhaseBeforeRedraw) <= 5.0" in b14
-    assert "angularDistanceDegrees(rightPhaseAfterRedraw, rightPhaseBeforeRedraw) <= 5.0" in b14
+    assert "pairBeforeRedraw:GetPhaseDegrees()" in b14
+    assert "pairAfterRedraw:GetPhaseDegrees()" in b14
+    assert "angularDistanceDegrees(phaseAfterRedraw, phaseBeforeRedraw) <= 5.0" in b14
+    assert "countAxleRoots(legsFolder) == 1" in b14
     assert "moving redraw must leave exactly two leg models" in b14
     assert "moving redraw leaked retiring LeftLeg" in b14
     assert "moving redraw leaked retiring RightLeg" in b14
+    assert "moving redraw leaked retiring AxleRoot" in b14
 
 
 def test_r16_9_production_camera_is_side_view_and_observer_is_hidden() -> None:
@@ -123,9 +125,10 @@ def test_r16_10_final_harness_covers_unchanged_full_lab_and_live_redraw() -> Non
     assert "LegShapeService.ValidateAndBuild" in stage_c
     assert "movingBody.AssemblyLinearVelocity" in stage_c
     assert "bodyCFrameBeforeRedraw" in stage_c
-    assert "leftPhaseBeforeRedraw" in stage_c
-    assert "rightPhaseBeforeRedraw" in stage_c
-    assert "<= 5.0" in stage_c
+    assert "pairBeforeRedraw:GetPhaseDegrees()" in stage_c
+    assert "pairAfterRedraw:GetPhaseDegrees()" in stage_c
+    assert "angularDistanceDegrees(phaseAfterRedraw, phaseBeforeRedraw) <= 5.0" in stage_c
+    assert "countAxleRoots(legsFolder) == 1" in stage_c
     assert "movingRedrawPassed" in stage_c
 
     assert 'Instance.new("Part")' not in stage_c
