@@ -65,7 +65,7 @@ local function assertStructuralPair(racer: any)
 	local structuralDifference = (rightPhase - leftPhase + 360) % 360
 	assert(
 		angularDistanceDegrees(structuralDifference, PhysicsConfig.Motor.RightPhaseOffsetDegrees) <= 0.1,
-		string.format("structural phase difference expected 180 got %.4f", structuralDifference)
+		string.format("co-phase structural difference expected 0 got %.4f", structuralDifference)
 	)
 
 	local geometry = PhysicsConfig.LegGeometry
@@ -78,7 +78,7 @@ local function assertStructuralPair(racer: any)
 	assert(joint.Name == "AxleJoint", "shared motor must be AxleJoint")
 	assert(joint.ActuatorType == Enum.ActuatorType.Motor)
 	assert(joint.AngularVelocity == PhysicsConfig.Motor.AngularVelocity)
-	assert(countHinges(racer:GetModel()) == 1, "two rigid sides must share exactly one HingeConstraint")
+	assert(countHinges(racer:GetModel()) == 1, "two co-phase rigid sides must share exactly one HingeConstraint")
 end
 
 function B09TwoLegPhaseSpec.run()
@@ -99,8 +99,8 @@ function B09TwoLegPhaseSpec.run()
 	assert(right:GetModel().Name == "RightLeg")
 	assertStructuralPair(racer)
 
-	-- Redraw preserves the one live axle phase. There is no independent right
-	-- phase to capture, recover or drift.
+	-- Redraw preserves the one live axle phase. Both depth-separated sides stay
+	-- co-phased; there is no independent right phase to capture, recover or drift.
 	local pairBefore = racer:GetLegPair()
 	local axleBefore = pairBefore:GetRoot()
 	local geometry = PhysicsConfig.LegGeometry
@@ -117,7 +117,7 @@ function B09TwoLegPhaseSpec.run()
 	assertStructuralPair(racer)
 
 	racer:Destroy()
-	print("[DrawRacers][B09] two-leg same-XY/phase tests PASS")
+	print("[DrawRacers][B09] two-leg same-XY/co-phase tests PASS")
 end
 
 return B09TwoLegPhaseSpec
