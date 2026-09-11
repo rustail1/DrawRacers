@@ -225,6 +225,9 @@ function RaceCameraController:Start()
 		if gameProcessed then
 			return
 		end
+		if findLocalRacerBody() == nil then
+			return
+		end
 		if input.UserInputType == Enum.UserInputType.MouseButton2 then
 			local mousePosition = UserInputService:GetMouseLocation()
 			if not self:_pointOwnedByUI(mousePosition) then
