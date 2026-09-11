@@ -14,5 +14,8 @@ local MODES = {
 
 return {
 	Modes = MODES,
-	Mode = "G0",
+	-- R17 reference acceptance is the current active Studio validation target.
+	-- Keep G0 selectable, but default fresh synced Studio runs to the full R17 evidence path
+	-- so a tester cannot accidentally validate only the legacy G0 harness.
+	Mode = "R17FINAL",
 }
