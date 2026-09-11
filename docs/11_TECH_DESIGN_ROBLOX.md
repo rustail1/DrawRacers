@@ -53,7 +53,7 @@ Current R17 production representation is owned by `LegPairAssembly`: one shared 
 Conceptually:
 `BodyCollider + one shared axle (LegPairAssembly/AxleRoot/AxleJoint) + Left/Right welded side geometry`.
 
-The right side is structurally fixed at the canonical `180°` phase relative to the left side. Do not create independent per-side hinge motors or runtime phase-chasing correction.
+The two side copies are mounted **co-phase (0° local angular difference)** on opposite Z sockets. Human reference-video evidence supersedes the interim 180° local-offset interpretation. Do not create independent per-side hinge motors or runtime phase-chasing correction.
 
 Do NOT make every point a motor. Separate:
 - visual curve: smoother/more segments;
@@ -121,13 +121,11 @@ Server tests: invalid payload/rate/sequence.
 Studio human tests: feel, collision, camera, redraw, mobile input.  
 Regression: old obstacles, finish, respawn, DataStore, purchases after shared-system changes.
 
-
 ## 18. Implementation architecture source
 This file defines technical direction. Exact module ownership/API/dependencies live in `21_SYSTEM_CLASS_ARCHITECTURE.md`; remote/data schemas live in `22_NETWORK_DATA_CONTRACTS.md`; project bootstrap lives in `23_PROJECT_SETUP_TOOLCHAIN.md`; QA/regression lives in `24_TESTING_QA_MATRIX.md`. Do not duplicate those contracts here.
 
 ## 19. Platform validation snapshot
 As of 2026-09, Roblox Server Authority is full release and `Workspace.AuthorityMode` exposes server/automatic authority modes. The project therefore tests `Server` authority in M1 as the preferred competitive physics mode. If current engine behavior causes a blocking issue, use a documented Decision Log and validated fallback rather than silently transferring race truth to clients. See `27_PLATFORM_SNAPSHOT_2026-09.md`.
-
 
 ## Exact implementation roots v1.3.4
 Architecture ownership remains `21/22`; exact Studio Instance/property/collision contract is `65`; exact UI child hierarchy is `68`; external environment/Asset/Product IDs are loaded from `70` and never invented/hard-coded.
