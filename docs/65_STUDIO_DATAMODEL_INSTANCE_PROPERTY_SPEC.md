@@ -1,9 +1,9 @@
 # 65 — STUDIO DATAMODEL / INSTANCE / PROPERTY SPEC
-Статус: **EXACT AUTHORING & RUNTIME INSTANCE CONTRACT v1.3.5 / R17 OVERRIDE**.
+Статус: **EXACT AUTHORING & RUNTIME INSTANCE CONTRACT v1.3.6 / R17 CO-PHASE OVERRIDE**.
 
 Цель: убрать вопрос «какие именно Instances/имена/атрибуты/группы/свойства создавать в Studio». Архитектурные владельцы = `21`; numeric physics = `16`; TrackPiece geometry = `60`; UI hierarchy = `68`.
 
-Camera/rider presentation is authorized early by the 2026-09-10/11 Product Owner Decision Logs. `RaceCameraController` and `RiderPresentationController` are current provisional M0/R17 presentation owners; D09/E03 later extend and accept them for multiplayer/readability rather than introducing duplicate owners. The R17 mechanical override makes `LegPairAssembly` the current runtime owner of one shared axle, one `AxleJoint`, one motor and the structural 180 relation between the rigid left/right side assemblies. Human physics/camera/rider acceptance remains **HUMAN STUDIO PENDING**.
+Camera/rider presentation is authorized early by the 2026-09-10/11 Product Owner Decision Logs. `RaceCameraController` and `RiderPresentationController` are current provisional M0/R17 presentation owners; D09/E03 later extend and accept them for multiplayer/readability rather than introducing duplicate owners. The R17 mechanical override makes `LegPairAssembly` the current runtime owner of one shared axle, one `AxleJoint`, one motor and two rigid **co-phase** left/right side assemblies at opposite Z sockets. Human-video evidence on 2026-09-12 supersedes the interim structural-180 relation. Human physics/camera/rider acceptance remains **HUMAN STUDIO PENDING**.
 
 ## 1. Root tree — exact launch names
 ```text
@@ -150,9 +150,9 @@ Racer_<RaceId>_<Slot>
 Side `LegRoot` Parts:
 - are rigid side-geometry roots, not hinge/motor owners;
 - use `LegSocketZAbs = 1.5` from `PhysicsConfig.LegGeometry` as the side mount offset;
-- Left socket Z = `-1.5`, structural phase `0`;
-- Right socket Z = `+1.5`, phase `RightPhaseOffsetDegrees = 180`;
-- therefore Left/Right maintain the **structural 180** relation without a runtime phase-chasing loop;
+- Left socket Z = `-1.5`, local phase `0`;
+- Right socket Z = `+1.5`, local phase `RightPhaseOffsetDegrees = 0`;
+- therefore Left/Right remain **co-phase** while physically separated across the cube depth;
 - each `LegRoot` is welded to `AxleRoot` by `AxleWeld`;
 - Anchored=false, CanCollide=false, CanTouch=false, CanQuery=false, Transparency=1, Massless=true;
 - CollisionGroup=`RacerLeg`.
@@ -220,7 +220,8 @@ Contract:
 - any rider BasePart is `CanCollide=false`, `CanTouch=false`, `CanQuery=false`, `Massless=true`;
 - rider geometry never changes the `RacerBody`/`RacerLeg` collision matrix or body mass properties;
 - the active-race camera still targets racer position, not rider head/accessories;
-- normalized scale/readability envelope and oversized appearance fallback are owned by `62` and the current R17 presentation decision;
+- normalized scale starts at `0.65`;
+- human-video correction: mount by a deterministic seat reference (`LowerTorso`, then `Torso`, then `HumanoidRootPart` fallback) and place that seat reference just above the cube top using the seat Part half-height; do **not** place the avatar by a fixed HumanoidRootPart `+0.30` Y offset;
 - rider teardown occurs with racer/player presentation lifecycle; completed heats must not leak rider models/connections;
 - bots never clone or impersonate a human Player appearance;
 - CI/source checks do not establish rider pose/readability PASS; that remains **HUMAN STUDIO PENDING**.
@@ -302,7 +303,7 @@ For each accepted shape, runtime cleanup expectation is exact: one active `AxleR
 Repository/instance-contract PASS requires:
 - a fresh synced project creates the canonical roots;
 - current racer geometry uses one `LegPairAssembly`, one `AxleRoot`, one `AxleJoint`, **one motor**, two rigid side `LegAssembly` models and `LegSocketZAbs = 1.5`;
-- Right remains at the **structural 180** relation to Left with no per-side actuator/phase chase;
+- Left/Right remain **co-phase (0° local difference)** with no per-side actuator/phase chase;
 - collision isolation remains canonical and visual leg/rider geometry remains nonphysical;
 - atomic redraw leaves exactly one active pair and preserves BodyCollider motion state;
 - runtime teardown returns object counts near baseline;
