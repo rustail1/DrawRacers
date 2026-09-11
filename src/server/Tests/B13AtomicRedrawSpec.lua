@@ -92,8 +92,6 @@ function B13AtomicRedrawSpec.run()
 	local oldLeftModel = oldPair:GetLeftLeg():GetModel()
 	local oldRightModel = oldPair:GetRightLeg():GetModel()
 
-	-- Put the single working axle at a non-default phase. Redraw must preserve
-	-- this one mechanical phase; the right side has no independent phase state.
 	local geometry = PhysicsConfig.LegGeometry
 	local base = body.CFrame * CFrame.new(geometry.HubOffsetX, geometry.HubOffsetY, 0)
 	oldPair:GetRoot().CFrame = base * CFrame.Angles(0, 0, math.rad(37))
@@ -106,8 +104,6 @@ function B13AtomicRedrawSpec.run()
 	local linearBefore = body.AssemblyLinearVelocity
 	local angularBefore = body.AssemblyAngularVelocity
 
-	-- Fail the second rigid-side build inside LegPairAssembly. Its constructor
-	-- must clean partial detached geometry and RacerRuntime must keep old pair.
 	local originalNew = LegAssembly.new
 	local buildCount = 0
 	LegAssembly.new = function(params: any)
@@ -127,8 +123,6 @@ function B13AtomicRedrawSpec.run()
 	assert(body.AssemblyLinearVelocity == linearBefore, "failed redraw reset AssemblyLinearVelocity")
 	assert(body.AssemblyAngularVelocity == angularBefore, "failed redraw reset AssemblyAngularVelocity")
 
-	-- Fail the second side commit after AxleRoot and LeftLeg were parented. Pair
-	-- rollback must remove the partial replacement and restore retiring names.
 	local originalCommit = LegAssembly.Commit
 	local commitCount = 0
 	LegAssembly.Commit = function(self: any)
@@ -148,8 +142,6 @@ function B13AtomicRedrawSpec.run()
 	assert(body.AssemblyLinearVelocity == linearBefore, "commit failure reset AssemblyLinearVelocity")
 	assert(body.AssemblyAngularVelocity == angularBefore, "commit failure reset AssemblyAngularVelocity")
 
-	-- Fail only after the replacement motor has been enabled. The fully-parented
-	-- replacement still must roll back as one transaction.
 	local originalSetEnabled = LegPairAssembly.SetEnabled
 	LegPairAssembly.SetEnabled = function(self: any, enabled: boolean)
 		originalSetEnabled(self, enabled)
@@ -171,7 +163,6 @@ function B13AtomicRedrawSpec.run()
 	local newPair = racer:GetLegPair()
 	assert(newPair ~= nil and newPair ~= oldPair, "successful redraw must replace shared pair")
 	assert(oldLeftModel.Parent == nil and oldRightModel.Parent == nil, "retired sides were not destroyed after commit")
-	assert(oldPair:GetRoot == nil or true) -- old pair is destroyed; avoid calling its guarded API
 	assert(countLegModels(legsFolder) == 2, "successful redraw must leave exactly two side models")
 	assert(countAxleRoots(legsFolder) == 1, "successful redraw must leave exactly one axle root")
 	assert(body.CFrame == bodyCFrameBefore, "successful redraw teleported body CFrame")
