@@ -29,12 +29,13 @@ def test_human_video_proves_shared_side_legs_are_co_phased_not_opposed() -> None
 def test_human_video_rider_mount_aligns_seat_reference_instead_of_burying_hrp() -> None:
     rider = read("src/client/Controllers/RiderPresentationController.lua")
 
-    # The current fixed HRP +0.30 mount visibly buries most of a 0.65 avatar in
+    # The old fixed HRP +0.30 mount visibly buried most of a 0.65 avatar in
     # the 3-stud cube. Mount by a pelvis/torso reference and its half-height.
     for token in [
         "seatPart",
-        'FindFirstChild("LowerTorso")',
-        'FindFirstChild("Torso")',
+        '"LowerTorso"',
+        '"Torso"',
+        "FindFirstChild(name, true)",
         "seatPart.Size.Y * 0.5",
         "function RiderPresentationController:_targetSeatCFrame",
         "record.visual:GetPivot():ToObjectSpace(record.seatPart.CFrame)",
