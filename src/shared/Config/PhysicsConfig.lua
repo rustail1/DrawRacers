@@ -44,9 +44,10 @@ return {
 		AngularVelocity = -8.0,
 		MotorMaxTorque = 35000,
 		MotorMaxAcceleration = 120,
-		-- R17 shared-axle structural offset. This is not a phase-recovery target:
-		-- both rigid sides are welded to one axle at this fixed local separation.
-		RightPhaseOffsetDegrees = 180,
+		-- Human reference-video correction: both depth-separated rigid copies are
+		-- co-phased on the one shared axle. The old 180-degree local offset made
+		-- one copy wrap above the cube while the other wrapped below it.
+		RightPhaseOffsetDegrees = 0,
 	},
 	PhysicalMaterials = {
 		LegSegment = {
