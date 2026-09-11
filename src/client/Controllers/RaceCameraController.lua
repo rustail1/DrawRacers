@@ -75,6 +75,7 @@ function RaceCameraController.new(playerGui: PlayerGui)
 		_connections = {} :: ConnectionList,
 		_started = false,
 		_ownsCamera = false,
+		_ownedCamera = nil :: Camera?,
 		_previousCameraType = nil :: Enum.CameraType?,
 		_previousFieldOfView = nil :: number?,
 		_smoothedPosition = nil :: Vector3?,
@@ -101,9 +102,13 @@ function RaceCameraController:_pointOwnedByUI(position: Vector2): boolean
 end
 
 function RaceCameraController:_captureCamera(camera: Camera)
-	if self._ownsCamera then
+	if self._ownsCamera and self._ownedCamera == camera then
 		return
 	end
+	if self._ownsCamera then
+		self:_releaseCamera()
+	end
+	self._ownedCamera = camera
 	self._previousCameraType = camera.CameraType
 	self._previousFieldOfView = camera.FieldOfView
 	self._ownsCamera = true
@@ -113,8 +118,8 @@ function RaceCameraController:_releaseCamera()
 	if not self._ownsCamera then
 		return
 	end
-	local camera = Workspace.CurrentCamera
-	if camera ~= nil then
+	local camera = self._ownedCamera
+	if camera ~= nil and camera.Parent ~= nil then
 		if self._previousCameraType ~= nil then
 			camera.CameraType = self._previousCameraType
 		end
@@ -123,6 +128,7 @@ function RaceCameraController:_releaseCamera()
 		end
 	end
 	self._ownsCamera = false
+	self._ownedCamera = nil
 	self._previousCameraType = nil
 	self._previousFieldOfView = nil
 	self._smoothedPosition = nil
