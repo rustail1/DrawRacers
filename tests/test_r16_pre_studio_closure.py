@@ -31,14 +31,22 @@ def test_p1_b10_uses_real_elapsed_quarter_second_recovery_window() -> None:
     b10 = read("src/server/Tests/B10StabilizationSpec.lua")
 
     assert "local RECOVERY_WINDOW = 0.25" in b10
-    assert "local MAX_RECOVERY_ATTEMPTS = 3" in b10
+    assert "local MAX_RECOVERY_ATTEMPTS = 6" in b10
+    assert "local SCHEDULER_STABLE_FRAMES = 4" in b10
+    assert "local SCHEDULER_STABLE_MAX_DT = RECOVERY_WINDOW / SCHEDULER_STABLE_FRAMES" in b10
+    assert "local SCHEDULER_WARMUP_TIMEOUT = 3.0" in b10
+    assert "local function waitForStableScheduler()" in b10
+    assert "stableFrames >= SCHEDULER_STABLE_FRAMES" in b10
+    assert "dt <= SCHEDULER_STABLE_MAX_DT" in b10
     assert "for attempt = 1, MAX_RECOVERY_ATTEMPTS do" in b10
+    assert "local schedulerStable, warmupLastDt = waitForStableScheduler()" in b10
+    assert "if schedulerStable then" in b10
     assert "local dt = RunService.Heartbeat:Wait()" in b10
     assert "local sampleEnd = recoveryElapsed + dt" in b10
     assert "if sampleEnd > RECOVERY_WINDOW then" in b10
     assert "recoveryElapsed = sampleEnd" in b10
     assert "recovered and recoveryElapsed <= RECOVERY_WINDOW" in b10
-    assert "upright recovery evidence invalidated because Heartbeat crossed the 0.25 s window" in b10
+    assert "scheduler could not provide a measurable 0.25 s recovery window" in b10
     assert "upright recovery exceeded 0.25 s" in b10
     assert "MAX_RECOVERY_SAMPLE_DT" not in b10
     assert "recoveryElapsed += RunService.Heartbeat:Wait()" not in b10
