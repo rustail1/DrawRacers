@@ -69,6 +69,17 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "RemoteEvent" not in camera
     assert "FireServer" not in camera
 
+    # Camera lifecycle must restore the exact Camera instance that was captured.
+    # Workspace.CurrentCamera may be replaced by Roblox during lifecycle changes;
+    # restoring old type/FOV onto the replacement would corrupt its state.
+    assert "_ownedCamera = nil :: Camera?" in camera
+    assert "self._ownedCamera == camera" in camera
+    release_body = camera.split("function RaceCameraController:_releaseCamera()", 1)[1].split(
+        "function RaceCameraController:_applyOrbitDelta", 1
+    )[0]
+    assert "local camera = self._ownedCamera" in release_body
+    assert "local camera = Workspace.CurrentCamera" not in release_body
+
     # Desktop orbit owns RMB only and automatically returns after release.
     assert "Enum.UserInputType.MouseButton2" in camera
     assert "Enum.UserInputType.MouseButton1" not in camera
