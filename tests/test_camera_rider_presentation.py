@@ -90,6 +90,8 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "CanTouch = false" in rider
     assert "CanQuery = false" in rider
     assert "Massless = true" in rider
+    assert "descendant.Anchored = true" in rider
+    assert 'descendant.Anchored = descendant.Name == "HumanoidRootPart"' not in rider
     assert "BodyCollider" in rider
     assert "body.Position" in rider
     assert "body.CFrame" not in rider
