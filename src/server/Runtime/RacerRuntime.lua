@@ -19,6 +19,7 @@ local StrokeTypes = require(
 )
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
 local LegPairAssembly = require(script.Parent:WaitForChild("LegPairAssembly"))
+local RedrawSpawnSafety = require(script.Parent:WaitForChild("RedrawSpawnSafety"))
 local RacerAntiStall = require(script.Parent:WaitForChild("RacerAntiStall"))
 local RacerStabilizer = require(script.Parent:WaitForChild("RacerStabilizer"))
 
@@ -70,9 +71,6 @@ local function makeHub(name: string, offset: Vector3, body: Part, parent: Model)
 	hub.CollisionGroup = CollisionGroups.RacerBody
 	hub.Parent = parent
 
-	-- Retained as a stable debug/authoring marker. R17 production locomotion no
-	-- longer attaches a motor to each side hub; LegPairAssembly owns one central
-	-- AxleMotorAttachment on BodyCollider instead.
 	local motorAttachment = Instance.new("Attachment")
 	motorAttachment.Name = "MotorAttachment"
 	motorAttachment.Axis = Vector3.zAxis
@@ -149,8 +147,6 @@ local function ensureRuntimeFolder(model: Model, name: string): Folder
 end
 
 local function makeInternalShapeSpec(normalizedPoints: { Vector2 }): ShapeSpec
-	-- R16.3B/R17 keep the player shape authoritative and first-point anchored.
-	-- R17 changes only the mechanical pair drive, not stroke/network semantics.
 	local anchoredPoints = StrokeMath.AnchorToFirstPoint(normalizedPoints)
 	local plan = GeometryMath.BuildSegmentPlan(anchoredPoints, PhysicsConfig.LegGeometry)
 	assert(#plan.segmentPlan > 0, "internal shape produced no legal physical segments")
@@ -167,6 +163,10 @@ local function makeInternalShapeSpec(normalizedPoints: { Vector2 }): ShapeSpec
 		debugPhysicsPointCount = #plan.mappedPoints,
 		debugId = string.format("internal-shape-p%d", #normalizedPoints),
 	}
+end
+
+local function angularDistanceDegrees(a: number, b: number): number
+	return math.abs((a - b + 180) % 360 - 180)
 end
 
 function RacerRuntime.new(params: SpawnParams)
@@ -199,6 +199,8 @@ function RacerRuntime.new(params: SpawnParams)
 	model:SetAttribute("DebugRawPoints", 0)
 	model:SetAttribute("DebugSimplifiedPoints", 0)
 	model:SetAttribute("DebugPhysicsPoints", 0)
+	model:SetAttribute("DebugRedrawSafetyFallback", false)
+	model:SetAttribute("DebugRedrawPenetrationScore", 0)
 	model:SetAttribute("TrackId", params.trackId)
 	model:SetAttribute("Finished", false)
 	model:SetAttribute("LaneCenterZ", params.laneCenterZ or params.spawnCFrame.Position.Z)
@@ -220,8 +222,6 @@ function RacerRuntime.new(params: SpawnParams)
 		model = model,
 		body = body,
 		legPair = nil,
-		-- Aliases retained for existing diagnostics/evidence callers. Both are
-		-- rigid children of the same LegPairAssembly and own no motor.
 		leftLeg = nil,
 		rightLeg = nil,
 		stabilizer = stabilizer,
@@ -283,7 +283,11 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 
 	local oldLegPair = self.legPair
 	local initialPhaseDegrees = if oldLegPair ~= nil then oldLegPair:GetPhaseDegrees() else 0
+	local selectedPhaseDegrees = initialPhaseDegrees
+	local redrawSafetyFallback = false
+	local redrawPenetrationScore = 0
 	local stagedLegPair = nil
+
 	local buildOk, buildError = pcall(function()
 		stagedLegPair = LegPairAssembly.new({
 			racerModel = model,
@@ -292,6 +296,23 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 			initialPhaseDegrees = initialPhaseDegrees,
 			staged = true,
 		})
+
+		selectedPhaseDegrees, redrawSafetyFallback, redrawPenetrationScore = RedrawSpawnSafety.ChoosePhase(
+			model,
+			stagedLegPair,
+			initialPhaseDegrees
+		)
+
+		if angularDistanceDegrees(selectedPhaseDegrees, initialPhaseDegrees) > 0.01 then
+			stagedLegPair:Destroy()
+			stagedLegPair = LegPairAssembly.new({
+				racerModel = model,
+				shapeSpec = shapeSpec,
+				motorEnabled = false,
+				initialPhaseDegrees = selectedPhaseDegrees,
+				staged = true,
+			})
+		end
 	end)
 
 	if not buildOk then
@@ -302,6 +323,9 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 	end
 	assert(stagedLegPair ~= nil, "atomic redraw staging produced incomplete shared leg pair")
 
+	-- Safety selection completes while the old pair is still active. Only now is
+	-- the old pair marked retiring, so a selection/build error cannot remove the
+	-- player's last working geometry.
 	if oldLegPair ~= nil then
 		oldLegPair:SetRetiring(true)
 	end
@@ -321,6 +345,16 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 	self.legPair = stagedLegPair
 	self.leftLeg = stagedLegPair:GetLeftLeg()
 	self.rightLeg = stagedLegPair:GetRightLeg()
+	model:SetAttribute("DebugRedrawSafetyFallback", redrawSafetyFallback)
+	model:SetAttribute("DebugRedrawPenetrationScore", redrawPenetrationScore)
+
+	if redrawSafetyFallback then
+		warn(string.format(
+			"[DrawRacers][RedrawSafety] no zero-penetration phase; selected %.1f deg score=%d",
+			selectedPhaseDegrees,
+			redrawPenetrationScore
+		))
+	end
 
 	if oldLegPair ~= nil then
 		oldLegPair:Destroy()
