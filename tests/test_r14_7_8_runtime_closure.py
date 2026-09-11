@@ -10,15 +10,14 @@ def read(path: str) -> str:
 def test_r14_7_atomic_redraw_covers_post_commit_enable_failure() -> None:
     studio_spec = read("src/server/Tests/B13AtomicRedrawSpec.lua")
 
-    assert "local originalSetEnabled = LegAssembly.SetEnabled" in studio_spec
+    assert "local originalSetEnabled = LegPairAssembly.SetEnabled" in studio_spec
     assert "B13 injected post-enable failure" in studio_spec
     assert "enableFailed.accepted == false" in studio_spec
     assert 'enableFailed.rejectReasonCode == "BUILD_FAILED"' in studio_spec
     assert '"enable failure changed ShapeVersion"' in studio_spec
-    assert '"old LeftLeg not restored after enable failure"' in studio_spec
-    assert '"old RightLeg not restored after enable failure"' in studio_spec
-    assert '"enable failure leaked staged leg models"' in studio_spec
-    assert "LegAssembly.SetEnabled = originalSetEnabled" in studio_spec
+    assert 'assertOldPairIntact(racer, oldPair, oldLeftModel, oldRightModel, "enable failure")' in studio_spec
+    assert "LegPairAssembly.SetEnabled = originalSetEnabled" in studio_spec
+    assert '"AxleRoot_Retiring"' in studio_spec
 
 
 def test_r14_8_transport_limits_do_not_mislead_as_geometry_feedback() -> None:
