@@ -12,6 +12,8 @@ local R16ReferenceShapes = require(script.Parent:WaitForChild("R16ReferenceShape
 local R16TrialRunner = {}
 
 local activeRacer: any = nil
+local SOLVER_LINEAR_SPEED_LIMIT = 160
+local SOLVER_ANGULAR_SPEED_LIMIT = 120
 
 local function findPiece(pieceId: string): any
 	for _, piece in M0SceneConfig.Pieces do
@@ -95,6 +97,73 @@ local function allMotorsEnabled(model: Model): boolean
 	end
 	local joint = axleRoot:FindFirstChild("AxleJoint")
 	return joint ~= nil and joint:IsA("HingeConstraint") and joint.Enabled
+end
+
+local function finite(value: number): boolean
+	return value == value and math.abs(value) < math.huge
+end
+
+local function solverUnstable(body: BasePart): boolean
+	local linear = body.AssemblyLinearVelocity
+	local angular = body.AssemblyAngularVelocity
+	for _, value in {
+		linear.X,
+		linear.Y,
+		linear.Z,
+		angular.X,
+		angular.Y,
+		angular.Z,
+	} do
+		if not finite(value) then
+			return true
+		end
+	end
+	return linear.Magnitude > SOLVER_LINEAR_SPEED_LIMIT or angular.Magnitude > SOLVER_ANGULAR_SPEED_LIMIT
+end
+
+local function applyProperties(part: BasePart, density: number?, friction: number?)
+	local baseline = part.CustomPhysicalProperties
+	if baseline == nil then
+		return
+	end
+	if density == nil and friction == nil then
+		return
+	end
+	part.CustomPhysicalProperties = PhysicalProperties.new(
+		density or baseline.Density,
+		friction or baseline.Friction,
+		baseline.Elasticity,
+		baseline.FrictionWeight,
+		baseline.ElasticityWeight
+	)
+end
+
+local function applyTemporaryTuning(racer: any, tuning: any?)
+	if tuning == nil then
+		return
+	end
+
+	local body = racer:GetBody()
+	applyProperties(body, tuning.bodyDensity, tuning.bodyFriction)
+	if tuning.colliderSize ~= nil then
+		local colliderSize = tuning.colliderSize
+		body.Size = Vector3.new(colliderSize, colliderSize, colliderSize)
+	end
+
+	local pair = racer:GetLegPair()
+	assert(pair ~= nil, "temporary tuning requires a live LegPairAssembly")
+	if tuning.legDensity ~= nil then
+		for _, leg in { pair:GetLeftLeg(), pair:GetRightLeg() } do
+			for _, segment in leg:GetSegments() do
+				applyProperties(segment, tuning.legDensity, nil)
+			end
+		end
+	end
+
+	if tuning.motorAngularVelocity ~= nil then
+		local joint = pair:GetJoint()
+		joint.AngularVelocity = tuning.motorAngularVelocity
+	end
 end
 
 function R16TrialRunner.DestroyActive()
@@ -208,9 +277,9 @@ function R16TrialRunner.RunFlat(shapeId: string): any
 	return result
 end
 
--- R17 evidence-only API. bodyOptions are applied only to this temporary racer,
+-- R17 evidence-only API. options.tuning is applied only to this temporary racer,
 -- which is destroyed at the end of the trial; production PhysicsConfig is never mutated.
-function R16TrialRunner.RunFlatTelemetry(shapeId: string, bodyOptions: any): any
+function R16TrialRunner.RunFlatTelemetry(shapeId: string, options: any): any
 	assert(RunService:IsStudio(), "R16TrialRunner is Studio-only")
 	R16TrialRunner.DestroyActive()
 	local benchmark = M0SceneConfig.ReferenceBenchmark
@@ -225,23 +294,10 @@ function R16TrialRunner.RunFlatTelemetry(shapeId: string, bodyOptions: any): any
 		laneCenterZ = benchmark.CenterZ,
 	})
 	finishSpawn(racer, shapeId)
+	local tuning = if options.tuning ~= nil then options.tuning else options
+	applyTemporaryTuning(racer, tuning)
 	local model = racer:GetModel()
 	local body = racer:GetBody()
-	local baselineProperties = body.CustomPhysicalProperties
-	assert(baselineProperties ~= nil, "BodyCollider must have CustomPhysicalProperties")
-
-	local density = bodyOptions.density or baselineProperties.Density
-	local friction = bodyOptions.friction or baselineProperties.Friction
-	local colliderSize = bodyOptions.colliderSize or body.Size.X
-	body.CustomPhysicalProperties = PhysicalProperties.new(
-		density,
-		friction,
-		baselineProperties.Elasticity,
-		baselineProperties.FrictionWeight,
-		baselineProperties.ElasticityWeight
-	)
-	body.Size = Vector3.new(colliderSize, colliderSize, colliderSize)
-
 	local contactOptions = { contactName = benchmark.Name }
 	local result = {
 		valid = true,
@@ -252,6 +308,8 @@ function R16TrialRunner.RunFlatTelemetry(shapeId: string, bodyOptions: any): any
 		forwardDistance = 0,
 		averageSpeed = 0,
 		stuckTime = 0,
+		maxBounceHeight = 0,
+		solverInstability = false,
 		antiStallSeen = false,
 		motorsEnabled = false,
 	}
@@ -268,6 +326,7 @@ function R16TrialRunner.RunFlatTelemetry(shapeId: string, bodyOptions: any): any
 	end
 
 	local startX = body.Position.X
+	local startY = body.Position.Y
 	local elapsed = 0
 	while elapsed < acceptance.FlatMeasureSeconds do
 		local dt = RunService.Heartbeat:Wait()
@@ -285,6 +344,10 @@ function R16TrialRunner.RunFlatTelemetry(shapeId: string, bodyOptions: any): any
 		end
 		if math.abs(body.AssemblyLinearVelocity.X) < 0.5 then
 			result.stuckTime += dt
+		end
+		result.maxBounceHeight = math.max(result.maxBounceHeight, body.Position.Y - startY)
+		if solverUnstable(body) then
+			result.solverInstability = true
 		end
 		if model:GetAttribute("AntiStallActive") == true then
 			result.antiStallSeen = true
@@ -311,6 +374,9 @@ function R16TrialRunner.RunPiece(pieceId: string, shapeId: string, measureSecond
 		spawnX = gapSpawnX(piece)
 	end
 	local racer = spawnCanonical(pieceId, shapeId, spawnX)
+	if options ~= nil and options.tuning ~= nil then
+		applyTemporaryTuning(racer, options.tuning)
+	end
 	local model = racer:GetModel()
 	local body = racer:GetBody()
 	local result = {
@@ -319,6 +385,8 @@ function R16TrialRunner.RunPiece(pieceId: string, shapeId: string, measureSecond
 		progress = 0,
 		maxDeltaY = 0,
 		minDeltaY = 0,
+		maxBounceHeight = 0,
+		solverInstability = false,
 		antiStallSeen = false,
 		motorsEnabled = false,
 		landedAfterGap = false,
@@ -350,6 +418,9 @@ function R16TrialRunner.RunPiece(pieceId: string, shapeId: string, measureSecond
 		maxX = math.max(maxX, position.X)
 		maxY = math.max(maxY, position.Y)
 		minY = math.min(minY, position.Y)
+		if solverUnstable(body) then
+			result.solverInstability = true
+		end
 		if model:GetAttribute("AntiStallActive") == true then
 			result.antiStallSeen = true
 		end
@@ -365,6 +436,7 @@ function R16TrialRunner.RunPiece(pieceId: string, shapeId: string, measureSecond
 	result.speed = result.progress / math.max(elapsed, 1e-6)
 	result.maxDeltaY = maxY - startY
 	result.minDeltaY = minY - startY
+	result.maxBounceHeight = math.max(0, maxY - startY)
 	result.motorsEnabled = allMotorsEnabled(model)
 	result.completedPiece = maxX >= piece.StartX + piece.Length - 0.5
 	R16TrialRunner.DestroyActive()
