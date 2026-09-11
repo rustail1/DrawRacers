@@ -226,11 +226,13 @@ def test_r16_historical_180_phase_is_superseded_by_r17_cophase() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
     b13 = read("src/server/Tests/B13AtomicRedrawSpec.lua")
+    safety = read("src/server/Runtime/RedrawSpawnSafety.lua")
     decision = read("docs/DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md")
 
     assert "RightPhaseOffsetDegrees = 0" in config
     assert "phaseDegrees = motor.RightPhaseOffsetDegrees" in pair
     assert "co-phase structural difference" in b09
-    assert "single axle phase was not preserved" in b13
+    assert "selected safe phase was not applied" in b13
+    assert "function RedrawSpawnSafety.ChoosePhase" in safety
     assert "180" in decision and "supersed" in decision.lower() and "co-phase" in decision.lower()
     assert "_StepLegPhaseSync" not in read("src/server/Runtime/RacerRuntime.lua")
