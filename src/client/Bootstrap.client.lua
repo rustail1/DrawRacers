@@ -103,7 +103,7 @@ if RunService:IsStudio() then
 		end
 	end
 
-	ReplicatedStorage:GetAttributeChangedSignal(STUDIO_GATE_ATTRIBUTE):Connect(applyStudioGateState)
+	ReplicatedStorage:GetAttributeChangedSignal("DrawRacersStudioGateState"):Connect(applyStudioGateState)
 	applyStudioGateState()
 else
 	startProductionPresentation()
