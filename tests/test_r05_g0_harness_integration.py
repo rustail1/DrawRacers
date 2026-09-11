@@ -7,12 +7,12 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_r05_studio_harness_selector_defaults_to_g0_and_only_dispatches_one():
+def test_r05_studio_harness_selector_keeps_g0_available_and_current_r17final_default():
     config_path = ROOT / "src/shared/Config/StudioHarnessConfig.lua"
     assert config_path.is_file(), "R05 requires StudioHarnessConfig.lua"
     config = config_path.read_text(encoding="utf-8")
-    assert 'Mode = "G0"' in config
-    for mode in ['"NONE"', '"B08"', '"B09"', '"B10"', '"G0"']:
+    assert 'Mode = "R17FINAL"' in config
+    for mode in ['"NONE"', '"B08"', '"B09"', '"B10"', '"G0"', '"R17FINAL"']:
         assert mode in config
 
     bootstrap = read("src/server/Bootstrap.server.lua")
@@ -21,6 +21,7 @@ def test_r05_studio_harness_selector_defaults_to_g0_and_only_dispatches_one():
     assert 'elseif harnessMode == "B08" then' in bootstrap
     assert 'elseif harnessMode == "B09" then' in bootstrap
     assert 'elseif harnessMode == "B10" then' in bootstrap
+    assert 'elseif harnessMode == "R17FINAL" then' in bootstrap
     assert "B08OneHingeMotorHarness.start()\n\n\tlocal B09TwoLegPhaseHarness" not in bootstrap
 
 
