@@ -30,8 +30,20 @@ function B07LegAssemblySpec.run()
 	local body = racer:GetBody()
 	body.Anchored = true
 	local model = racer:GetModel()
-	local leftHub = model:FindFirstChild("LeftHub")
-	assert(leftHub and leftHub:IsA("Part"), "B07 racer missing LeftHub")
+	local legsFolder = model:FindFirstChild("Legs")
+	assert(legsFolder and legsFolder:IsA("Folder"), "B07 racer missing Legs")
+
+	local axleRoot = Instance.new("Part")
+	axleRoot.Name = "B07AxleRoot"
+	axleRoot.Size = Vector3.new(0.2, 0.2, 0.2)
+	axleRoot.CFrame = body.CFrame * CFrame.new(
+		PhysicsConfig.LegGeometry.HubOffsetX,
+		PhysicsConfig.LegGeometry.HubOffsetY,
+		0
+	)
+	axleRoot.Anchored = true
+	axleRoot.CanCollide = false
+	axleRoot.Parent = legsFolder
 
 	local sourcePoints = {
 		Vector2.new(0, 0),
@@ -50,25 +62,31 @@ function B07LegAssemblySpec.run()
 		racerModel = model,
 		side = "Left",
 		shapeSpec = shapeSpec,
-		motorEnabled = false,
+		axleRoot = axleRoot,
+		socketZ = -PhysicsConfig.LegGeometry.LegSocketZAbs,
+		phaseDegrees = 0,
 	})
 
 	local legModel = leg:GetModel()
 	assert(legModel.Name == "LeftLeg")
 	assert(model.Legs:FindFirstChild("LeftLeg") == legModel)
 	assert(legModel:FindFirstChild("LegRoot") and legModel.LegRoot:IsA("Part"), "B07 missing LegRoot")
-	assert(legModel:FindFirstChild("HubJoint") and legModel.HubJoint:IsA("HingeConstraint"), "B07 missing HubJoint")
+	assert(legModel:FindFirstChild("HubJoint") == nil, "R17 side geometry must not own a hinge")
 	assert(legModel:FindFirstChild("Segments") and legModel.Segments:IsA("Folder"), "B07 missing Segments")
 	assert(legModel:FindFirstChild("Visual") and legModel.Visual:IsA("Folder"), "B07 missing Visual")
 	assert(legModel:FindFirstChild("RightLeg") == nil, "B07 must not build RightLeg")
 
-	assert((leg:GetRoot().Position - leftHub.Position).Magnitude <= 1e-4, "LegRoot must be centered on LeftHub")
+	local expectedSocket = axleRoot.CFrame * CFrame.new(0, 0, -PhysicsConfig.LegGeometry.LegSocketZAbs)
+	assert((leg:GetRoot().Position - expectedSocket.Position).Magnitude <= 1e-4, "LegRoot must start on exact cube-side socket")
 	assert(leg:GetRoot().CanCollide == false)
 	assert(leg:GetRoot().CollisionGroup == "RacerLeg")
+	local axleWeld = leg:GetRoot():FindFirstChild("AxleWeld")
+	assert(axleWeld and axleWeld:IsA("WeldConstraint"), "rigid side missing AxleWeld")
+	assert(axleWeld.Part0 == axleRoot and axleWeld.Part1 == leg:GetRoot(), "side must be rigidly bound to shared axle")
 
 	local mapped = leg:GetMappedPoints()
 	assert(#mapped == 3)
-	assertClose(mapped[1].Magnitude, 0, 1e-6, "first point maps to hub pivot")
+	assertClose(mapped[1].Magnitude, 0, 1e-6, "first point maps to socket pivot")
 	assertClose(mapped[2].X, 1.26, 1e-6, "isotropic X scale")
 	assertClose(mapped[2].Y, 0.945, 1e-6, "isotropic Y scale")
 	local expectedCornerMagnitude = math.min(
@@ -89,7 +107,7 @@ function B07LegAssemblySpec.run()
 	local segments = leg:GetSegments()
 	assert(#segments == 2, "expected exactly two legal consecutive segments")
 	assert(#segments <= 14, "segment count exceeded launch cap")
-	assert(segments[1].CanCollide == false, "inner-hub segment must keep collision disabled")
+	assert(segments[1].CanCollide == false, "inner-socket segment must keep collision disabled")
 	assert(segments[2].CanCollide == true, "outer segment must collide with Track")
 
 	for index, segment in segments do
@@ -116,12 +134,8 @@ function B07LegAssemblySpec.run()
 	assert(visualPartCount > 0, "R16.3B visual layer produced no visible geometry")
 	assert(#leg:GetSegments() == physicalCountBeforeVisualCheck, "physical collider count changed by visual layer")
 
-	local joint = leg:GetJoint()
-	assert(joint.Attachment0 == leftHub.MotorAttachment)
-	assert(joint.Attachment1 == leg:GetRoot().MotorAttachment)
-	assert(joint.Enabled == false, "B07 deterministic geometry spec must not run its motor")
-
 	leg:Destroy()
+	axleRoot:Destroy()
 	assert(model.Legs:FindFirstChild("LeftLeg") == nil, "LegAssembly destroy left runtime geometry behind")
 	racer:Destroy()
 
