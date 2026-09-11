@@ -25,9 +25,9 @@ R17 changes the mechanical/presentation implementation around that stroke contra
 - Instant redraw keeps the old pair live while a staged replacement evaluates a bounded **collision-safe redraw phase** search against Track geometry; only the chosen replacement is committed. Body CFrame and linear/angular velocity are not reset by the swap.
 - Production `RiderPresentationController` is active as a normalized, client-only, nonphysical human rider presentation layer.
 - R17.6 evidence now isolates **body density**, **leg density**, **motor speed**, and optional **body friction** candidate families on temporary Studio racers. **Production tuning remains unchanged** until real Studio evidence selects a winner; `HUMAN BODY FEEL CHOICE PENDING` remains the state.
-- R17.7 reuses the canonical flat/steps/wall/gap/tunnel course matrix across the reference shape set; `R17FINAL` remains the current ordered Studio evidence aggregator. Committed default Studio mode remains `G0`.
+- R17.7 reuses the canonical flat/steps/wall/gap/tunnel course matrix across the reference shape set; `R17FINAL` is the current ordered Studio evidence aggregator and the **committed Studio default while R17 human review is pending**. `G0` remains selectable for the narrower legacy human harness.
 
-Latest pre-doc reference-feel code evidence: head `633ea2bf67ada70077c5941532f0a582c00b4a02`, Contract Verify run `34634238162`: **193 passed, 0 failed**, Rokit install PASS, **Rojo build PASS**. These checks prove source contracts/buildability only; they do not prove Roblox Studio physics, camera feel, rider pose/readability or any human product gate.
+Latest verified pre-status-sync R17 code/evidence head `ea95d1cbe5a2b1a7c6c044c59862c470651595e8`, Contract Verify run `34637827630`: contract checks PASS, Rokit install PASS, **Rojo build PASS**. These checks prove source contracts/buildability only; they do not prove Roblox Studio physics, camera feel, rider pose/readability or any human product gate.
 
 Historical evidence retained for regression traceability:
 - pre-R06 baseline: **66 passed, 0 failed**;
@@ -94,7 +94,7 @@ Replacement shared leg pair stages before commit; failed redraw preserves the pr
 The M0 lab contains canonical flat/steps/wall/gap/tunnel representatives. DEV/STAGING/Studio debug telemetry exposes shape/segment/speed/motor/stuck/anti-stall/lane/checkpoint/progress information. Debug presentation is hidden by default behind F3.
 
 ## R17FINAL local Studio gate
-Committed `StudioHarnessConfig.Mode` remains `G0`. For the combined R17 evidence pass, select the Studio-only `R17FINAL` mode locally, run Play, and wait for the full synchronous evidence sequence before human review.
+`StudioHarnessConfig.Mode` is currently committed as `R17FINAL` while R17 human review is pending. A fresh synced Studio run therefore enters the combined R17 evidence path automatically; no local mode edit is required. `G0`, `R16FINAL` and the focused B/R16 harness modes remain selectable when a narrower diagnostic run is intentionally needed.
 
 Expected evidence includes:
 - no unexpected red DrawRacers runtime error;
