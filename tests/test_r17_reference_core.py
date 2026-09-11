@@ -31,7 +31,33 @@ def test_r17_3_origin_experiment_contract() -> None:
     ]:
         assert token in text, f"missing R17.3 origin evidence token: {token}"
 
-    # The experiment is evidence-only: production ShapeSpec/network owners stay untouched.
     assert 'LegShapeService' not in text
     assert 'RemoteEvent' not in text
+    assert 'FireServer' not in text
+
+
+def test_r17_5_live_phase_evidence_contract() -> None:
+    path = ROOT / "src/server/Tests/R17PhaseEvidence.lua"
+    assert path.exists(), "R17.5 requires live hinge phase evidence"
+    text = path.read_text(encoding="utf-8")
+
+    for token in [
+        'RacerRuntime',
+        'R16ReferenceShapes',
+        'RunService.Heartbeat:Wait()',
+        'PHASE_TARGET_DEGREES = 180',
+        'STEADY_ERROR_LIMIT = 5',
+        'EXCURSION_ERROR_LIMIT = 10',
+        'MAX_EXCURSION_SECONDS = 0.25',
+        'injectDrift',
+        'measurePhaseWindow',
+        'motorSignSafe',
+        'averageMotorVelocity',
+        'redraw',
+        '[DrawRacers][R17.5]',
+        'function R17PhaseEvidence.RunEvidence()',
+    ]:
+        assert token in text, f"missing R17.5 phase evidence token: {token}"
+
+    assert 'AngularVelocity = -PhysicsConfig.Motor.AngularVelocity' not in text
     assert 'FireServer' not in text
