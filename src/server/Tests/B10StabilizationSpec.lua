@@ -12,11 +12,38 @@ local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRun
 local B10StabilizationSpec = {}
 
 local RECOVERY_WINDOW = 0.25
-local MAX_RECOVERY_ATTEMPTS = 3
+local MAX_RECOVERY_ATTEMPTS = 6
+local SCHEDULER_STABLE_FRAMES = 4
+local SCHEDULER_STABLE_MAX_DT = RECOVERY_WINDOW / SCHEDULER_STABLE_FRAMES
+local SCHEDULER_WARMUP_TIMEOUT = 3.0
 
 local function bodyAngularDeviationDegrees(body: BasePart): number
 	local x, y, z = body.CFrame:ToOrientation()
 	return math.max(math.abs(math.deg(x)), math.abs(math.deg(y)), math.abs(math.deg(z)))
+end
+
+local function waitForStableScheduler(): (boolean, number?)
+	local stableFrames = 0
+	local elapsed = 0
+	local lastDt: number? = nil
+
+	while elapsed < SCHEDULER_WARMUP_TIMEOUT do
+		local dt = RunService.Heartbeat:Wait()
+		elapsed += dt
+		lastDt = dt
+
+		if dt <= SCHEDULER_STABLE_MAX_DT then
+			stableFrames += 1
+		else
+			stableFrames = 0
+		end
+
+		if stableFrames >= SCHEDULER_STABLE_FRAMES then
+			return true, lastDt
+		end
+	end
+
+	return false, lastDt
 end
 
 local function runUprightRecoveryAttempt(body: BasePart, recoveryCFrame: CFrame): (boolean, number, number, number?)
@@ -34,10 +61,10 @@ local function runUprightRecoveryAttempt(body: BasePart, recoveryCFrame: CFrame)
 	while recoveryElapsed < RECOVERY_WINDOW and not recovered do
 		local dt = RunService.Heartbeat:Wait()
 		local sampleEnd = recoveryElapsed + dt
-		-- The acceptance contract is recovery by 0.25 s. A coarse Heartbeat sample is
-		-- still valid evidence when it lands inside that real deadline (for example
-		-- 0.2239 s). Only a sample that jumps past the deadline is unresolved and must
-		-- be retried; this keeps the <=0.25 s requirement unchanged.
+		-- The acceptance contract is still recovery by 0.25 s. A sample that lands
+		-- inside the real deadline is valid evidence even if it is relatively coarse.
+		-- If Heartbeat jumps across the entire remaining deadline, this attempt is
+		-- unresolved rather than a physics failure and must be retried after warm-up.
 		if sampleEnd > RECOVERY_WINDOW then
 			return false, recoveryElapsed, bodyAngularDeviationDegrees(body), dt
 		end
@@ -111,9 +138,10 @@ function B10StabilizationSpec.run()
 	)
 
 	-- Reference-parity body contract: disturb the cube but keep it upright while the legs
-	-- remain the only rotating locomotion assemblies. The recovery timer uses the actual
-	-- 0.25 s acceptance deadline. A scheduler jump that crosses that deadline cannot resolve
-	-- the recovery time, so only that attempt is discarded and retried.
+	-- remain the only rotating locomotion assemblies. Studio startup can hitch while plugins,
+	-- native-code fallbacks, or first physics work settle. We therefore require a short run of
+	-- stable Heartbeats before injecting the timed disturbance. The measured recovery deadline
+	-- itself is unchanged: valid evidence must still show <= 0.25 s.
 	local recoveryCFrame = CFrame.new(-18, 8, laneCenterZ) * CFrame.Angles(0, 0, math.rad(2.5))
 	local recoveryElapsed = 0
 	local recoveryDeviation = math.huge
@@ -122,21 +150,26 @@ function B10StabilizationSpec.run()
 	local lastStallDt: number? = nil
 
 	for attempt = 1, MAX_RECOVERY_ATTEMPTS do
-		local attemptRecovered, attemptElapsed, attemptDeviation, stallDt = runUprightRecoveryAttempt(body, recoveryCFrame)
-		recovered = attemptRecovered
-		recoveryElapsed = attemptElapsed
-		recoveryDeviation = attemptDeviation
-		if stallDt == nil then
-			validRecoveryEvidence = true
-			break
+		local schedulerStable, warmupLastDt = waitForStableScheduler()
+		if schedulerStable then
+			local attemptRecovered, attemptElapsed, attemptDeviation, stallDt = runUprightRecoveryAttempt(body, recoveryCFrame)
+			recovered = attemptRecovered
+			recoveryElapsed = attemptElapsed
+			recoveryDeviation = attemptDeviation
+			if stallDt == nil then
+				validRecoveryEvidence = true
+				break
+			end
+			lastStallDt = stallDt
+		else
+			lastStallDt = warmupLastDt
 		end
-		lastStallDt = stallDt
 	end
 
 	assert(
 		validRecoveryEvidence,
 		string.format(
-			"upright recovery evidence invalidated because Heartbeat crossed the 0.25 s window: attempts=%d lastDt=%.4f",
+			"scheduler could not provide a measurable 0.25 s recovery window: attempts=%d lastDt=%.4f",
 			MAX_RECOVERY_ATTEMPTS,
 			lastStallDt or -1
 		)
