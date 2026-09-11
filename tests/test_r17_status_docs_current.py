@@ -34,20 +34,49 @@ def test_current_status_docs_route_to_r17_runtime_without_promoting_human_gate()
         assert "B17/G0 — HUMAN_GATE PASS" not in doc
 
 
-def test_status_docs_keep_r17_mechanics_and_camera_contract_exact() -> None:
+def test_status_docs_keep_current_r17_mechanics_and_camera_contract_exact() -> None:
+    session = read("docs/SESSION.md")
+    features = read("docs/FEATURE_LIST.md")
+    readme = read("README.md")
+
+    current_sections = [
+        session.split("## R17 CURRENT OVERRIDE", 1)[1].split("## Product state", 1)[0].lower(),
+        features.split("## Current milestone / canonical override", 1)[1].split("## Bootstrap", 1)[0].lower(),
+        readme.split("## Current state", 1)[1].split("## CORE / pre-G0 integrity repair", 1)[0].lower(),
+    ]
+
+    for section in current_sections:
+        for token in [
+            "one `axlejoint`",
+            "one motor",
+            "co-phase",
+            "full 360",
+            "first cleaned point",
+        ]:
+            assert token in section, f"current status section missing R17 invariant: {token}"
+        assert "structural 180" not in section, "current R17 status must not claim obsolete 180-degree side offset"
+        assert "phase-chasing" in section
+        assert "human studio pending" in section
+
+
+def test_status_docs_record_reference_feel_autodev_without_fabricating_tuning_winner() -> None:
     session = read("docs/SESSION.md")
     features = read("docs/FEATURE_LIST.md")
     readme = read("README.md")
     merged = "\n".join([session, features, readme]).lower()
 
     for token in [
-        "one `axlejoint`",
-        "one motor",
-        "structural 180",
-        "full 360",
-        "first cleaned point",
+        "stable two-axis dead-zone",
+        "collision-safe redraw phase",
+        "body density",
+        "leg density",
+        "motor speed",
+        "body friction",
+        "production tuning remains unchanged",
+        "r17.7",
+        "r17final",
     ]:
-        assert token in merged, f"current status docs missing R17 invariant: {token}"
+        assert token in merged, f"status docs missing reference-feel autodev token: {token}"
 
-    assert "phase-chasing" in merged
-    assert "human studio pending" in merged
+    assert "human body feel choice pending" in merged
+    assert "human review pass" not in merged
