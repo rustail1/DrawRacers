@@ -61,7 +61,7 @@ local function sanitizeVisual(visual: Model)
 			descendant.CanTouch = false
 			descendant.CanQuery = false
 			descendant.Massless = true
-			descendant.Anchored = descendant.Name == "HumanoidRootPart"
+			descendant.Anchored = true
 			descendant.LocalTransparencyModifier = 0
 			if descendant.Name == "HumanoidRootPart" then
 				descendant.Transparency = 1
