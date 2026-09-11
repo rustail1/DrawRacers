@@ -1,89 +1,60 @@
 --!strict
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local PhysicsConfig = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
-)
-local GeometryMath = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("GeometryMath")
-)
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
-local LegAssembly = require(script.Parent.Parent.Runtime:WaitForChild("LegAssembly"))
+local R16ReferenceShapes = require(script.Parent:WaitForChild("R16ReferenceShapes"))
 
 local B08OneHingeMotorHarness = {}
-
-local ROUND_01 = {
-	Vector2.new(0.72, 0),
-	Vector2.new(0.624, 0.36),
-	Vector2.new(0.36, 0.624),
-	Vector2.new(0, 0.72),
-	Vector2.new(-0.36, 0.624),
-	Vector2.new(-0.624, 0.36),
-	Vector2.new(-0.72, 0),
-	Vector2.new(-0.624, -0.36),
-	Vector2.new(-0.36, -0.624),
-	Vector2.new(0, -0.72),
-	Vector2.new(0.36, -0.624),
-	Vector2.new(0.624, -0.36),
-}
+local activeRacer: any = nil
 
 function B08OneHingeMotorHarness.start()
+	if activeRacer ~= nil then
+		return
+	end
+
 	local racer = RacerRuntime.new({
-		raceId = "B08_FLAT",
-		slotIndex = 8,
+		raceId = "B08_ONE_HINGE",
+		slotIndex = 1,
 		laneIndex = 1,
 		isBot = true,
 		trackId = "B08_FLAT",
-		spawnCFrame = CFrame.new(18, 3.30, 0),
+		spawnCFrame = CFrame.new(-42, 4, 0),
+		laneCenterZ = 0,
 	})
+	activeRacer = racer
+	racer:ApplyShape(R16ReferenceShapes.Get("ROUND_01"), true)
+
+	local pair = racer:GetLegPair()
+	assert(pair ~= nil, "B08 shared pair missing")
+	local joint = pair:GetJoint()
+	assert(joint.Name == "AxleJoint" and joint:IsA("HingeConstraint"), "B08 requires one AxleJoint")
+	assert(joint.Enabled == true, "B08 AxleJoint motor must be enabled")
+
+	local hingeCount = 0
+	for _, descendant in racer:GetModel():GetDescendants() do
+		if descendant:IsA("HingeConstraint") then
+			hingeCount += 1
+		end
+	end
+	assert(hingeCount == 1, string.format("B08 expected one shared hinge, got %d", hingeCount))
 
 	local body = racer:GetBody()
-	body.Transparency = 0.35
-	body.Color = Color3.fromRGB(255, 145, 65)
-	body.Material = Enum.Material.SmoothPlastic
-
-	local geometryPlan = GeometryMath.BuildSegmentPlan(ROUND_01, PhysicsConfig.LegGeometry)
-	local leg = LegAssembly.new({
-		racerModel = racer:GetModel(),
-		side = "Left",
-		shapeSpec = {
-			normalizedPoints = ROUND_01,
-			mappedPoints = geometryPlan.mappedPoints,
-			segmentPlan = geometryPlan.segmentPlan,
-			extent = geometryPlan.extent,
-		},
-		motorEnabled = true,
-	})
-
-	local joint = leg:GetJoint()
-	assert(joint.ActuatorType == Enum.ActuatorType.Motor)
-	assert(joint.AngularVelocity == PhysicsConfig.Motor.AngularVelocity)
-	assert(joint.MotorMaxTorque == PhysicsConfig.Motor.MotorMaxTorque)
-	assert(joint.MotorMaxAcceleration == PhysicsConfig.Motor.MotorMaxAcceleration)
-	assert(joint.Enabled == true)
-	assert(racer:GetModel().Legs:FindFirstChild("LeftLeg") ~= nil)
-
 	local startX = body.Position.X
 	print("[DrawRacers][B08] one-hinge flat harness ready")
 
-	task.spawn(function()
-		for second = 1, 6 do
-			task.wait(1)
-			if body.Parent == nil then
-				return
-			end
-
-			local deltaX = body.Position.X - startX
-			local speedX = body.AssemblyLinearVelocity.X
-			print(string.format(
-				"[DrawRacers][B08] t=%ds deltaX=%.3f speedX=%.3f",
-				second,
-				deltaX,
-				speedX
-			))
+	task.delay(2, function()
+		if activeRacer ~= racer or racer:IsDestroyed() then
+			return
 		end
+		local deltaX = body.Position.X - startX
+		print(string.format("[DrawRacers][B08] deltaX=%.3f", deltaX))
 	end)
+end
+
+function B08OneHingeMotorHarness.stop()
+	if activeRacer ~= nil then
+		activeRacer:Destroy()
+		activeRacer = nil
+	end
 end
 
 return B08OneHingeMotorHarness
