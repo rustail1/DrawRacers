@@ -233,6 +233,7 @@ function RiderPresentationController:_step()
 					self:_placeRider(record, body)
 				end
 			end
+		end
 	end
 
 	local stale = {}
