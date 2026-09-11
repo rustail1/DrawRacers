@@ -14,26 +14,31 @@ def test_b13_atomic_redraw_contract() -> None:
         "oldLegPair:GetPhaseDegrees()",
         "stagedLegPair",
         "staged = true",
+        "RedrawSpawnSafety.ChoosePhase",
+        "selectedPhaseDegrees",
+        "redrawSafetyFallback",
         "stagedLegPair:Commit()",
         "stagedLegPair:SetEnabled",
         "oldLegPair:SetRetiring(true)",
         "oldLegPair:SetRetiring(false)",
         "oldLegPair:Destroy()",
     ]:
-        assert token in runtime, f"missing R17 B13 atomic pair redraw token: {token}"
+        assert token in runtime, f"missing safe atomic pair redraw token: {token}"
 
     stage_index = runtime.index("stagedLegPair = LegPairAssembly.new")
+    safety_index = runtime.index("RedrawSpawnSafety.ChoosePhase")
+    retire_index = runtime.index("oldLegPair:SetRetiring(true)")
     commit_index = runtime.index("stagedLegPair:Commit()")
     old_destroy_index = runtime.index("oldLegPair:Destroy()")
-    assert stage_index < commit_index < old_destroy_index, "old pair must survive until replacement is staged and committed"
+    assert stage_index < safety_index < retire_index < commit_index < old_destroy_index
 
-    apply_shape = runtime[runtime.index("function RacerRuntime:ApplyShape"):runtime.index("function RacerRuntime:ApplyValidatedShape")]
+    apply_shape = runtime[runtime.index("function RacerRuntime:_ApplyShapeSpec"):runtime.index("function RacerRuntime:ApplyShape")]
     for forbidden in [
         "self.body.CFrame =",
         "body.CFrame =",
         "AssemblyLinearVelocity =",
         "AssemblyAngularVelocity =",
-        "PivotTo(",
+        "body:PivotTo(",
     ]:
         assert forbidden not in apply_shape, f"B13 redraw must not teleport/reset body state: {forbidden}"
 
@@ -63,8 +68,11 @@ def test_b13_studio_spec_is_wired() -> None:
         "CFrame",
         "GetLegPair",
         "GetPhaseDegrees",
+        "RedrawSpawnSafety",
+        "safe phase selection replaced old pair too early",
+        "selected safe phase was not applied",
         "old pair changed after failed redraw",
-        "atomic redraw tests PASS",
+        "atomic redraw + safe phase tests PASS",
     ]:
         assert token in spec, f"missing B13 Studio acceptance token: {token}"
 
