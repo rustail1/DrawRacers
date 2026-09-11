@@ -104,8 +104,8 @@ def test_r14_3_client_does_not_start_studio_drawing_before_ready() -> None:
     ready_branch = bootstrap.split('if state == "READY" then', 1)[1].split('elseif state == "BLOCKED" then', 1)[0]
     assert "drawingController:Start()" in ready_branch
     assert "startProductionPresentation()" in ready_branch
-    assert 'G0 BLOCKED — SERVER TEST FAILED' in bootstrap
-    assert 'G0 TESTS RUNNING' in bootstrap
+    assert 'string.format("%s BLOCKED — SERVER TEST FAILED", StudioHarnessConfig.Mode)' in bootstrap
+    assert 'string.format("%s TESTS RUNNING", StudioHarnessConfig.Mode)' in bootstrap
 
 
 def test_r14_5_pending_strokes_are_count_and_time_bounded() -> None:
