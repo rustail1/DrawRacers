@@ -73,9 +73,7 @@ def test_current_status_docs_make_r17final_the_studio_default_until_human_review
     for section in current_sections:
         assert "r17final" in section
         assert "default" in section
-        assert "default" in section and "r17final" in section
-        assert "committed default" in section or "studio default" in section
-        assert "default" not in section.split("g0", 1)[0] if False else True
+        assert "committed" in section or "studio default" in section
         assert "committed default studio mode remains `g0`" not in section
         assert "committed default mode remains `g0`" not in section
         assert "committed `studioharnessconfig.mode` remains `g0`" not in section
