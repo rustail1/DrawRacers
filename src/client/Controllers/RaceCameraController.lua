@@ -19,8 +19,8 @@ local POSITION_DAMPING_TIME = 0.16
 local LOOK_TARGET_DAMPING_TIME = 0.12
 local VERTICAL_DEAD_ZONE = 0.50
 local VERTICAL_DAMPING_TIME = 0.22
-local ORBIT_YAW_LIMIT = 40
-local ORBIT_PITCH_LIMIT = 18
+local ORBIT_PITCH_LIMIT = 70
+local ORBIT_INPUT_DAMPING_TIME = 0.08
 local ORBIT_RETURN_TIME = 0.40
 local ORBIT_DEGREES_PER_PIXEL = 0.25
 local FALLBACK_ASPECT_RATIO = 16 / 9
@@ -80,6 +80,8 @@ function RaceCameraController.new(playerGui: PlayerGui)
 		_previousFieldOfView = nil :: number?,
 		_smoothedPosition = nil :: Vector3?,
 		_smoothedLookTarget = nil :: Vector3?,
+		_targetOrbitYaw = 0,
+		_targetOrbitPitch = 0,
 		_orbitYaw = 0,
 		_orbitPitch = 0,
 		_mouseOrbitHeld = false,
@@ -162,24 +164,32 @@ function RaceCameraController:_releaseCamera()
 	self._previousFieldOfView = nil
 	self._smoothedPosition = nil
 	self._smoothedLookTarget = nil
+	self._targetOrbitYaw = 0
+	self._targetOrbitPitch = 0
+	self._orbitYaw = 0
+	self._orbitPitch = 0
 end
 
 function RaceCameraController:_applyOrbitDelta(delta: Vector2)
-	local yaw = self._orbitYaw - delta.X * ORBIT_DEGREES_PER_PIXEL
-	local pitch = self._orbitPitch - delta.Y * ORBIT_DEGREES_PER_PIXEL
-	self._orbitYaw, self._orbitPitch = CameraMath.ClampOrbit(
-		yaw,
-		pitch,
-		ORBIT_YAW_LIMIT,
+	-- R17.9: yaw is intentionally unbounded so RMB can orbit the racer through
+	-- full 360-degree turns. Only pitch is clamped to prevent camera inversion.
+	self._targetOrbitYaw -= delta.X * ORBIT_DEGREES_PER_PIXEL
+	self._targetOrbitPitch = CameraMath.ClampPitch(
+		self._targetOrbitPitch - delta.Y * ORBIT_DEGREES_PER_PIXEL,
 		ORBIT_PITCH_LIMIT
 	)
 end
 
 function RaceCameraController:_step(dt: number)
-	if not self._mouseOrbitHeld and self._touchOrbitInput == nil then
-		self._orbitYaw = CameraMath.SmoothNumber(self._orbitYaw, 0, dt, ORBIT_RETURN_TIME)
-		self._orbitPitch = CameraMath.SmoothNumber(self._orbitPitch, 0, dt, ORBIT_RETURN_TIME)
+	local orbitInputActive = self._mouseOrbitHeld or self._touchOrbitInput ~= nil
+	if not orbitInputActive then
+		self._targetOrbitYaw = 0
+		self._targetOrbitPitch = 0
 	end
+
+	local orbitDampingTime = if orbitInputActive then ORBIT_INPUT_DAMPING_TIME else ORBIT_RETURN_TIME
+	self._orbitYaw = CameraMath.SmoothAngleDegrees(self._orbitYaw, self._targetOrbitYaw, dt, orbitDampingTime)
+	self._orbitPitch = CameraMath.SmoothNumber(self._orbitPitch, self._targetOrbitPitch, dt, orbitDampingTime)
 
 	local body = findLocalRacerBody()
 	if body == nil then
