@@ -18,7 +18,7 @@ local StrokeTypes = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
 )
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
-local LegAssembly = require(script.Parent:WaitForChild("LegAssembly"))
+local LegPairAssembly = require(script.Parent:WaitForChild("LegPairAssembly"))
 local RacerAntiStall = require(script.Parent:WaitForChild("RacerAntiStall"))
 local RacerStabilizer = require(script.Parent:WaitForChild("RacerStabilizer"))
 
@@ -70,6 +70,9 @@ local function makeHub(name: string, offset: Vector3, body: Part, parent: Model)
 	hub.CollisionGroup = CollisionGroups.RacerBody
 	hub.Parent = parent
 
+	-- Retained as a stable debug/authoring marker. R17 production locomotion no
+	-- longer attaches a motor to each side hub; LegPairAssembly owns one central
+	-- AxleMotorAttachment on BodyCollider instead.
 	local motorAttachment = Instance.new("Attachment")
 	motorAttachment.Name = "MotorAttachment"
 	motorAttachment.Axis = Vector3.zAxis
@@ -145,24 +148,9 @@ local function ensureRuntimeFolder(model: Model, name: string): Folder
 	return folder
 end
 
-local function captureLegPhaseDegrees(leg: any, hub: Part, fallbackDegrees: number): number
-	if leg == nil then
-		return fallbackDegrees
-	end
-
-	local root = leg:GetRoot()
-	local relative = hub.CFrame:ToObjectSpace(root.CFrame)
-	local _, _, z = relative:ToOrientation()
-	return math.deg(z)
-end
-
-local function signedAngularDeltaDegrees(targetDegrees: number, currentDegrees: number): number
-	return (targetDegrees - currentDegrees + 180) % 360 - 180
-end
-
 local function makeInternalShapeSpec(normalizedPoints: { Vector2 }): ShapeSpec
-	-- R16.3B test/reference shapes use the same mechanical-origin semantics as
-	-- player shapes: the first point is the hub-relative origin.
+	-- R16.3B/R17 keep the player shape authoritative and first-point anchored.
+	-- R17 changes only the mechanical pair drive, not stroke/network semantics.
 	local anchoredPoints = StrokeMath.AnchorToFirstPoint(normalizedPoints)
 	local plan = GeometryMath.BuildSegmentPlan(anchoredPoints, PhysicsConfig.LegGeometry)
 	assert(#plan.segmentPlan > 0, "internal shape produced no legal physical segments")
@@ -231,20 +219,16 @@ function RacerRuntime.new(params: SpawnParams)
 	local self = setmetatable({
 		model = model,
 		body = body,
+		legPair = nil,
+		-- Aliases retained for existing diagnostics/evidence callers. Both are
+		-- rigid children of the same LegPairAssembly and own no motor.
 		leftLeg = nil,
 		rightLeg = nil,
 		stabilizer = stabilizer,
 		antiStall = antiStall,
-		phaseSyncConnection = nil :: RBXScriptConnection?,
 		currentShapeSpec = nil :: ShapeSpec?,
 		destroyed = false,
 	}, RacerRuntime)
-
-	self.phaseSyncConnection = RunService.Heartbeat:Connect(function()
-		if not self.destroyed then
-			self:_StepLegPhaseSync()
-		end
-	end)
 
 	return self
 end
@@ -269,6 +253,11 @@ function RacerRuntime:GetAntiStall()
 	return self.antiStall
 end
 
+function RacerRuntime:GetLegPair()
+	assert(not self.destroyed, "RacerRuntime is destroyed")
+	return self.legPair
+end
+
 function RacerRuntime:GetShapeVersion(): number
 	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
 	local version = self.model:GetAttribute("ShapeVersion")
@@ -283,152 +272,61 @@ function RacerRuntime:GetCurrentShapeSpec(): ShapeSpec?
 	return self.currentShapeSpec
 end
 
-function RacerRuntime:_StepLegPhaseSync()
-	if self.destroyed or self.model == nil or self.leftLeg == nil or self.rightLeg == nil then
-		return
-	end
-
-	local leftJoint = self.leftLeg:GetJoint()
-	local rightJoint = self.rightLeg:GetJoint()
-	local motor = PhysicsConfig.Motor
-	local baseAngularVelocity = motor.AngularVelocity
-
-	if not leftJoint.Enabled or not rightJoint.Enabled then
-		leftJoint.AngularVelocity = baseAngularVelocity
-		rightJoint.AngularVelocity = baseAngularVelocity
-		return
-	end
-
-	local leftHub = self.model:FindFirstChild("LeftHub")
-	local rightHub = self.model:FindFirstChild("RightHub")
-	if not (leftHub and leftHub:IsA("Part") and rightHub and rightHub:IsA("Part")) then
-		return
-	end
-
-	local leftPhaseDegrees = captureLegPhaseDegrees(self.leftLeg, leftHub, 0)
-	local rightPhaseDegrees = captureLegPhaseDegrees(self.rightLeg, rightHub, motor.RightPhaseOffsetDegrees)
-	local currentDifference = (rightPhaseDegrees - leftPhaseDegrees + 360) % 360
-	local phaseErrorDegrees = signedAngularDeltaDegrees(motor.RightPhaseOffsetDegrees, currentDifference)
-
-	if math.abs(phaseErrorDegrees) <= motor.PhaseLockToleranceDegrees then
-		leftJoint.AngularVelocity = baseAngularVelocity
-		rightJoint.AngularVelocity = baseAngularVelocity
-		return
-	end
-
-	local relativeCorrection = math.clamp(
-		math.rad(phaseErrorDegrees) / motor.PhaseLockRecoveryTime,
-		-motor.PhaseLockMaxRelativeCorrection,
-		motor.PhaseLockMaxRelativeCorrection
-	)
-	local halfCorrection = relativeCorrection * 0.5
-	local leftVelocity = baseAngularVelocity - halfCorrection
-	local rightVelocity = baseAngularVelocity + halfCorrection
-
-	-- Keep both hinges in the canonical locomotion direction. The phase lock is
-	-- allowed to bias their speeds symmetrically, never to reverse one wheel.
-	if baseAngularVelocity < 0 then
-		leftVelocity = math.min(leftVelocity, -0.001)
-		rightVelocity = math.min(rightVelocity, -0.001)
-	elseif baseAngularVelocity > 0 then
-		leftVelocity = math.max(leftVelocity, 0.001)
-		rightVelocity = math.max(rightVelocity, 0.001)
-	end
-
-	leftJoint.AngularVelocity = leftVelocity
-	rightJoint.AngularVelocity = rightVelocity
-end
-
 function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolean?)
 	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
 	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table", "shapeSpec missing segmentPlan")
 	assert(#shapeSpec.segmentPlan > 0, "shapeSpec requires physical segments")
 
 	local model = self.model
-	local leftHub = model:FindFirstChild("LeftHub")
-	local rightHub = model:FindFirstChild("RightHub")
 	local legsFolder = model:FindFirstChild("Legs")
-	assert(leftHub and leftHub:IsA("Part"), "RacerRuntime missing LeftHub")
-	assert(rightHub and rightHub:IsA("Part"), "RacerRuntime missing RightHub")
 	assert(legsFolder and legsFolder:IsA("Folder"), "RacerRuntime missing Legs folder")
 
-	local oldLeftLeg = self.leftLeg
-	local oldRightLeg = self.rightLeg
-	local leftPhaseDegrees = captureLegPhaseDegrees(oldLeftLeg, leftHub, 0)
-	local rightPhaseDegrees = leftPhaseDegrees + PhysicsConfig.Motor.RightPhaseOffsetDegrees
-
-	local stagedLeftLeg = nil
-	local stagedRightLeg = nil
+	local oldLegPair = self.legPair
+	local initialPhaseDegrees = if oldLegPair ~= nil then oldLegPair:GetPhaseDegrees() else 0
+	local stagedLegPair = nil
 	local buildOk, buildError = pcall(function()
-		stagedLeftLeg = LegAssembly.new({
+		stagedLegPair = LegPairAssembly.new({
 			racerModel = model,
-			side = "Left",
 			shapeSpec = shapeSpec,
 			motorEnabled = false,
-			initialPhaseDegrees = leftPhaseDegrees,
-			staged = true,
-		})
-
-		stagedRightLeg = LegAssembly.new({
-			racerModel = model,
-			side = "Right",
-			shapeSpec = shapeSpec,
-			motorEnabled = false,
-			initialPhaseDegrees = rightPhaseDegrees,
+			initialPhaseDegrees = initialPhaseDegrees,
 			staged = true,
 		})
 	end)
 
 	if not buildOk then
-		if stagedLeftLeg ~= nil then
-			stagedLeftLeg:Destroy()
-		end
-		if stagedRightLeg ~= nil then
-			stagedRightLeg:Destroy()
+		if stagedLegPair ~= nil then
+			stagedLegPair:Destroy()
 		end
 		error(buildError)
 	end
+	assert(stagedLegPair ~= nil, "atomic redraw staging produced incomplete shared leg pair")
 
-	assert(stagedLeftLeg ~= nil and stagedRightLeg ~= nil, "atomic redraw staging produced incomplete legs")
-
-	local oldLeftModel = if oldLeftLeg ~= nil then oldLeftLeg:GetModel() else nil
-	local oldRightModel = if oldRightLeg ~= nil then oldRightLeg:GetModel() else nil
-	if oldLeftModel ~= nil then
-		oldLeftModel.Name = "LeftLeg_Retiring"
-	end
-	if oldRightModel ~= nil then
-		oldRightModel.Name = "RightLeg_Retiring"
+	if oldLegPair ~= nil then
+		oldLegPair:SetRetiring(true)
 	end
 
 	local commitOk, commitError = pcall(function()
-		stagedLeftLeg:Commit()
-		stagedRightLeg:Commit()
-		stagedLeftLeg:SetEnabled(motorEnabled == true)
-		stagedRightLeg:SetEnabled(motorEnabled == true)
+		stagedLegPair:Commit()
+		stagedLegPair:SetEnabled(motorEnabled == true)
 	end)
 	if not commitOk then
-		stagedLeftLeg:Destroy()
-		stagedRightLeg:Destroy()
-		if oldLeftModel ~= nil and oldLeftModel.Parent ~= nil then
-			oldLeftModel.Name = "LeftLeg"
-		end
-		if oldRightModel ~= nil and oldRightModel.Parent ~= nil then
-			oldRightModel.Name = "RightLeg"
+		stagedLegPair:Destroy()
+		if oldLegPair ~= nil then
+			oldLegPair:SetRetiring(false)
 		end
 		error(commitError)
 	end
 
-	self.leftLeg = stagedLeftLeg
-	self.rightLeg = stagedRightLeg
+	self.legPair = stagedLegPair
+	self.leftLeg = stagedLegPair:GetLeftLeg()
+	self.rightLeg = stagedLegPair:GetRightLeg()
 
-	if oldLeftLeg ~= nil then
-		oldLeftLeg:Destroy()
-	end
-	if oldRightLeg ~= nil then
-		oldRightLeg:Destroy()
+	if oldLegPair ~= nil then
+		oldLegPair:Destroy()
 	end
 
-	return stagedLeftLeg, stagedRightLeg
+	return self.leftLeg, self.rightLeg
 end
 
 function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: boolean?)
@@ -463,18 +361,12 @@ function RacerRuntime:Destroy()
 	end
 
 	self.destroyed = true
-	if self.phaseSyncConnection then
-		self.phaseSyncConnection:Disconnect()
-		self.phaseSyncConnection = nil
+	if self.legPair then
+		self.legPair:Destroy()
+		self.legPair = nil
 	end
-	if self.leftLeg then
-		self.leftLeg:Destroy()
-		self.leftLeg = nil
-	end
-	if self.rightLeg then
-		self.rightLeg:Destroy()
-		self.rightLeg = nil
-	end
+	self.leftLeg = nil
+	self.rightLeg = nil
 	if self.antiStall then
 		self.antiStall:Destroy()
 		self.antiStall = nil
