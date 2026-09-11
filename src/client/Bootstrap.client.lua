@@ -79,7 +79,7 @@ if RunService:IsStudio() then
 	local presentationStarted = false
 
 	local function applyStudioGateState()
-		local state = ReplicatedStorage:GetAttribute(STUDIO_GATE_ATTRIBUTE)
+		local state = ReplicatedStorage:GetAttribute("DrawRacersStudioGateState")
 		if state == "READY" then
 			gateBanner.Visible = false
 			startProductionPresentation()
