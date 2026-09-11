@@ -11,7 +11,7 @@ local R16ReferenceShapes = require(script.Parent:WaitForChild("R16ReferenceShape
 
 local R17PhaseEvidence = {}
 
-local PHASE_TARGET_DEGREES = 180
+local PHASE_TARGET_DEGREES = 0
 local STRUCTURAL_ERROR_LIMIT = 0.15
 local MEASURE_SECONDS = 1.25
 
@@ -82,11 +82,11 @@ local function runTrial(redraw: boolean): boolean
 		local pair = racer:GetLegPair()
 		assert(pair ~= nil, "R17 shared pair missing")
 		assert(countHinges(racer:GetModel()) == 1, "R17 must have exactly one physical hinge")
-		assert(structuralPhaseErrorDegrees(pair) <= STRUCTURAL_ERROR_LIMIT, "R17 initial structural phase is not 180")
+		assert(structuralPhaseErrorDegrees(pair) <= STRUCTURAL_ERROR_LIMIT, "R17 initial side copies are not co-phased")
 
 		if redraw then
 			-- Let the one real axle rotate before redraw, then prove the replacement
-			-- inherits that one phase instead of reconstructing two independent sides.
+			-- inherits that one phase instead of reconstructing independent sides.
 			local waitElapsed = 0
 			while waitElapsed < 0.35 do
 				waitElapsed += RunService.Heartbeat:Wait()
@@ -101,7 +101,7 @@ local function runTrial(redraw: boolean): boolean
 		local maxStructuralError, singleMotorSafe, axleTravel = measureWindow(racer)
 		local passed = maxStructuralError <= STRUCTURAL_ERROR_LIMIT and singleMotorSafe and axleTravel > 0.5
 		print(string.format(
-			"[DrawRacers][R17.5] redraw=%s structuralError=%.3f singleMotor=%s axleTravel=%.3f %s",
+			"[DrawRacers][R17.5] redraw=%s coPhaseError=%.3f singleMotor=%s axleTravel=%.3f %s",
 			tostring(redraw),
 			maxStructuralError,
 			tostring(singleMotorSafe),
@@ -121,7 +121,7 @@ end
 
 function R17PhaseEvidence.RunEvidence(): boolean
 	assert(RunService:IsStudio(), "R17PhaseEvidence is Studio-only")
-	print("[DrawRacers][R17.5] shared-axle phase evidence starting")
+	print("[DrawRacers][R17.5] shared-axle co-phase evidence starting")
 	local rigidPassed = runTrial(false)
 	local redrawPassed = runTrial(true)
 	return rigidPassed and redrawPassed
