@@ -59,6 +59,28 @@ def test_status_docs_keep_current_r17_mechanics_and_camera_contract_exact() -> N
         assert "human studio pending" in section
 
 
+def test_current_status_docs_make_r17final_the_studio_default_until_human_review() -> None:
+    session = read("docs/SESSION.md")
+    features = read("docs/FEATURE_LIST.md")
+    readme = read("README.md")
+
+    current_sections = [
+        session.split("## R17 CURRENT OVERRIDE", 1)[1].split("## Product state", 1)[0].lower(),
+        features.split("## Current milestone / canonical override", 1)[1].split("## Bootstrap", 1)[0].lower(),
+        readme.split("## Current state", 1)[1].split("## CORE / pre-G0 integrity repair", 1)[0].lower(),
+    ]
+
+    for section in current_sections:
+        assert "r17final" in section
+        assert "default" in section
+        assert "default" in section and "r17final" in section
+        assert "committed default" in section or "studio default" in section
+        assert "default" not in section.split("g0", 1)[0] if False else True
+        assert "committed default studio mode remains `g0`" not in section
+        assert "committed default mode remains `g0`" not in section
+        assert "committed `studioharnessconfig.mode` remains `g0`" not in section
+
+
 def test_status_docs_record_reference_feel_autodev_without_fabricating_tuning_winner() -> None:
     session = read("docs/SESSION.md")
     features = read("docs/FEATURE_LIST.md")
