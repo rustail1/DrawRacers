@@ -87,7 +87,9 @@ if RunService:IsStudio() then
 				drawingStarted = true
 				drawingController:Start()
 			end
-			local presentationMode = StudioHarnessConfig.Mode == "G0" or StudioHarnessConfig.Mode == "R16FINAL"
+			local presentationMode = StudioHarnessConfig.Mode == "G0"
+				or StudioHarnessConfig.Mode == "R16FINAL"
+				or StudioHarnessConfig.Mode == "R17FINAL"
 			if presentationMode and not presentationStarted then
 				presentationStarted = true
 				M0G0PresentationHarness.start()
