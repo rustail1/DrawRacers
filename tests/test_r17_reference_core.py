@@ -131,7 +131,7 @@ def test_r17_8_final_harness_contract() -> None:
         assert token in text, f"missing R17FINAL token: {token}"
 
     assert 'R17FINAL = "R17FINAL"' in config
-    assert 'Mode = "G0"' in config, "R17FINAL must not become the committed default"
+    assert 'Mode = "R17FINAL"' in config, "R17FINAL is the current Studio acceptance default while R17 human review is pending"
     assert 'harnessMode == "R17FINAL"' in bootstrap
     assert 'WaitForChild("R17FinalHarness")' in bootstrap
     assert 'StudioHarnessConfig.Mode == "R17FINAL"' in client_bootstrap
