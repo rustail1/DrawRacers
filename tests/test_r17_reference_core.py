@@ -90,6 +90,8 @@ def test_r17_8_final_harness_contract() -> None:
     text = path.read_text(encoding="utf-8")
     config = read("src/shared/Config/StudioHarnessConfig.lua")
     bootstrap = read("src/server/Bootstrap.server.lua")
+    client_bootstrap = read("src/client/Bootstrap.client.lua")
+    g0_presentation = read("src/client/Dev/M0G0PresentationHarness.lua")
 
     ordered_tokens = [
         'R16StageCHarness.RunEvidence()',
@@ -114,6 +116,8 @@ def test_r17_8_final_harness_contract() -> None:
     assert 'Mode = "G0"' in config, "R17FINAL must not become the committed default"
     assert 'harnessMode == "R17FINAL"' in bootstrap
     assert 'WaitForChild("R17FinalHarness")' in bootstrap
+    assert 'StudioHarnessConfig.Mode == "R17FINAL"' in client_bootstrap
+    assert 'StudioHarnessConfig.Mode ~= "R17FINAL"' in g0_presentation
     assert 'HUMAN REVIEW PASS' not in text
     assert 'HUMAN ORIGIN CHOICE PASS' not in text
     assert 'HUMAN BODY FEEL CHOICE PASS' not in text
