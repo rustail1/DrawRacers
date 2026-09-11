@@ -44,30 +44,45 @@ def test_r17_5_live_phase_evidence_contract() -> None:
 
 def test_r17_6_body_feel_evidence_contract() -> None:
     path = ROOT / "src/server/Tests/R17BodyFeelExperiment.lua"
-    assert path.exists(), "R17.6 requires isolated body-feel candidate sweeps"
+    assert path.exists(), "R17.6 requires isolated reference-feel candidate sweeps"
     text = path.read_text(encoding="utf-8")
     runner = read("src/server/Tests/R16TrialRunner.lua")
+
     for token in [
-        'DENSITY_CANDIDATES = { 1.00, 0.60, 0.40 }',
+        'BODY_DENSITY_CANDIDATES = { 1.00, 0.60, 0.45, 0.35 }',
+        'LEG_DENSITY_CANDIDATES = { 1.00, 0.60, 0.40 }',
+        'MOTOR_SPEED_CANDIDATES = { -8.0, -10.0, -11.5, -12.5 }',
         'FRICTION_CANDIDATES = { 0.45, 0.25, 0.10 }',
-        'COLLIDER_SIZE_CANDIDATES = { 3.0, 2.8, 2.6 }',
         'R16TrialRunner.RunFlatTelemetry',
+        'R16TrialRunner.RunPiece',
+        'SmallSteps', 'SingleWallLow',
         'bodyContactTime', 'legContactTime', 'airTime', 'forwardDistance', 'averageSpeed', 'stuckTime',
-        'PhysicsConfig.Motor.AngularVelocity', 'PhysicsConfig.Motor.MotorMaxTorque',
-        'PhysicsConfig.Motor.MotorMaxAcceleration',
+        'maxBounceHeight', 'solverInstability',
+        'bodyDensity', 'legDensity', 'motorAngularVelocity', 'bodyFriction',
+        'PhysicsConfig.Motor.MotorMaxTorque', 'PhysicsConfig.Motor.MotorMaxAcceleration',
         '[DrawRacers][R17.6]', 'HUMAN BODY FEEL CHOICE PENDING',
         'function R17BodyFeelExperiment.RunEvidence()',
     ]:
-        assert token in text, f"missing R17.6 body-feel token: {token}"
+        assert token in text, f"missing R17.6 reference-feel token: {token}"
+
     for token in [
         'function R16TrialRunner.RunFlatTelemetry',
-        'bodyContactTime', 'legContactTime', 'airTime', 'forwardDistance', 'averageSpeed', 'stuckTime',
-        'bodyOptions',
+        'function applyTemporaryTuning',
+        'bodyDensity', 'bodyFriction', 'legDensity', 'motorAngularVelocity',
+        'GetLegPair', 'GetSegments', 'GetJoint',
+        'maxBounceHeight', 'solverInstability',
+        'options.tuning',
     ]:
-        assert token in runner, f"R16TrialRunner missing R17 telemetry support: {token}"
-    assert 'PhysicsConfig.LegMaterial.Density =' not in text
-    assert 'PhysicsConfig.LegMaterial.Friction =' not in text
-    assert 'AssemblyLinearVelocity =' not in text
+        assert token in runner, f"R16TrialRunner missing temporary tuning support: {token}"
+
+    # Evidence must tune only temporary trial instances, never global config.
+    for forbidden in [
+        'PhysicsConfig.Motor.AngularVelocity =',
+        'PhysicsConfig.Motor.MotorMaxTorque =',
+        'PhysicsConfig.PhysicalMaterials.LegSegment.Density =',
+        'AssemblyLinearVelocity =',
+    ]:
+        assert forbidden not in text
 
 
 def test_r17_7_reference_course_contract() -> None:
