@@ -1,11 +1,13 @@
-# 16 — GLOBAL PHYSICS / RACE / CAMERA DEFAULTS v1.3.4
+# 16 — GLOBAL PHYSICS / RACE / CAMERA DEFAULTS v1.4.0 R17
 
 > Values here are **project starting defaults / tuning hypotheses**, not hidden values from Draw Climber. The implementer starts with the exact `Default` value and may sweep only inside the stated range during acceptance. Domain-specific numeric content lives in `59` UI, `60` TrackPieces, `61` economy/progression and `57` performance.
+
+R17 sequence/authority override: `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md`. R17 authorizes the current production camera/rider owners during M0 and an ordered reference-core evidence pass before B17. Human Studio gates remain pending.
 
 ## 1. Racer / collision defaults
 | Parameter | Default | Initial sweep / hard note |
 |---|---:|---|
-| Body collider size | 3×3×3 studs | fixed product baseline |
+| Body collider size | 3×3×3 studs | current production baseline; R17.6 may compare 3.0 / 2.8 / 2.6 only after density+friction evidence |
 | Lane center spacing | 12 studs | 10–14 |
 | Max leg extent from hub | 4.5 studs | 4.0–4.8; never player-paid |
 | Min useful leg extent | 0.7 studs | 0.6–0.9 |
@@ -13,7 +15,7 @@
 | Physics point target after resample | 12 | 9–15 |
 | Max collider segments per leg | 14 | hard cap launch |
 | Visual segments per leg | 24 | 20–30 presentation only |
-| Left/right phase offset | 180° | 160–200° |
+| Left/right phase offset | 180° | R17 target remains anti-phase; live-solver acceptance is R17.5 |
 | Inner hub no-collision radius | 0.65 studs | .55–.80 |
 
 Starting physical properties:
@@ -21,6 +23,7 @@ Starting physical properties:
 - Leg collision segment friction `1.0`, elasticity `0.02`; visual-only stroke has no collision.
 - Hub is non-collidable. Inner leg segments inside hub exclusion are non-collidable.
 - Do not alter body/leg physical properties by cosmetic ID.
+- **R17.6 isolation rule:** first compare body density `1.00 / 0.60 / 0.40`; then compare body friction `0.45 / 0.25 / 0.10` using the selected density; compare body collider `3.0 / 2.8 / 2.6` only if measured belly contact remains the proven limiter. Do not change these families simultaneously.
 
 ## 2. Stroke processing defaults
 | Parameter | Default | Sweep / cap |
@@ -38,7 +41,9 @@ Starting physical properties:
 | Stroke submit cooldown | 0.20 s | .15–.30; abuse/rate protection, not gameplay power |
 | Max stroke payload bytes | 4096 | hard validation cap |
 
-Rules: one continuous stroke per submit; invalid/tiny/stale submit leaves the current accepted shape intact; self-intersection remains legal. **R16.3B/`73` supersedes R16.3A bounds-center semantics:** normalization is isotropic using half the visible wide DrawInputRect height as one semantic unit, raw points are clamped to X `±1.75` and Y `±1.0`, and after cleanup the authoritative shape is translated so its **first cleaned point** becomes `(0,0)`. This translation never resizes, rotates or mirrors the shape; the bounds midpoint is not required to be the hub.
+Rules: one continuous stroke per submit; invalid/tiny/stale submit leaves the current accepted shape intact; self-intersection remains legal. **Current production origin remains R16.3B/`73`:** normalization is isotropic using half the visible wide DrawInputRect height as one semantic unit, raw points are clamped to X `±1.75` and Y `±1.0`, and after cleanup the authoritative shape is translated so its **first cleaned point** becomes `(0,0)`. This translation never resizes, rotates or mirrors the shape; the bounds midpoint is not required to be the hub.
+
+R17.3 is authorized to compare first-point, bounds-center and deterministic geometry/reference-center origins in a Studio-only evidence experiment. That experiment does **not** change production origin. Only an explicit R17.4 decision after human evidence may supersede the current first-point rule.
 
 ## 3. Motor defaults
 Use one motorized hinge per leg as `11` describes.
@@ -50,6 +55,8 @@ Use one motorized hinge per leg as `11` describes.
 | MotorMaxAcceleration | 120 rad/s² | 80–180 |
 
 Acceptance meaning matters more than numeric scale: intended SmallSteps/WallLow must be solvable by suitable legal shapes; WallHigh must not be brute-forced by every compact/round shape.
+
+**R17.6 guard:** motor values remain `-8 / 35000 / 120` during the body density/friction/collider isolation sweeps. Motor tuning is allowed only after mass/contact evidence proves it is still the limiting variable.
 
 ## 4. Planar lane/body stabilization defaults
 Observable contract: racer locomotion is 2.5D. X/Y are the physical gameplay plane; Z translation is locked to the racer's lane center. Under the **R16.1 upright-body contract**, rotation about world X/Y/Z is locked/corrected while X/Y translation remains physically free.
@@ -127,18 +134,19 @@ No dynamic rubber-band after heat start. Table is the MEDIUM baseline; exact EAS
 | Side/Z distance | 23 studs | 18–28 |
 | Position damping time | 0.16 s | .10–.24 |
 | Look target damping time | 0.12 s | .08–.20 |
-| Vertical dead-zone | **0.50 stud** | .30–.80; D09 starting hypothesis |
-| Vertical damping time | **0.22 s** | .16–.30; D09 starting hypothesis |
-| Free-look yaw limit | **±40°** | ±30–50°; D09 starting hypothesis |
-| Free-look pitch limit | **±18°** | ±12–25°; D09 starting hypothesis |
-| Free-look return time | **0.40 s** | .30–.55; D09 starting hypothesis |
+| Vertical dead-zone | **0.50 stud** | .30–.80 |
+| Vertical damping time | **0.22 s** | .16–.30 |
+| Free-look yaw limit | **±40°** | ±30–50° |
+| Free-look pitch limit | **±18°** | ±12–25° |
+| Free-look return time | **0.40 s** | .30–.55 |
 | Max gameplay camera shake | 0.12 stud / 0.6° | Reduce Motion = 0 |
 
-Camera behavior locked by `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`:
-- production `RaceCameraController` remains a D09 task; these values do not authorize early implementation during M0;
+Camera behavior is now governed by `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md` plus the original camera/rider presentation contract:
+- production `RaceCameraController`/`CameraMath` are active M0 owners under R17; D09 later extends this same owner to the 2-player/rival readability case rather than introducing a second camera;
 - the active-race camera follows a smoothed target derived from the **Local Racer world position**, not from the racer's rotational CFrame; racer roll/pitch/yaw never becomes camera roll/orientation authority;
 - smoothing must be frame-rate independent; X can converge with the normal position damping while Y uses the vertical dead-zone and vertical damping above so small solver bounce does not shake the view and meaningful climbs/falls remain visible;
-- desktop free-look is **hold RMB**, bounded by yaw/pitch limits; release automatically returns to canonical side framing using `Free-look return time`; LMB remains drawing input and is not a camera toggle;
+- desktop free-look is **hold RMB**, bounded by yaw/pitch limits; R17.1 requires reliable mouse capture/restoration and allows eligible RMB camera ownership even when CoreScripts set `gameProcessed`, while focused text/project UI/DrawCanvas still block the camera;
+- release automatically returns to canonical side framing using `Free-look return time`; LMB remains drawing input and is not a camera toggle;
 - touch free-look may start only from world space outside DrawCanvas and active UI; a touch that starts in DrawInputRect remains drawing-owned until end/cancel;
 - ordinary racer physics does not create implicit camera shake. `Max gameplay camera shake` applies only to deliberate presentation effects and becomes zero under Reduce Motion;
 - other racers may be visible but do not become the active-race target automatically. Spectator target policy remains owned by `74`.
@@ -164,4 +172,4 @@ Every changed constant records:
 - ACCEPT / REVERT / CONTINUE SWEEP;
 - Decision Log if the change alters product meaning rather than only a numeric value.
 
-The existence of a sweep range does not leave implementation undefined: **always start from Default**.
+The existence of a sweep range does not leave implementation undefined: **always start from Default**. R17 tuning must follow the ordered isolation rules above and may not mix origin, mass/friction/collider and motor changes in one evidence step.
