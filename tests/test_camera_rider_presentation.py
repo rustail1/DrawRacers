@@ -91,6 +91,18 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "CameraMath.ClampOrbit" in camera
     assert "ORBIT_RETURN_TIME" in camera
 
+    # Orbit input is meaningful only while this controller has an eligible local
+    # racer to own. A pre-spawn RMB/touch gesture must not accumulate stale orbit
+    # that is suddenly applied when a later racer appears.
+    input_began_body = camera.split("UserInputService.InputBegan:Connect(function", 1)[1].split(
+        "end))", 1
+    )[0]
+    local_racer_guard_index = input_began_body.index("findLocalRacerBody()")
+    mouse_claim_index = input_began_body.index("self._mouseOrbitHeld = true")
+    touch_claim_index = input_began_body.index("self._touchOrbitInput = input")
+    assert local_racer_guard_index < mouse_claim_index
+    assert local_racer_guard_index < touch_claim_index
+
     # Orbit return is presentation lifecycle state, not racer-body state. If the
     # racer briefly disappears after RMB release (respawn/replacement gap), the
     # 0.40 s return must continue instead of freezing and reappearing stale.
