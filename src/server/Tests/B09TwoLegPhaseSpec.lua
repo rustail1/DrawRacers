@@ -36,6 +36,12 @@ local function assertSamePoints(a: { Vector2 }, b: { Vector2 })
 	end
 end
 
+local function phaseDegrees(hub: Part, root: Part): number
+	local relative = hub.CFrame:ToObjectSpace(root.CFrame)
+	local _, _, z = relative:ToOrientation()
+	return math.deg(z)
+end
+
 function B09TwoLegPhaseSpec.run()
 	local racer = RacerRuntime.new({
 		raceId = "B09_TEST",
@@ -48,6 +54,8 @@ function B09TwoLegPhaseSpec.run()
 
 	local leftLeg, rightLeg = racer:ApplyShape(ASYM_01, false)
 	local model = racer:GetModel()
+	local body = racer:GetBody()
+	body.Anchored = true
 	local leftModel = model.Legs:FindFirstChild("LeftLeg")
 	local rightModel = model.Legs:FindFirstChild("RightLeg")
 	assert(leftModel and leftModel:IsA("Model"), "B09 missing LeftLeg")
@@ -76,10 +84,8 @@ function B09TwoLegPhaseSpec.run()
 	assert(leftHub.MotorAttachment.Axis == Vector3.zAxis, "LeftHub hinge axis must be +Z")
 	assert(rightHub.MotorAttachment.Axis == Vector3.zAxis, "RightHub hinge axis must be +Z")
 
-	local _, _, leftPhaseZ = leftHub.CFrame:ToObjectSpace(leftLeg:GetRoot().CFrame):ToOrientation()
-	local _, _, rightPhaseZ = rightHub.CFrame:ToObjectSpace(rightLeg:GetRoot().CFrame):ToOrientation()
-	local leftPhaseDegrees = math.deg(leftPhaseZ)
-	local rightPhaseDegrees = math.deg(rightPhaseZ)
+	local leftPhaseDegrees = phaseDegrees(leftHub, leftLeg:GetRoot())
+	local rightPhaseDegrees = phaseDegrees(rightHub, rightLeg:GetRoot())
 	local phaseDifference = (rightPhaseDegrees - leftPhaseDegrees + 360) % 360
 	assertClose(leftPhaseDegrees, 0, 0.1, "left initial phase")
 	assert(
@@ -90,6 +96,46 @@ function B09TwoLegPhaseSpec.run()
 			phaseDifference
 		)
 	)
+
+	-- Reproduce the reported drift deterministically: both motors still point in
+	-- the locomotion direction, but their roots have been separated by only 90°.
+	-- The pair owner must command a symmetric speed bias that closes the phase
+	-- error without reversing either motor or changing average locomotion speed.
+	leftLeg:GetRoot().CFrame = leftHub.CFrame * CFrame.Angles(0, 0, math.rad(15))
+	rightLeg:GetRoot().CFrame = rightHub.CFrame * CFrame.Angles(0, 0, math.rad(105))
+	leftJoint.Enabled = true
+	rightJoint.Enabled = true
+	racer:_StepLegPhaseSync()
+
+	local baseVelocity = PhysicsConfig.Motor.AngularVelocity
+	assert(
+		leftJoint.AngularVelocity * baseVelocity > 0 and rightJoint.AngularVelocity * baseVelocity > 0,
+		"phase lock correction must keep both motors in canonical locomotion direction"
+	)
+	assertClose(
+		(leftJoint.AngularVelocity + rightJoint.AngularVelocity) * 0.5,
+		baseVelocity,
+		1e-6,
+		"phase lock must preserve average motor speed"
+	)
+	assert(rightJoint.AngularVelocity > leftJoint.AngularVelocity, "90-degree drift must command right leg to catch up")
+
+	-- At canonical anti-phase the correction disappears and both motors return
+	-- exactly to the shared configured speed.
+	leftJoint.Enabled = false
+	rightJoint.Enabled = false
+	leftLeg:GetRoot().CFrame = leftHub.CFrame * CFrame.Angles(0, 0, math.rad(15))
+	rightLeg:GetRoot().CFrame = rightHub.CFrame * CFrame.Angles(0, 0, math.rad(195))
+	leftJoint.Enabled = true
+	rightJoint.Enabled = true
+	racer:_StepLegPhaseSync()
+	local phaseDifferenceAfterSync = (phaseDegrees(rightHub, rightLeg:GetRoot()) - phaseDegrees(leftHub, leftLeg:GetRoot()) + 360) % 360
+	assert(
+		angularDistanceDegrees(phaseDifferenceAfterSync, PhysicsConfig.Motor.RightPhaseOffsetDegrees) <= 1.0,
+		"phase difference after sync must be canonical"
+	)
+	assertClose(leftJoint.AngularVelocity, baseVelocity, 1e-6, "left canonical phase speed")
+	assertClose(rightJoint.AngularVelocity, baseVelocity, 1e-6, "right canonical phase speed")
 
 	racer:Destroy()
 	print("[DrawRacers][B09] two-leg same-XY/phase tests PASS")
