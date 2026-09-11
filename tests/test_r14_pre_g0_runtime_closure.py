@@ -159,14 +159,14 @@ def test_r14_7_atomic_redraw_rolls_back_partial_commit_failure() -> None:
     studio_spec = read("src/server/Tests/B13AtomicRedrawSpec.lua")
     assert "commitOk" in runtime
     assert "commitError" in runtime
-    assert 'oldLeftModel.Name = "LeftLeg"' in runtime
-    assert 'oldRightModel.Name = "RightLeg"' in runtime
-    assert "stagedLeftLeg:Destroy()" in runtime
-    assert "stagedRightLeg:Destroy()" in runtime
+    assert "oldLegPair:SetRetiring(true)" in runtime
+    assert "oldLegPair:SetRetiring(false)" in runtime
+    assert "stagedLegPair:Destroy()" in runtime
     assert "local originalCommit = LegAssembly.Commit" in studio_spec
     assert "B13 injected right-leg commit failure" in studio_spec
     assert 'FindFirstChild("LeftLeg_Retiring") == nil' in studio_spec
     assert 'FindFirstChild("RightLeg_Retiring") == nil' in studio_spec
+    assert 'FindFirstChild("AxleRoot_Retiring") == nil' in studio_spec
 
 
 def test_r14_8_player_toast_maps_internal_reason_codes_to_copy() -> None:
