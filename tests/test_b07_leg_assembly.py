@@ -14,16 +14,22 @@ def test_b07_leg_assembly_contract() -> None:
     for token in [
         '"LeftLeg"',
         '"LegRoot"',
-        '"HubJoint"',
         '"Segments"',
         '"Visual"',
         '"RacerLeg"',
         'WeldConstraint',
+        '"AxleWeld"',
         'PhysicalLegSegmentThickness',
         'SegmentOverlapAllowance',
         'shapeSpec.segmentPlan',
+        'axleRoot',
+        'socketZ',
+        'phaseDegrees',
     ]:
         assert token in leg, f"missing B07 implementation token: {token}"
+
+    assert 'Instance.new("HingeConstraint")' not in leg
+    assert "ActuatorType" not in leg
 
     for token in [
         'LegCanvasHalfSpan',
@@ -48,6 +54,7 @@ def test_b07_exact_defaults_and_studio_spec() -> None:
         "MinimumMappedSegmentLength = 0.08",
         "SegmentOverlapAllowance = 0.06",
         "MaxColliderSegmentsPerLeg = 14",
+        "LegSocketZAbs = 1.5",
     ]:
         assert token in config, f"missing B07 config default: {token}"
 
