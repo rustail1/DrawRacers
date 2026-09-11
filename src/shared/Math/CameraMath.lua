@@ -34,6 +34,23 @@ function CameraMath.ClampPitch(pitchDegrees: number, pitchLimitDegrees: number):
 	return math.clamp(pitchDegrees, -limit, limit)
 end
 
+-- Stable follow anchor used by the production race camera. While the racer is
+-- inside the dead-zone band the anchor is intentionally motionless. Once the
+-- racer leaves the band, move the anchor only far enough to put the racer back
+-- on the boundary. Rendering can then smooth toward this stable anchor without
+-- inheriting every small solver bounce from BodyCollider.
+function CameraMath.StepDeadZoneAnchor(current: number, raw: number, deadZone: number): number
+	local halfBand = math.max(deadZone, 0)
+	local delta = raw - current
+	if math.abs(delta) <= halfBand then
+		return current
+	end
+	return raw - math.sign(delta) * halfBand
+end
+
+-- Retained for older callers/evidence. New production camera follow uses the
+-- unsmoothed StepDeadZoneAnchor first, then smooths the rendered anchor as a
+-- separate layer.
 function CameraMath.StepVerticalDeadZone(
 	current: number,
 	raw: number,
@@ -41,13 +58,10 @@ function CameraMath.StepVerticalDeadZone(
 	dt: number,
 	dampingTime: number
 ): number
-	local halfBand = math.max(deadZone, 0)
-	local delta = raw - current
-	if math.abs(delta) <= halfBand then
+	local target = CameraMath.StepDeadZoneAnchor(current, raw, deadZone)
+	if target == current then
 		return current
 	end
-
-	local target = raw - math.sign(delta) * halfBand
 	return CameraMath.SmoothNumber(current, target, dt, dampingTime)
 end
 
