@@ -134,22 +134,14 @@ local function countLegModels(legsFolder: Folder): number
 	return count
 end
 
-local function getLegRoot(legsFolder: Folder, legName: string): Part?
-	local leg = legsFolder:FindFirstChild(legName)
-	if leg == nil or not leg:IsA("Model") then
-		return nil
+local function countAxleRoots(legsFolder: Folder): number
+	local count = 0
+	for _, child in legsFolder:GetChildren() do
+		if child:IsA("BasePart") and (child.Name == "AxleRoot" or child.Name == "AxleRoot_Retiring") then
+			count += 1
+		end
 	end
-	local root = leg:FindFirstChild("LegRoot")
-	if root == nil or not root:IsA("Part") then
-		return nil
-	end
-	return root
-end
-
-local function phaseDegrees(hub: Part, root: Part): number
-	local relative = hub.CFrame:ToObjectSpace(root.CFrame)
-	local _, _, z = relative:ToOrientation()
-	return math.deg(z)
+	return count
 end
 
 local function angularDistanceDegrees(a: number, b: number): number
@@ -174,18 +166,17 @@ local function runLiveMovingRedrawTrial(): boolean
 	model:SetAttribute("R16StageCTrial", true)
 	local movingBody = racer:GetBody()
 	local legsFolder = model:FindFirstChild("Legs")
-	local leftHub = model:FindFirstChild("LeftHub")
-	local rightHub = model:FindFirstChild("RightHub")
-	if legsFolder == nil or not legsFolder:IsA("Folder")
-		or leftHub == nil or not leftHub:IsA("Part")
-		or rightHub == nil or not rightHub:IsA("Part")
-	then
+	if legsFolder == nil or not legsFolder:IsA("Folder") then
 		destroyActiveRacer()
 		return false
 	end
 
 	local seed = LegShapeService.ValidateAndBuild(racer, R16ReferenceShapes.Get("ROUND_01"), true)
-	if seed.accepted ~= true or not waitForTrackContact(racer, acceptance.TrackContactTimeout, nil) then
+	if seed.accepted ~= true
+		or racer:GetLegPair() == nil
+		or countAxleRoots(legsFolder) ~= 1
+		or not waitForTrackContact(racer, acceptance.TrackContactTimeout, nil)
+	then
 		print("[DrawRacers][R16.10] live moving redraw seed/contact FAIL")
 		destroyActiveRacer()
 		return false
@@ -197,9 +188,8 @@ local function runLiveMovingRedrawTrial(): boolean
 
 	for redrawIndex = 1, 10 do
 		waitHeartbeatSeconds(acceptance.MovingRedrawStepSeconds)
-		local leftRootBefore = getLegRoot(legsFolder, "LeftLeg")
-		local rightRootBefore = getLegRoot(legsFolder, "RightLeg")
-		if leftRootBefore == nil or rightRootBefore == nil then
+		local pairBeforeRedraw = racer:GetLegPair()
+		if pairBeforeRedraw == nil then
 			movingRedrawPassed = false
 			break
 		end
@@ -208,8 +198,7 @@ local function runLiveMovingRedrawTrial(): boolean
 		local linearBeforeRedraw = movingBody.AssemblyLinearVelocity
 		local angularBeforeRedraw = movingBody.AssemblyAngularVelocity
 		local versionBeforeRedraw = racer:GetShapeVersion()
-		local leftPhaseBeforeRedraw = phaseDegrees(leftHub, leftRootBefore)
-		local rightPhaseBeforeRedraw = phaseDegrees(rightHub, rightRootBefore)
+		local phaseBeforeRedraw = pairBeforeRedraw:GetPhaseDegrees()
 		local shapeId = if redrawIndex % 2 == 0 then "ROUND_01" else "ASYM_01"
 
 		local result = LegShapeService.ValidateAndBuild(racer, R16ReferenceShapes.Get(shapeId), true)
@@ -217,8 +206,10 @@ local function runLiveMovingRedrawTrial(): boolean
 			or result.shapeVersion ~= versionBeforeRedraw + 1
 			or racer:GetShapeVersion() ~= versionBeforeRedraw + 1
 			or countLegModels(legsFolder) ~= 2
+			or countAxleRoots(legsFolder) ~= 1
 			or legsFolder:FindFirstChild("LeftLeg_Retiring") ~= nil
 			or legsFolder:FindFirstChild("RightLeg_Retiring") ~= nil
+			or legsFolder:FindFirstChild("AxleRoot_Retiring") ~= nil
 			or movingBody.CFrame ~= bodyCFrameBeforeRedraw
 			or movingBody.AssemblyLinearVelocity ~= linearBeforeRedraw
 			or movingBody.AssemblyAngularVelocity ~= angularBeforeRedraw
@@ -227,17 +218,14 @@ local function runLiveMovingRedrawTrial(): boolean
 			break
 		end
 
-		local leftRootAfter = getLegRoot(legsFolder, "LeftLeg")
-		local rightRootAfter = getLegRoot(legsFolder, "RightLeg")
-		if leftRootAfter == nil or rightRootAfter == nil then
+		local pairAfterRedraw = racer:GetLegPair()
+		if pairAfterRedraw == nil or pairAfterRedraw == pairBeforeRedraw then
 			movingRedrawPassed = false
 			break
 		end
-		local leftPhaseAfterRedraw = phaseDegrees(leftHub, leftRootAfter)
-		local rightPhaseAfterRedraw = phaseDegrees(rightHub, rightRootAfter)
-		local leftPhaseOk = angularDistanceDegrees(leftPhaseAfterRedraw, leftPhaseBeforeRedraw) <= 5.0
-		local rightPhaseOk = angularDistanceDegrees(rightPhaseAfterRedraw, rightPhaseBeforeRedraw) <= 5.0
-		if not leftPhaseOk or not rightPhaseOk then
+		local phaseAfterRedraw = pairAfterRedraw:GetPhaseDegrees()
+		local phasePreserved = angularDistanceDegrees(phaseAfterRedraw, phaseBeforeRedraw) <= 5.0
+		if not phasePreserved then
 			movingRedrawPassed = false
 			break
 		end
