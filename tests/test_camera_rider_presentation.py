@@ -91,17 +91,41 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "CameraMath.ClampOrbit" in camera
     assert "ORBIT_RETURN_TIME" in camera
 
+    # R17.1: desktop orbit must explicitly capture and restore the mouse instead
+    # of relying on free cursor travel. Focused text/UI still owns its input.
+    for token in [
+        "_previousMouseBehavior",
+        "function RaceCameraController:_beginMouseOrbit()",
+        "function RaceCameraController:_endMouseOrbit()",
+        "function RaceCameraController:_worldCameraInputAllowed",
+        "UserInputService:GetFocusedTextBox()",
+        "UserInputService.MouseBehavior",
+        "Enum.MouseBehavior.LockCurrentPosition",
+        "UserInputService.WindowFocusReleased:Connect",
+    ]:
+        assert token in camera, f"missing R17.1 camera ownership token: {token}"
+
     # Orbit input is meaningful only while this controller has an eligible local
     # racer to own. A pre-spawn RMB/touch gesture must not accumulate stale orbit
-    # that is suddenly applied when a later racer appears.
+    # that is suddenly applied when a later racer appears. Eligible desktop RMB
+    # is considered before the generic gameProcessed guard so Roblox/CoreScripts
+    # cannot make orbit unreachable; touch remains behind that processed guard.
     input_began_body = camera.split("UserInputService.InputBegan:Connect(function", 1)[1].split(
         "end))", 1
     )[0]
     local_racer_guard_index = input_began_body.index("findLocalRacerBody()")
-    mouse_claim_index = input_began_body.index("self._mouseOrbitHeld = true")
+    mouse_branch_index = input_began_body.index("Enum.UserInputType.MouseButton2")
+    mouse_claim_index = input_began_body.index("self:_beginMouseOrbit()")
+    processed_guard_index = input_began_body.index("if gameProcessed then")
+    touch_branch_index = input_began_body.index("Enum.UserInputType.Touch")
     touch_claim_index = input_began_body.index("self._touchOrbitInput = input")
-    assert local_racer_guard_index < mouse_claim_index
-    assert local_racer_guard_index < touch_claim_index
+    assert local_racer_guard_index < mouse_branch_index < mouse_claim_index
+    assert mouse_claim_index < processed_guard_index < touch_branch_index < touch_claim_index
+
+    # Mouse capture must be released on all ownership exits, not only a normal
+    # RMB-up path. This prevents Alt-Tab, racer loss, camera loss, or Destroy
+    # from leaving the user's cursor locked.
+    assert camera.count("self:_endMouseOrbit()") >= 5
 
     # Orbit return is presentation lifecycle state, not racer-body state. If the
     # racer briefly disappears after RMB release (respawn/replacement gap), the
