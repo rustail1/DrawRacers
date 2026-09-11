@@ -6,26 +6,26 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_b09_two_leg_same_xy_phase_contract() -> None:
     config = (ROOT / "src" / "shared" / "Config" / "PhysicsConfig.lua").read_text(encoding="utf-8")
     leg = (ROOT / "src" / "server" / "Runtime" / "LegAssembly.lua").read_text(encoding="utf-8")
+    pair = (ROOT / "src" / "server" / "Runtime" / "LegPairAssembly.lua").read_text(encoding="utf-8")
     racer = (ROOT / "src" / "server" / "Runtime" / "RacerRuntime.lua").read_text(encoding="utf-8")
 
-    for token in [
-        "RightPhaseOffsetDegrees = 180",
-        "PhaseLockToleranceDegrees = 3.0",
-        "PhaseLockRecoveryTime = 0.25",
-        "PhaseLockMaxRelativeCorrection = 4.0",
+    assert "RightPhaseOffsetDegrees = 180" in config
+    for obsolete in [
+        "PhaseLockToleranceDegrees",
+        "PhaseLockRecoveryTime",
+        "PhaseLockMaxRelativeCorrection",
     ]:
-        assert token in config, f"missing persistent B09 phase-lock config token: {token}"
+        assert obsolete not in config
+        assert obsolete not in racer
 
     for token in [
         'params.side == "Left" or params.side == "Right"',
-        '"LeftHub"',
-        '"RightHub"',
         '"LeftLeg"',
         '"RightLeg"',
-        "initialPhaseDegrees",
-        "CFrame.Angles(0, 0, math.rad(initialPhaseDegrees))",
+        "phaseDegrees",
+        '"AxleWeld"',
     ]:
-        assert token in leg, f"missing B09 side/phase implementation token: {token}"
+        assert token in leg, f"missing B09 rigid-side token: {token}"
 
     for forbidden in [
         "-point.X",
@@ -37,36 +37,32 @@ def test_b09_two_leg_same_xy_phase_contract() -> None:
     ]:
         assert forbidden not in leg, f"B09 must not mirror/invert shape XY: {forbidden}"
 
-    assert "function RacerRuntime:ApplyShape" in racer
-    assert 'side = "Left"' in racer
-    assert 'side = "Right"' in racer
-    assert racer.count("shapeSpec = shapeSpec") >= 2
-    assert "GeometryMath.BuildSegmentPlan" in racer
-    assert "RightPhaseOffsetDegrees" in racer
-
-    # R16.4 is a maintained anti-phase contract, not merely a spawn pose.
-    # RacerRuntime owns the pair, so it must keep one bounded Heartbeat phase
-    # synchronizer and clean it up with the runtime lifecycle.
     for token in [
-        "function RacerRuntime:_StepLegPhaseSync()",
-        "RunService.Heartbeat:Connect",
-        "phaseSyncConnection",
-        "PhaseLockToleranceDegrees",
-        "PhaseLockRecoveryTime",
-        "PhaseLockMaxRelativeCorrection",
-        "leftJoint.AngularVelocity",
-        "rightJoint.AngularVelocity",
-        "self.phaseSyncConnection:Disconnect()",
+        'side = "Left"',
+        'side = "Right"',
+        "shapeSpec = params.shapeSpec",
+        "RightPhaseOffsetDegrees",
+        'joint.Name = "AxleJoint"',
+        "function LegPairAssembly:GetPhaseDegrees()",
     ]:
-        assert token in racer, f"missing persistent B09 phase-lock runtime token: {token}"
+        assert token in pair, f"missing B09 shared-pair token: {token}"
 
-    # Redraw may preserve the live left/reference phase, but must never copy an
-    # already-drifted right phase forward into the replacement pair.
+    assert pair.count('Instance.new("HingeConstraint")') == 1
+    assert 'Instance.new("HingeConstraint")' not in leg
+    assert "function RacerRuntime:ApplyShape" in racer
+    assert "LegPairAssembly.new" in racer
+    assert "self.legPair" in racer
+    assert "phaseSyncConnection" not in racer
+    assert "_StepLegPhaseSync" not in racer
+    assert "leftJoint.AngularVelocity" not in racer
+    assert "rightJoint.AngularVelocity" not in racer
+
     apply_shape_spec = racer.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split(
         "function RacerRuntime:ApplyShape", 1
     )[0]
-    assert "rightPhaseDegrees = leftPhaseDegrees + PhysicsConfig.Motor.RightPhaseOffsetDegrees" in apply_shape_spec
-    assert "captureLegPhaseDegrees(\n\t\toldRightLeg" not in apply_shape_spec
+    assert "initialPhaseDegrees" in apply_shape_spec
+    assert "oldLegPair:GetPhaseDegrees()" in apply_shape_spec
+    assert "stagedLegPair:Commit()" in apply_shape_spec
 
 
 def test_b09_studio_spec_is_wired() -> None:
@@ -79,13 +75,15 @@ def test_b09_studio_spec_is_wired() -> None:
         "LeftLeg",
         "RightLeg",
         "GetMappedPoints",
+        "GetLegPair",
+        "AxleJoint",
         "RightPhaseOffsetDegrees",
-        "_StepLegPhaseSync",
-        "phase lock correction must keep both motors in canonical locomotion direction",
-        "phase difference after sync",
+        "structural phase difference",
         "two-leg same-XY/phase tests PASS",
     ]:
         assert token in text, f"missing B09 Studio acceptance token: {token}"
+
+    assert "_StepLegPhaseSync" not in text
 
     bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
     assert "B09TwoLegPhaseSpec" in bootstrap
