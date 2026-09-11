@@ -128,7 +128,7 @@ def test_r16_10_final_harness_covers_unchanged_full_lab_and_live_redraw() -> Non
     assert "pairBeforeRedraw:GetPhaseDegrees()" in stage_c
     assert "pairAfterRedraw:GetPhaseDegrees()" in stage_c
     assert "angularDistanceDegrees(phaseAfterRedraw, phaseBeforeRedraw) <= 5.0" in stage_c
-    assert "countAxleRoots(legsFolder) == 1" in stage_c
+    assert "countAxleRoots(legsFolder) ~= 1" in stage_c
     assert "movingRedrawPassed" in stage_c
 
     assert 'Instance.new("Part")' not in stage_c
