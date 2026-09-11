@@ -10,6 +10,7 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
+      # Keep core actions on Node 24-compatible majors to avoid deprecated Node 20 runners.
       - name: Checkout
         uses: actions/checkout@v5
       - name: Setup Python
