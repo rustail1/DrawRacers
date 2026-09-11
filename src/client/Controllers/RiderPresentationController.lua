@@ -6,7 +6,7 @@ local Workspace = game:GetService("Workspace")
 
 local RIDER_SCALE = 0.65
 local RIDER_MOUNT_X_OFFSET = -0.15
-local RIDER_MOUNT_Y_OFFSET = 0.30
+local RIDER_SEAT_CLEARANCE = 0.05
 local RIDER_NAME_PREFIX = "RiderPresentation_"
 
 local RiderPresentationController = {}
@@ -15,6 +15,7 @@ RiderPresentationController.__index = RiderPresentationController
 type RiderRecord = {
 	visual: Model,
 	sourceCharacter: Model,
+	seatPart: BasePart,
 }
 
 local function canonicalJointName(name: string): string
@@ -77,6 +78,16 @@ local function sanitizeVisual(visual: Model)
 			end
 		end
 	end
+end
+
+local function findSeatPart(visual: Model): BasePart?
+	for _, name in { "LowerTorso", "Torso", "HumanoidRootPart" } do
+		local candidate = visual:FindFirstChild(name, true)
+		if candidate and candidate:IsA("BasePart") then
+			return candidate
+		end
+	end
+	return nil
 end
 
 local function cloneCharacterVisual(character: Model): Model?
@@ -167,25 +178,37 @@ function RiderPresentationController:_ensureRecord(racer: Model, player: Player)
 	if visual == nil then
 		return nil
 	end
+	local seatPart = findSeatPart(visual)
+	if seatPart == nil then
+		visual:Destroy()
+		return nil
+	end
 	visual.Name = string.format("%s%d", RIDER_NAME_PREFIX, player.UserId)
 	visual.Parent = presentationRoot
 
 	local record: RiderRecord = {
 		visual = visual,
 		sourceCharacter = character,
+		seatPart = seatPart,
 	}
 	self._records[racer] = record
 	return record
 end
 
-function RiderPresentationController:_mountCFrame(body: BasePart): CFrame
+function RiderPresentationController:_targetSeatCFrame(body: BasePart, seatPart: BasePart): CFrame
 	local position = body.Position
-		+ Vector3.new(RIDER_MOUNT_X_OFFSET, body.Size.Y * 0.5 + RIDER_MOUNT_Y_OFFSET, 0)
+		+ Vector3.new(
+			RIDER_MOUNT_X_OFFSET,
+			body.Size.Y * 0.5 + seatPart.Size.Y * 0.5 + RIDER_SEAT_CLEARANCE,
+			0
+		)
 	return CFrame.lookAt(position, position + Vector3.xAxis, Vector3.yAxis)
 end
 
 function RiderPresentationController:_placeRider(record: RiderRecord, body: BasePart)
-	record.visual:PivotTo(self:_mountCFrame(body))
+	local localSeat = record.visual:GetPivot():ToObjectSpace(record.seatPart.CFrame)
+	local targetSeat = self:_targetSeatCFrame(body, record.seatPart)
+	record.visual:PivotTo(targetSeat * localSeat:Inverse())
 end
 
 function RiderPresentationController:_step()
@@ -210,7 +233,6 @@ function RiderPresentationController:_step()
 					self:_placeRider(record, body)
 				end
 			end
-		end
 	end
 
 	local stale = {}
