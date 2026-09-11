@@ -60,15 +60,14 @@ function B16DebugTuningSpec.run()
 	assert(model:GetAttribute("DebugCheckpoint") == 2, "checkpoint metric mismatch")
 	assert(model:GetAttribute("DebugProgress") == 0.375, "progress metric mismatch")
 
-	for _, legName in { "LeftLeg", "RightLeg" } do
-		local leg = model.Legs:FindFirstChild(legName)
-		assert(leg and leg:IsA("Model"), "B16 setup leg missing")
-		local joint = leg:FindFirstChild("HubJoint")
-		assert(joint and joint:IsA("HingeConstraint"), "B16 setup HubJoint missing")
-		joint.Enabled = true
-	end
+	local pair = racer:GetLegPair()
+	assert(pair ~= nil, "B16 setup shared pair missing")
+	local joint = pair:GetJoint()
+	assert(joint.Name == "AxleJoint" and joint:IsA("HingeConstraint"), "B16 setup AxleJoint missing")
+	joint.Enabled = true
 	DebugTelemetry.sampleRacer(model, 0.1)
-	assert(model:GetAttribute("DebugMotorEnabled") == true, "enabled physical motors must report true")
+	assert(model:GetAttribute("DebugMotorEnabled") == true, "enabled shared motor must report true")
+	assert(model:GetAttribute("DebugMotorAngularVelocity") == PhysicsConfig.Motor.AngularVelocity, "shared motor speed telemetry mismatch")
 
 	body.Position = body.Position + Vector3.new(PhysicsConfig.Recovery.MeaningfulHorizontalProgress - 0.1, 0, 0)
 	DebugTelemetry.sampleRacer(model, PhysicsConfig.Recovery.ProgressSampleWindow)
