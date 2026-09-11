@@ -1,9 +1,11 @@
 # 73 — SHAPE COORDINATE, PIVOT & COLLIDER SPEC
-Статус: **EXACT CORE GEOMETRY CONTRACT v1.4.1 / R16.3B**.
+Статус: **EXACT CORE GEOMETRY CONTRACT v1.4.2 / R16.3B + R17 SHARED AXLE OVERRIDE**.
 
-Цель: убрать неоднозначность между экранным stroke и физической leg assembly. Этот файл владеет точным mapping `DrawCanvas → authoritative ShapeSpec → collider segments → hinge assembly`. `03` владеет игровым поведением, `16` — tuneable constants, `65` — Studio instance tree, `22` — network payload.
+Цель: убрать неоднозначность между экранным stroke и физической leg assembly. Этот файл владеет точным mapping `DrawCanvas → authoritative ShapeSpec → collider segments → shared axle assembly`. `03` владеет игровым поведением, `16` — tuneable constants, `65` — Studio instance tree, `22` — network payload.
 
 > **R16.3B supersedes R16.3A bounds-center semantics.** Положение рисунка на широком DrawInputRect остаётся presentation input, но механический origin теперь определяется первым cleaned point. Старое правило «bounds center / bounds-center → hub» больше не является текущим контрактом.
+>
+> **R17 supersedes the old independent left/right hinge implementation.** The authoritative ShapeSpec mapping below is unchanged, but production rotation is now owned by one `LegPairAssembly`, one shared axle, one `AxleJoint` and one motor. The two side `LegAssembly` objects are rigid children with a structural 180 degree relation. Live solver/visual acceptance remains **HUMAN STUDIO PENDING**.
 
 ## 1. Canonical 2D coordinate system
 R16.3B uses one **wide semantic DrawInputRect**. Raw semantic coordinates are:
@@ -65,51 +67,61 @@ Before lane/world transforms, racer body local axes are:
 
 Body collider default is `3×3×3` from `16`.
 
-Hub centers relative to racer body center are owned numerically by `PhysicsConfig.LegGeometry`:
+Stable hub-marker centers relative to racer body center are still owned numerically by `PhysicsConfig.LegGeometry`:
 - `HubOffsetX = 0.0`;
 - `HubOffsetY = -0.35`;
 - `HubOffsetZAbs = 1.62`;
 - LeftHub = `(HubOffsetX, HubOffsetY, -HubOffsetZAbs)`;
 - RightHub = `(HubOffsetX, HubOffsetY, +HubOffsetZAbs)`.
 
-Both legs use the **same first-point-anchored XY ShapeSpec geometry**. They are duplicated only by Z translation; do not mirror/invert the stroke in XY. This makes one accepted player drawing mechanically identical on both sides.
+Under R17 those `LeftHub` / `RightHub` Parts remain body-welded markers/compatibility anchors; they are **not** the motor owners. The rotating mechanical axis is centered at body-local `(HubOffsetX, HubOffsetY, 0)` through `BodyCollider.AxleMotorAttachment`.
 
-## 5. LegRoot / hinge assembly
-Each side has one non-collidable rotating `LegRoot` Part centered on its hub. **DataModel hierarchy is owned by `65`**; the exact relevant runtime subtree is:
+The rigid side sockets on the shared axle are owned by `PhysicsConfig.LegGeometry`:
+- `LegSocketZAbs = 1.5`;
+- Left side socket Z = `-LegSocketZAbs`;
+- Right side socket Z = `+LegSocketZAbs`.
+
+Both legs use the **same first-point-anchored XY ShapeSpec geometry**. They are not mirrored/inverted in XY. The right rigid side is mounted with `RightPhaseOffsetDegrees = 180`, creating the canonical **structural 180** relation while both sides rotate with the same shared axle and one motor.
+
+## 5. LegPairAssembly / shared axle structure
+**DataModel hierarchy is owned by `65`**; the exact relevant runtime subtree is:
 ```text
 Racer_<RaceId>_<Slot> (Model)
   BodyCollider
+    AxleMotorAttachment (Attachment)
   LeftHub
-    MotorAttachment
+    MotorAttachment (Attachment) [marker/compatibility; not a motor owner]
   RightHub
-    MotorAttachment
+    MotorAttachment (Attachment) [marker/compatibility; not a motor owner]
   Legs
+    AxleRoot (Part)
+      MotorAttachment (Attachment)
+      AxleJoint (HingeConstraint)
     LeftLeg (Model)
-      LegRoot
-        MotorAttachment
-      HubJoint
+      LegRoot (Part)
+        AxleWeld (WeldConstraint)
       Segments
         Segment_01..NN
       Visual
         VisualSegment_01..NN
         VisualJoint_01..NN
     RightLeg (Model)
-      LegRoot
-        MotorAttachment
-      HubJoint
+      LegRoot (Part)
+        AxleWeld (WeldConstraint)
       Segments
         Segment_01..NN
       Visual
         VisualSegment_01..NN
         VisualJoint_01..NN
 ```
-This file owns the mechanical relation/coordinates; it does not define an alternate parent tree.
 
-`HingeConstraint` connects `LeftHub/RightHub.MotorAttachment` (body-side) to that side `LegRoot.MotorAttachment`. All physical segments are welded to `LegRoot`. The body is not welded to `LegRoot`.
+`LegPairAssembly` owns `AxleRoot`, the only `AxleJoint`, the only rotating phase, and **one motor**. `AxleJoint.Attachment0 = BodyCollider.AxleMotorAttachment`; `Attachment1 = AxleRoot.MotorAttachment`. The shared hinge axis is local/world `+Z` at neutral racer orientation.
 
-Hinge rotation axis is local/world `+Z` at neutral racer orientation on both sides. Initial launch motor direction is `AngularVelocity = -8.0 rad/s`; magnitude sweep is owned by `16`. Negative sign is canonical because with the local frame above it drives normal bottom contact toward `+X` travel. If an implementation API axis orientation causes the opposite sign, fix attachment axis orientation to this contract rather than creating per-side hidden signs.
+Each side `LegAssembly` owns rigid geometry only. Its `LegRoot` is welded to `AxleRoot` with `AxleWeld`; there is no per-side HingeConstraint or per-side actuator. Left uses phase `0`; Right uses `RightPhaseOffsetDegrees = 180`. Because both are welded to the same `AxleRoot`, their relative phase cannot drift independently under contact load.
 
-Right leg starts `180°` phase after Left leg. Phase offset tuning stays in `16`.
+Initial launch motor direction remains `AngularVelocity = -8.0 rad/s`; magnitude/torque sweep is owned by `16`. Negative sign is canonical because with the local frame above it drives normal bottom contact toward `+X` travel. If API axis orientation causes opposite travel, fix the canonical shared attachment axis rather than introducing per-side hidden signs or a second motor.
+
+No Heartbeat phase-chasing controller is part of the contract. R17 structural 180 replaces the former independent-motor phase-correction approach.
 
 ## 6. Segment collider construction
 For each consecutive first-point-anchored point pair `A→B`:
@@ -119,12 +131,12 @@ For each consecutive first-point-anchored point pair `A→B`:
 - long axis follows vector `B-A` in the XY plane;
 - physical length = `|B-A| + 0.06 stud` overlap allowance;
 - thickness/depth = `PhysicalLegSegmentThickness` from `16` on both short axes;
-- segment is welded rigidly to LegRoot;
+- segment is welded rigidly to that side LegRoot;
 - no collision between segments in the same assembly;
 - physical collider Parts remain hidden from presentation;
 - visual smoothing/round caps are separate nonphysical `Visual` geometry and may use `VisualSegmentsPerLeg`.
 
-There is **no automatic collision spoke from hub to the first stroke point**. Under R16.3B the first authoritative point itself is `(0,0)`, so the first actual polyline segment begins at the hub only because that is the accepted stroke origin. The builder must never invent an extra spoke or closing segment.
+There is **no automatic collision spoke from axle/socket to the first stroke point**. Under R16.3B the first authoritative point itself is `(0,0)` in each side's XY frame, so the first actual polyline segment begins at that side `LegRoot` XY origin only because that is the accepted stroke origin. The builder must never invent an extra spoke or closing segment.
 
 Segments whose nearest geometry lies inside `InnerHubNoCollisionRadius` keep visual representation but set physical collision off. Outside that radius, leg colliders may collide with **Track only** (plus non-blocking Trigger query); they never collide with own body/legs or another racer. Global collision ownership = `28/65`.
 
@@ -132,15 +144,17 @@ Presentation geometry is strictly non-authoritative: visual Parts use `CanCollid
 
 ## 7. Atomic rebuild
 For accepted redraw:
-1. server validates and first-point-anchors ShapeSpec;
-2. construct new left/right assemblies staged with collision disabled;
-3. copy current hinge angle/phase target as closely as implementation allows;
-4. place both new LegRoots at canonical hubs;
-5. enable new collision;
-6. disable/remove old collision and destroy old assemblies in the same server frame/task boundary;
-7. do not change Body CFrame/linear velocity solely because of redraw.
+1. server validates and first-point-anchors the new ShapeSpec;
+2. `RacerRuntime` captures the current **single axle phase** from the old `LegPairAssembly`;
+3. construct one new `LegPairAssembly` staged off-tree with its two rigid side assemblies and motor disabled;
+4. initialize the new `AxleRoot` at the captured axle phase; Left remains structural phase `0`, Right remains structural phase `180`;
+5. mark the old pair retiring, commit the staged `AxleRoot` + two sides, then enable the new pair as one transaction;
+6. if build/commit/enable fails, destroy the staged pair and restore the old pair names/state;
+7. on successful commit, destroy the retired old pair;
+8. do not change `BodyCollider.CFrame`, `AssemblyLinearVelocity`, or `AssemblyAngularVelocity` solely because of redraw;
+9. after success exactly one `AxleRoot`, two side leg models and no `*_Retiring` Instances remain.
 
-There must never be a frame where both old and new physical legs can push the racer simultaneously.
+There must never be a frame where two active axle/leg pairs can push the racer simultaneously.
 
 ## 8. Shape lifetime
 - First-ever arrival in a place/server has **no accepted shape**.
@@ -180,7 +194,7 @@ Safe but intentionally mediocre compact diagonal for bot mistakes:
 Presets are owned here. Bots reference IDs, never duplicate coordinates in `40/75`.
 
 ## 11. UI presentation origin
-R16.3B removes the old assumption that a center marker is the mechanical origin for raw input. The mechanical origin is always the first cleaned authoritative point after server processing.
+R16.3B removes the old assumption that a center marker is the mechanical origin for raw input. The mechanical XY origin is always the first cleaned authoritative point after server processing; R17 changes only how the two rigid side assemblies share rotation.
 
 Live drawing remains where the pointer moved. On submit, the client may store the first submitted semantic point keyed by `sequence`. On accepted result, the server returns first-point-relative `acceptedPoints`; the client may add that stored point back **only for presentation** so the accepted preview remains visually near the place the user drew it. The thumbnail may fit/recenter the shape independently because it is informational only.
 
@@ -188,7 +202,7 @@ No presentation anchor is sent as authoritative network data, persisted in Shape
 
 ## 12. Acceptance
 PASS at repository-contract level only if:
-- the first cleaned authoritative point maps to exact physical hub pivot `(0,0)` within tolerance;
+- the first cleaned authoritative point maps to exact side-local physical XY origin `(0,0)` within tolerance;
 - `ShapeSpec.normalizedPoints[1]` is zero and the bounds midpoint is not required to be zero;
 - translating an otherwise identical raw stroke produces equivalent first-point-relative authoritative geometry;
 - changing drawn **size** changes physical radius rather than being normalized away;
@@ -196,8 +210,11 @@ PASS at repository-contract level only if:
 - no automatic spoke or closing segment is fabricated;
 - physical colliders are hidden and presentation visual geometry is nonphysical;
 - no default wheel/StarterShape appears when no shape exists;
+- one accepted shape creates one `LegPairAssembly`, exactly one `AxleRoot`, exactly one `AxleJoint` and one motor;
+- both rigid side assemblies consume the same ShapeSpec, with Right held at the structural 180 relation and no per-side actuator/phase chase;
+- `LegSocketZAbs = 1.5` is the side mount offset and old hub markers do not own motors;
 - ROUND/LONG_BAR/SMALL_ROUND/HOOK/ASYM presets produce repeatable distinct physical behavior in the Studio evidence path;
-- rebuild never double-collides old+new legs;
+- rebuild never double-collides old+new pairs and preserves the one axle phase/body motion state;
 - ShapeSpec is not persisted across server/place boundaries.
 
-Live Roblox solver/visual acceptance remains HUMAN STUDIO PENDING until actual Studio evidence is recorded.
+Live Roblox solver/visual acceptance remains **HUMAN STUDIO PENDING** until actual Studio evidence is recorded.
