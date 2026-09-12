@@ -59,7 +59,7 @@ def test_phase_safety_is_used_for_initial_pair_but_redraw_preserves_stable_axle_
     apply_body = runtime.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split(
         "function RacerRuntime:ApplyShape", 1
     )[0]
-    assert "self.legPair:ReplaceGeometry(shapeSpec)" in apply_body
+    assert "self.legPair:BeginGeometryReshape(shapeSpec)" in apply_body
     assert "RedrawSpawnSafety.ChoosePhase" not in apply_body
     assert "LegPairAssembly.new" not in apply_body
 
