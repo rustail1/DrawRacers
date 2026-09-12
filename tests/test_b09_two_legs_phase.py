@@ -43,7 +43,7 @@ def test_b09_two_leg_same_xy_opposed_phase_contract() -> None:
         "RightPhaseOffsetDegrees",
         'joint.Name = "AxleJoint"',
         "function LegPairAssembly:GetPhaseDegrees()",
-        "function LegPairAssembly:ReplaceGeometry",
+        "function LegPairAssembly:BeginGeometryReshape",
     ]:
         assert token in pair, f"missing B09 stable-pair token: {token}"
 
@@ -60,7 +60,7 @@ def test_b09_two_leg_same_xy_opposed_phase_contract() -> None:
     apply_shape_spec = racer.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split(
         "function RacerRuntime:ApplyShape", 1
     )[0]
-    assert "self.legPair:ReplaceGeometry(shapeSpec)" in apply_shape_spec
+    assert "self.legPair:BeginGeometryReshape(shapeSpec)" in apply_shape_spec
     assert "LegPairAssembly.new" not in apply_shape_spec
 
 
