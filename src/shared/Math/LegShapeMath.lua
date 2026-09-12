@@ -7,6 +7,7 @@ local LegShapeMath = {}
 
 export type CanonicalShape = {
 	normalizedPoints: { Vector2 },
+	presentationPoints: { Vector2 },
 	mappedPoints: { Vector2 },
 	bounds: any,
 	extent: number,
@@ -62,11 +63,6 @@ function LegShapeMath.BuildCanonical(
 
 	local presentationAnchor = cleaned[1]
 	local anchored = StrokeMath.AnchorToFirstPoint(cleaned)
-	local bounds = StrokeMath.ComputeBounds(anchored)
-	if bounds == nil then
-		return nil, "TOO_SHORT"
-	end
-
 	local geometryPlan = GeometryMath.BuildSegmentPlan(anchored, geometryConfig)
 	if #geometryPlan.segmentPlan == 0 then
 		return nil, "TOO_SHORT"
@@ -75,8 +71,24 @@ function LegShapeMath.BuildCanonical(
 		return nil, "TOO_SHORT"
 	end
 
+	-- RCP-08 parity repair: GeometryMath may radially cap mapped points at
+	-- MaxLegExtentFromHub. Project the authoritative mapped geometry back into
+	-- semantic units so both live/accepted canvas paths use the exact centerline
+	-- that the world leg uses instead of the pre-cap anchored stroke.
+	assert(geometryConfig.LegCanvasHalfSpan > 0, "LegCanvasHalfSpan must be positive")
+	local presentationPoints = table.create(#geometryPlan.mappedPoints)
+	for index, mapped in geometryPlan.mappedPoints do
+		presentationPoints[index] = mapped / geometryConfig.LegCanvasHalfSpan
+	end
+
+	local bounds = StrokeMath.ComputeBounds(presentationPoints)
+	if bounds == nil then
+		return nil, "TOO_SHORT"
+	end
+
 	return {
-		normalizedPoints = anchored,
+		normalizedPoints = presentationPoints,
+		presentationPoints = presentationPoints,
 		mappedPoints = geometryPlan.mappedPoints,
 		bounds = bounds,
 		extent = geometryPlan.extent,
