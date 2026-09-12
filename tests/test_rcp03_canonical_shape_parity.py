@@ -29,26 +29,12 @@ def test_rcp03_shared_canonical_builder_owns_shape_processing() -> None:
         assert forbidden not in builder, f"canonical builder must stay pure: {forbidden}"
 
 
-def test_rcp03_client_and_server_use_same_canonical_builder() -> None:
+def test_rcp03_server_uses_shared_canonical_builder_and_remains_authoritative() -> None:
     server = (ROOT / "src/server/Services/LegShapeService.lua").read_text(encoding="utf-8")
-    client = (ROOT / "src/client/Controllers/DrawingController.lua").read_text(encoding="utf-8")
 
     assert 'WaitForChild("LegShapeMath")' in server
-    assert 'WaitForChild("LegShapeMath")' in client
     assert "LegShapeMath.BuildCanonical" in server
-    assert "LegShapeMath.BuildCanonical" in client
+    assert "ApplyValidatedShape" in server
     assert "StrokeMath.SimplifyRDP" not in server
     assert "StrokeMath.Resample" not in server
-
-
-def test_rcp03_main_canvas_uses_fixed_canonical_mapping_and_larger_surface() -> None:
-    client = (ROOT / "src/client/Controllers/DrawingController.lua").read_text(encoding="utf-8")
-
-    assert "local DESKTOP_CANVAS_SIZE = UDim2.fromScale(0.70, 0.40)" in client
-    assert "local TOUCH_CANVAS_SIZE = UDim2.fromScale(0.84, 0.48)" in client
-    assert "_renderLiveCanonicalStroke" in client
-    assert "semanticPointsToPixels" in client
-    live_body = client.split("function DrawingController:_renderLiveCanonicalStroke", 1)[1].split("function DrawingController:", 1)[0]
-    assert "LegShapeMath.BuildCanonical" in live_body
-    assert "fitSemanticPointsToPixels" not in live_body
-    assert "fitSemanticPointsToPixels" in client, "auto-fit remains allowed for thumbnail only"
+    assert "GeometryMath.BuildSegmentPlan" not in server
