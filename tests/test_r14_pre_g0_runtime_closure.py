@@ -159,18 +159,23 @@ def test_r14_6_g0_fall_recovery_respawns_only_the_racer() -> None:
 
 
 def test_r14_7_atomic_redraw_rolls_back_partial_commit_failure() -> None:
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
-    studio_spec = read("src/server/Tests/B13AtomicRedrawSpec.lua")
-    assert "commitOk" in runtime
-    assert "commitError" in runtime
-    assert "oldLegPair:SetRetiring(true)" in runtime
-    assert "oldLegPair:SetRetiring(false)" in runtime
-    assert "stagedLegPair:Destroy()" in runtime
-    assert "local originalCommit = LegAssembly.Commit" in studio_spec
-    assert "B13 injected right-leg commit failure" in studio_spec
-    assert 'FindFirstChild("LeftLeg_Retiring") == nil' in studio_spec
-    assert 'FindFirstChild("RightLeg_Retiring") == nil' in studio_spec
-    assert 'FindFirstChild("AxleRoot_Retiring") == nil' in studio_spec
+    replace = pair[pair.index("function LegPairAssembly:ReplaceGeometry"):pair.index("function LegPairAssembly:SetEnabled")]
+    assert "pcall" in replace
+    assert "commitOk" in replace
+    assert "commitError" in replace
+    assert "oldLeft:SetRetiring(true)" in replace
+    assert "oldRight:SetRetiring(true)" in replace
+    assert "oldLeft:SetRetiring(false)" in replace
+    assert "oldRight:SetRetiring(false)" in replace
+    assert "stagedLeft:Destroy()" in replace
+    assert "stagedRight:Destroy()" in replace
+    assert replace.index("stagedLeft:Commit()") < replace.index("oldLeft:Destroy()")
+    assert replace.index("stagedRight:Commit()") < replace.index("oldRight:Destroy()")
+    apply = runtime[runtime.index("function RacerRuntime:_ApplyShapeSpec"):runtime.index("function RacerRuntime:ApplyShape")]
+    assert "self.legPair:ReplaceGeometry(shapeSpec)" in apply
+    assert "LegPairAssembly.new" not in apply
 
 
 def test_r14_8_player_toast_maps_internal_reason_codes_to_copy() -> None:
