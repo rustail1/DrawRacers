@@ -26,6 +26,16 @@ export type BuildParams = {
 	staged: boolean?,
 }
 
+type LegBuildParams = {
+	racerModel: Model,
+	axleRoot: Part,
+	shapeSpec: ShapeSpec,
+	side: string,
+	socketZ: number,
+	phaseDegrees: number,
+	staged: boolean,
+}
+
 local function ensureBodyAttachment(body: Part): Attachment
 	local existing = body:FindFirstChild("AxleMotorAttachment")
 	if existing and existing:IsA("Attachment") then
@@ -49,23 +59,15 @@ local function axleBaseCFrame(body: Part): CFrame
 	return body.CFrame * CFrame.new(geometry.HubOffsetX, geometry.HubOffsetY, 0)
 end
 
-local function buildLeg(
-	racerModel: Model,
-	axleRoot: Part,
-	shapeSpec: ShapeSpec,
-	side: string,
-	socketZ: number,
-	phaseDegrees: number,
-	staged: boolean
-)
+local function buildLeg(params: LegBuildParams)
 	return LegAssembly.new({
-		racerModel = racerModel,
-		side = side,
-		shapeSpec = shapeSpec,
-		axleRoot = axleRoot,
-		socketZ = socketZ,
-		phaseDegrees = phaseDegrees,
-		staged = staged,
+		racerModel = params.racerModel,
+		side = params.side,
+		shapeSpec = params.shapeSpec,
+		axleRoot = params.axleRoot,
+		socketZ = params.socketZ,
+		phaseDegrees = params.phaseDegrees,
+		staged = params.staged,
 	})
 end
 
@@ -121,24 +123,24 @@ function LegPairAssembly.new(params: BuildParams)
 	local leftLeg = nil
 	local rightLeg = nil
 	local sideBuildOk, sideBuildError = pcall(function()
-		leftLeg = buildLeg(
-			racerModel,
-			axleRoot,
-			params.shapeSpec,
-			"Left",
-			-geometry.LegSocketZAbs,
-			0,
-			staged
-		)
-		rightLeg = buildLeg(
-			racerModel,
-			axleRoot,
-			params.shapeSpec,
-			"Right",
-			geometry.LegSocketZAbs,
-			motor.RightPhaseOffsetDegrees,
-			staged
-		)
+		leftLeg = buildLeg({
+			racerModel = racerModel,
+			axleRoot = axleRoot,
+			shapeSpec = params.shapeSpec,
+			side = "Left",
+			socketZ = -geometry.LegSocketZAbs,
+			phaseDegrees = 0,
+			staged = staged,
+		})
+		rightLeg = buildLeg({
+			racerModel = racerModel,
+			axleRoot = axleRoot,
+			shapeSpec = params.shapeSpec,
+			side = "Right",
+			socketZ = geometry.LegSocketZAbs,
+			phaseDegrees = motor.RightPhaseOffsetDegrees,
+			staged = staged,
+		})
 	end)
 	if not sideBuildOk then
 		if leftLeg ~= nil then
@@ -224,24 +226,24 @@ function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
 	local stagedRight = nil
 
 	local buildOk, buildError = pcall(function()
-		stagedLeft = buildLeg(
-			self.racerModel,
-			self.axleRoot,
-			shapeSpec,
-			"Left",
-			-geometry.LegSocketZAbs,
-			0,
-			true
-		)
-		stagedRight = buildLeg(
-			self.racerModel,
-			self.axleRoot,
-			shapeSpec,
-			"Right",
-			geometry.LegSocketZAbs,
-			motor.RightPhaseOffsetDegrees,
-			true
-		)
+		stagedLeft = buildLeg({
+			racerModel = self.racerModel,
+			axleRoot = self.axleRoot,
+			shapeSpec = shapeSpec,
+			side = "Left",
+			socketZ = -geometry.LegSocketZAbs,
+			phaseDegrees = 0,
+			staged = true,
+		})
+		stagedRight = buildLeg({
+			racerModel = self.racerModel,
+			axleRoot = self.axleRoot,
+			shapeSpec = shapeSpec,
+			side = "Right",
+			socketZ = geometry.LegSocketZAbs,
+			phaseDegrees = motor.RightPhaseOffsetDegrees,
+			staged = true,
+		})
 	end)
 	if not buildOk then
 		if stagedLeft ~= nil then
