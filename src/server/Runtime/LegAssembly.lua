@@ -82,7 +82,7 @@ function LegAssembly.new(params: BuildParams)
 	local phaseDegrees = params.phaseDegrees or 0
 	local staged = params.staged == true
 	local visualColor = if side == "Left" then BACK_VISUAL_COLOR else FRONT_VISUAL_COLOR
-	local visualThickness = geometry.PhysicalLegSegmentThickness * 0.78
+	local visualThickness = geometry.VisualLegSegmentThickness
 
 	if not staged then
 		local existing = legsFolder:FindFirstChild(legName)
