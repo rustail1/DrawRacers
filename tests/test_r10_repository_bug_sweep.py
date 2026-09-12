@@ -48,6 +48,8 @@ def test_r10_layout_family_ignores_unsupported_input_types() -> None:
     assert "return nil" in drawing[drawing.index("local function inputTypeFamily"):drawing.index("local function initialLayoutFamily")]
 
     handler_start = drawing.index("UserInputService.LastInputTypeChanged")
-    handler_end = drawing.index("end)", handler_start)
+    handler_end = drawing.index("print(\"[DrawRacers][B02] local draw preview ready\")", handler_start)
     handler = drawing[handler_start:handler_end]
-    assert "if family == nil then" in handler
+    assert "family == nil" in handler
+    assert "return" in handler
+    assert "self:_applyLayout(family)" in handler
