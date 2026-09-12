@@ -110,6 +110,7 @@ def test_r17_8_final_harness_contract() -> None:
     bootstrap = read("src/server/Bootstrap.server.lua")
     client_bootstrap = read("src/client/Bootstrap.client.lua")
     g0_presentation = read("src/client/Dev/M0G0PresentationHarness.lua")
+    decision = read("docs/DECISION_LOG_STUDIO_CORE_ITERATION_DEFAULT_2026-09-12.md")
 
     ordered_tokens = [
         'R16StageCHarness.RunEvidence()',
@@ -131,11 +132,12 @@ def test_r17_8_final_harness_contract() -> None:
         assert token in text, f"missing R17FINAL token: {token}"
 
     assert 'R17FINAL = "R17FINAL"' in config
-    assert 'Mode = "R17FINAL"' in config, "R17FINAL is the current Studio acceptance default while R17 human review is pending"
+    assert 'Mode = "G0"' in config, "normal Studio Play must enter the direct manual core loop"
     assert 'harnessMode == "R17FINAL"' in bootstrap
     assert 'WaitForChild("R17FinalHarness")' in bootstrap
     assert 'StudioHarnessConfig.Mode == "R17FINAL"' in client_bootstrap
     assert 'StudioHarnessConfig.Mode ~= "R17FINAL"' in g0_presentation
+    assert "R17FINAL" in decision and "remain selectable" in decision
     assert 'HUMAN REVIEW PASS' not in text
     assert 'HUMAN ORIGIN CHOICE PASS' not in text
     assert 'HUMAN BODY FEEL CHOICE PASS' not in text
