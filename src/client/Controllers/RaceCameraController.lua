@@ -120,6 +120,10 @@ function RaceCameraController:_beginMouseOrbit()
 	if self._mouseOrbitHeld then
 		return
 	end
+	if self._touchOrbitInput == nil then
+		self._targetOrbitYaw = self._orbitYaw
+		self._targetOrbitPitch = self._orbitPitch
+	end
 	self._previousMouseBehavior = UserInputService.MouseBehavior
 	self._mouseOrbitHeld = true
 	UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
@@ -311,6 +315,10 @@ function RaceCameraController:Start()
 		if input.UserInputType == Enum.UserInputType.Touch then
 			local position = Vector2.new(input.Position.X, input.Position.Y)
 			if self._touchOrbitInput == nil and not self:_pointOwnedByUI(position) then
+				if not self._mouseOrbitHeld then
+					self._targetOrbitYaw = self._orbitYaw
+					self._targetOrbitPitch = self._orbitPitch
+				end
 				self._touchOrbitInput = input
 			end
 		end
