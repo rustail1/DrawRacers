@@ -20,9 +20,9 @@ def test_b02_local_preview_contract() -> None:
     ]:
         assert token in text, f"missing hierarchy token {token}"
 
-    # R16.3B: DrawInputRect is the full visible 1.75:1 semantic drawing surface.
-    assert "UDim2.fromScale(0.46, 0.28)" in text
-    assert "UDim2.fromScale(0.64, 0.34)" in text
+    # RCP-03 supersedes the old R16.3B dimensions: roughly 2x area, same 1.75:1 semantic surface.
+    assert "UDim2.fromScale(0.70, 0.40)" in text
+    assert "UDim2.fromScale(0.84, 0.48)" in text
     assert "UDim2.fromScale(1, 1)" in text
     assert "R16WideDrawSurfaceConstraint" in text
     assert "inputController:Bind(drawInputRect)" in text
@@ -37,6 +37,7 @@ def test_b02_local_preview_contract() -> None:
 
     assert "acceptedPoints" in text
     assert "livePoints" in text
+    assert "_renderLiveCanonicalPreview" in text
     assert "renderAcceptedStroke" in text
     assert "clearLiveStroke" in text
 
