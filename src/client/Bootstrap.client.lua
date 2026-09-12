@@ -80,7 +80,7 @@ if RunService:IsStudio() then
 	local presentationStarted = false
 
 	local function applyStudioGateState()
-		local state = ReplicatedStorage:GetAttribute(STUDIO_GATE_ATTRIBUTE)
+		local state = ReplicatedStorage:GetAttribute("DrawRacersStudioGateState")
 		if state == "READY" then
 			if gateBanner ~= nil then
 				gateBanner.Visible = false
@@ -110,7 +110,7 @@ if RunService:IsStudio() then
 		end
 	end
 
-	ReplicatedStorage:GetAttributeChangedSignal(STUDIO_GATE_ATTRIBUTE):Connect(applyStudioGateState)
+	ReplicatedStorage:GetAttributeChangedSignal("DrawRacersStudioGateState"):Connect(applyStudioGateState)
 	applyStudioGateState()
 else
 	startProductionPresentation()
