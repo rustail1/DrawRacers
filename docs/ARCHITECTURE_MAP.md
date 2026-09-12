@@ -173,7 +173,7 @@ Important current absence: production `RacerService`, `RaceService`, `TrackServi
 |---|---|---|
 | Core physics/stroke numbers | `src/shared/Config/PhysicsConfig.lua` | stroke-processing limits, leg geometry/socket, one shared motor, **co-phase 0** side relation, material, stabilization, anti-stall/recovery values |
 | M0 scene/evidence numbers | `src/shared/Config/M0SceneConfig.lua` | lane/spawn/recovery, benchmark, R16 acceptance windows, canonical pieces |
-| Studio harness selection | `src/shared/Config/StudioHarnessConfig.lua` | selected Studio evidence mode; current committed default remains `G0`; `R16FINAL` and `R17FINAL` are evidence modes, not automatic human PASS |
+| Studio harness selection | `src/shared/Config/StudioHarnessConfig.lua` | selected Studio evidence mode; current committed default is `R17FINAL` while R17 human review is pending; `G0` remains selectable; evidence modes do not imply automatic human PASS |
 | Stroke pure math | `src/shared/Math/StrokeMath.lua` | clamp/dedupe/normalize/bounds/centering/simplify/resample/length |
 | Physical segment planning | `src/shared/Math/GeometryMath.lua` | normalized point mapping, radial cap, segment plan, inner-hub collision eligibility |
 | Camera pure math | `src/shared/Math/CameraMath.lua` | frame-rate-independent exponential smoothing, horizontal/vertical dead-zone stepping, angle smoothing and pitch clamp; no gameplay authority |

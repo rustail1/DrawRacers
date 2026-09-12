@@ -100,3 +100,26 @@ def test_status_docs_record_reference_feel_autodev_without_fabricating_tuning_wi
 
     assert "human body feel choice pending" in merged
     assert "human review pass" not in merged
+
+
+def test_navigation_docs_route_to_current_r17_owners_and_default() -> None:
+    architecture = read("docs/ARCHITECTURE_MAP.md")
+    handoff = read("docs/26_HANDOFF_MAP.md")
+
+    studio_row = next(line for line in architecture.splitlines() if "| Studio harness selection |" in line)
+    assert "current committed default is `R17FINAL`" in studio_row
+    assert "`G0` remains selectable" in studio_row
+    assert "current committed default remains `G0`" not in studio_row
+
+    hinge_row = next(line for line in handoff.splitlines() if line.startswith("| Hinge locomotion |"))
+    assert "LegPairAssembly" in hinge_row
+    assert "LegAssembly/RacerRuntime" not in hinge_row
+
+    stabilization_row = next(line for line in handoff.splitlines() if line.startswith("| Stabilization/lane |"))
+    assert "RacerStabilizer" in stabilization_row
+
+    sequencing_note = next(line for line in handoff.splitlines() if line.startswith("Camera/rider sequencing note:"))
+    assert "R17 Product Owner overrides" in sequencing_note
+    assert "current M0 owners" in sequencing_note
+    assert "D09/E03 remain later" in sequencing_note
+    assert "not an authorization to create" not in sequencing_note

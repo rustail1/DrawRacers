@@ -26,8 +26,8 @@ Human copy/paste prompts and the remote GitHub → PC → Rojo → Studio handof
 | Drawing input | `03`, `16`, exact mapping `73`, network `22`, exact UI `59/68` | InputController + DrawingController | mouse/touch preview; B01/B02 |
 | Stroke math | `03`, `16`, pivot/scale `73` | StrokeMath | pure tests + canonical strokes |
 | Leg geometry | `03`, `11`, `21`, exact instances `65`, collider construction `73` | LegAssembly + LegShapeService | shape→bounded real collider |
-| Hinge locomotion | `03`, `16`, `55` G0 | LegAssembly/RacerRuntime | flat + canonical shapes + G0 |
-| Stabilization/lane | `03`, `16` | RacerRuntime | bounce allowed, lane drift controlled |
+| Hinge locomotion | `03`, `16`, `55` G0 | LegPairAssembly + RacerRuntime | flat + canonical shapes + shared-axle/R17 phase evidence + G0 |
+| Stabilization/lane | `03`, `16` | RacerStabilizer + RacerRuntime | bounce allowed, lane drift controlled |
 | Redraw | `03`, `22`, `55` | DrawingController + LegShapeService + RacerRuntime | atomic swap/contact stress |
 | Obstacles / TrackPiece | `04`, `30`, `42`, **`60/65/67`** | TrackPiece assets/config | exact authoring + canonical trade-offs + G1 |
 | TrackBuilder / resolved track | `04`, `30`, `21`, `22` | TrackService/TrackRuntime | same resolved snapshot all lanes |
@@ -55,7 +55,7 @@ Human copy/paste prompts and the remote GitHub → PC → Rojo → Studio handof
 | Release | `35`, `34`, `48`, `57`, `59–62`, platform `64/70`, task catalog `66`, current audit **`78`** | ops/process | staging/prod smoke + rollback + device PASS |
 | Player safety | `39`, `37` | presentation/settings | abuse/readability/accessibility check |
 
-Camera/rider sequencing note: the Decision Log is an approved future contract, not an authorization to create `CameraMath`/`RaceCameraController` before D09 or `RiderPresentationController` before E03. Current task/gate still comes from `SESSION.md`.
+Camera/rider sequencing note: the 2026-09-11 R17 Product Owner overrides supersede the earlier D09/E03 implementation timing. `CameraMath`/`RaceCameraController` and `RiderPresentationController` are current M0 owners; D09/E03 remain later extension/acceptance tasks and must not create duplicate systems. Current task/gate still comes from `SESSION.md`.
 
 Every task also reads `FEATURE_LIST.md`, `AGENTS.md`, `SESSION.md` and the relevant Decision Log. Do not read `_HISTORY/` for normal implementation. Historical changelogs and superseded audits are provenance only, never current owner specs.
 
