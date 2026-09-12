@@ -24,11 +24,13 @@ def test_studio_gate_reports_server_and_client_readiness_separately() -> None:
     assert client.index('[DrawRacers][ClientGate] READY') < client.index('[DrawRacers] client bootstrap ready')
 
 
-def test_studio_gate_banner_names_the_selected_harness_instead_of_legacy_g0() -> None:
+def test_default_g0_manual_core_does_not_create_tests_running_banner() -> None:
     client = read("src/client/Bootstrap.client.lua")
 
-    assert 'StudioHarnessConfig.Mode' in client
-    assert 'string.format("%s BLOCKED — SERVER TEST FAILED", StudioHarnessConfig.Mode)' in client
+    assert 'local manualCoreMode = StudioHarnessConfig.Mode == "G0"' in client
+    assert 'local gateBanner: TextLabel? = if manualCoreMode then nil else createStudioGateBanner()' in client
+    assert 'elseif gateBanner ~= nil then' in client
+    # Explicit evidence modes may still show their diagnostic progress banner.
     assert 'string.format("%s TESTS RUNNING", StudioHarnessConfig.Mode)' in client
-    assert '"G0 BLOCKED — SERVER TEST FAILED"' not in client
     assert '"G0 TESTS RUNNING"' not in client
+    assert '[DrawRacers][ClientGate] G0 core startup BLOCKED' in client
