@@ -55,9 +55,9 @@ def test_r17_10_production_uses_one_shared_axle_motor_for_both_rigid_sides() -> 
     assert "ActuatorType" not in leg
 
 
-def test_r17_11_phase_lock_correction_config_is_removed_in_favor_of_structural_cophase() -> None:
+def test_r17_11_phase_lock_correction_config_is_removed_in_favor_of_structural_opposition() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
-    assert "RightPhaseOffsetDegrees = 0" in config
+    assert "RightPhaseOffsetDegrees = 180" in config
     for obsolete in [
         "PhaseLockToleranceDegrees",
         "PhaseLockRecoveryTime",
@@ -98,38 +98,43 @@ def test_r17_14_redraw_swaps_one_pair_atomically_and_preserves_one_axle_phase() 
     assert "stagedRightLeg" not in apply
 
 
-def test_r17_contract_docs_record_shared_axle_and_unbounded_yaw_without_passing_human_gate() -> None:
-    decision = read("docs/DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md")
+def test_r17_contract_docs_record_shared_axle_opposed_phase_and_unbounded_yaw_without_passing_human_gate() -> None:
+    decision = read("docs/DECISION_LOG_R17_OPPOSED_LEG_PHASE_2026-09-12.md")
+    camera_decision = read("docs/DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md")
     architecture = read("docs/21_SYSTEM_CLASS_ARCHITECTURE.md")
     qa = read("docs/24_TESTING_QA_MATRIX.md")
 
-    for token in ["shared axle", "one hinge", "one motor", "360", "HUMAN STUDIO PENDING"]:
-        assert token.lower() in decision.lower(), f"decision missing token: {token}"
-    assert "co-phase" in decision.lower(), "R17 decision must record the human-video co-phase correction"
+    for token in ["shared axle", "one hinge", "one motor", "180", "HUMAN STUDIO PENDING"]:
+        assert token.lower() in decision.lower(), f"opposed-phase decision missing token: {token}"
+    assert "RightPhaseOffsetDegrees = 180" in decision
+    assert "superseded" in decision.lower() and "co-phase" in decision.lower()
+    assert "360" in camera_decision
     assert "LegPairAssembly" in architecture
     assert "R17.9" in qa and "R17.14" in qa
 
 
 def test_r17_navigation_map_routes_current_shared_axle_and_full_yaw_owners() -> None:
     navigation = read("docs/ARCHITECTURE_MAP.md")
+    decision = read("docs/DECISION_LOG_R17_OPPOSED_LEG_PHASE_2026-09-12.md")
 
     for token in [
         "LegPairAssembly.lua",
         "AxleJoint",
         "one shared axle",
-        "co-phase",
         "full 360",
         "R17FINAL",
     ]:
         assert token.lower() in navigation.lower(), f"navigation map missing current R17 token: {token}"
 
+    assert "RightPhaseOffsetDegrees = 180" in decision
     assert "one HingeConstraint motor per leg" not in navigation
     assert "RMB/touch bounded orbit" not in navigation
 
 
-def test_r17_exact_geometry_and_instance_docs_use_shared_axle_contract() -> None:
+def test_r17_exact_geometry_and_instance_docs_keep_shared_axle_contract_under_latest_phase_override() -> None:
     geometry = read("docs/73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md")
     studio = read("docs/65_STUDIO_DATAMODEL_INSTANCE_PROPERTY_SPEC.md")
+    decision = read("docs/DECISION_LOG_R17_OPPOSED_LEG_PHASE_2026-09-12.md")
 
     for doc_name, doc in [("73", geometry), ("65", studio)]:
         for token in [
@@ -138,25 +143,27 @@ def test_r17_exact_geometry_and_instance_docs_use_shared_axle_contract() -> None
             "AxleJoint",
             "AxleMotorAttachment",
             "LegSocketZAbs = 1.5",
-            "co-phase",
             "one motor",
             "HUMAN STUDIO PENDING",
         ]:
-            assert token.lower() in doc.lower(), f"doc {doc_name} missing current R17 token: {token}"
+            assert token.lower() in doc.lower(), f"doc {doc_name} missing current R17 shared-axle token: {token}"
 
         assert "HubJoint" not in doc, f"doc {doc_name} still specifies obsolete per-side HubJoint"
         assert "Hinge motor rotates LegRoot" not in doc, f"doc {doc_name} still gives a side LegRoot its own motor"
 
+    assert "RightPhaseOffsetDegrees = 180" in decision
+    assert "co-phase" in decision.lower() and "superseded" in decision.lower()
     assert "R17" in geometry
     assert "R17" in studio
     assert "Beginning only at E03" not in studio
     assert "no rider object is required before E03" not in studio
 
 
-def test_r17_core_tuning_and_technical_docs_match_current_axle_and_camera() -> None:
+def test_r17_core_tuning_and_technical_docs_match_current_axle_and_camera_under_latest_phase_override() -> None:
     core = read("docs/03_CORE_MECHANICS_SPEC.md")
     tuning = read("docs/16_BALANCE_TUNING.md")
     tech = read("docs/11_TECH_DESIGN_ROBLOX.md")
+    decision = read("docs/DECISION_LOG_R17_OPPOSED_LEG_PHASE_2026-09-12.md")
 
     for doc_name, doc in [("03", core), ("16", tuning), ("11", tech)]:
         assert "LegPairAssembly" in doc, f"doc {doc_name} must route current rotation to LegPairAssembly"
@@ -166,8 +173,8 @@ def test_r17_core_tuning_and_technical_docs_match_current_axle_and_camera() -> N
     assert "Use one motorized hinge per leg" not in tuning
     assert "one motor" in core.lower()
     assert "one motor" in tuning.lower()
-    assert "co-phase" in core.lower()
-    assert "co-phase" in tuning.lower()
+    assert "RightPhaseOffsetDegrees = 180" in decision
+    assert "superseded" in decision.lower()
 
     assert "Free-look yaw limit | **±40°**" not in tuning
     assert "full 360" in tuning.lower()
