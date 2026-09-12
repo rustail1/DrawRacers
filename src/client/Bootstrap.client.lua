@@ -74,14 +74,17 @@ if RunService:IsStudio() then
 	)
 	local devFolder = script.Parent:WaitForChild("Dev")
 	local M0G0PresentationHarness = require(devFolder:WaitForChild("M0G0PresentationHarness"))
-	local gateBanner = createStudioGateBanner()
+	local manualCoreMode = StudioHarnessConfig.Mode == "G0"
+	local gateBanner: TextLabel? = if manualCoreMode then nil else createStudioGateBanner()
 	local drawingStarted = false
 	local presentationStarted = false
 
 	local function applyStudioGateState()
-		local state = ReplicatedStorage:GetAttribute("DrawRacersStudioGateState")
+		local state = ReplicatedStorage:GetAttribute(STUDIO_GATE_ATTRIBUTE)
 		if state == "READY" then
-			gateBanner.Visible = false
+			if gateBanner ~= nil then
+				gateBanner.Visible = false
+			end
 			startProductionPresentation()
 			if not drawingStarted then
 				drawingStarted = true
@@ -95,15 +98,19 @@ if RunService:IsStudio() then
 				M0G0PresentationHarness.start()
 			end
 		elseif state == "BLOCKED" then
-			gateBanner.Text = string.format("%s BLOCKED — SERVER TEST FAILED", StudioHarnessConfig.Mode)
-			gateBanner.Visible = true
-		else
+			if gateBanner ~= nil then
+				gateBanner.Text = string.format("%s BLOCKED — SERVER TEST FAILED", StudioHarnessConfig.Mode)
+				gateBanner.Visible = true
+			else
+				warn("[DrawRacers][ClientGate] G0 core startup BLOCKED — check server Output")
+			end
+		elseif gateBanner ~= nil then
 			gateBanner.Text = string.format("%s TESTS RUNNING", StudioHarnessConfig.Mode)
 			gateBanner.Visible = true
 		end
 	end
 
-	ReplicatedStorage:GetAttributeChangedSignal("DrawRacersStudioGateState"):Connect(applyStudioGateState)
+	ReplicatedStorage:GetAttributeChangedSignal(STUDIO_GATE_ATTRIBUTE):Connect(applyStudioGateState)
 	applyStudioGateState()
 else
 	startProductionPresentation()
