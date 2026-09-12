@@ -10,7 +10,7 @@ def test_b13_atomic_redraw_contract() -> None:
 
     apply_shape = runtime[runtime.index("function RacerRuntime:_ApplyShapeSpec"):runtime.index("function RacerRuntime:ApplyShape")]
     for token in [
-        "self.legPair:ReplaceGeometry(shapeSpec)",
+        "self.legPair:BeginGeometryReshape(shapeSpec)",
         "self.legPair:SetEnabled",
         "self.leftLeg = leftLeg",
         "self.rightLeg = rightLeg",
@@ -28,11 +28,11 @@ def test_b13_atomic_redraw_contract() -> None:
     ]:
         assert forbidden not in apply_shape, f"B13 redraw must not teleport/reset body state: {forbidden}"
 
-    replace = pair[pair.index("function LegPairAssembly:ReplaceGeometry"):pair.index("function LegPairAssembly:SetEnabled")]
+    begin = pair[pair.index("function LegPairAssembly:BeginGeometryReshape"):pair.index("function LegPairAssembly:SetReshapeProgress")]
+    helper = pair[pair.index("local function buildStagedSides"):pair.index("function LegPairAssembly:ReplaceGeometry")]
     for token in [
         "stagedLeft",
         "stagedRight",
-        "pcall",
         "oldLeft:SetRetiring(true)",
         "oldRight:SetRetiring(true)",
         "stagedLeft:Commit()",
@@ -41,13 +41,14 @@ def test_b13_atomic_redraw_contract() -> None:
         "oldRight:SetRetiring(false)",
         "oldLeft:Destroy()",
         "oldRight:Destroy()",
-        "self.axleRoot",
     ]:
-        assert token in replace, f"missing failure-atomic geometry replacement token: {token}"
+        assert token in begin, f"missing failure-atomic reshape token: {token}"
 
-    assert replace.index("stagedLeft:Commit()") < replace.index("oldLeft:Destroy()")
-    assert replace.index("stagedRight:Commit()") < replace.index("oldRight:Destroy()")
-    assert 'Instance.new("HingeConstraint")' not in replace
+    assert "pcall" in helper and "self.axleRoot" in helper
+    assert begin.index("stagedLeft:Commit()") < begin.index("oldLeft:Destroy()")
+    assert begin.index("stagedRight:Commit()") < begin.index("oldRight:Destroy()")
+    assert 'Instance.new("HingeConstraint")' not in begin
+    assert 'Instance.new("HingeConstraint")' not in helper
     assert "function LegAssembly:Commit()" in leg
     assert "phaseSyncConnection" not in runtime
 
