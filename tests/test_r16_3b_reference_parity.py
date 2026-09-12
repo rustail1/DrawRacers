@@ -133,7 +133,8 @@ def test_r16_3b_r16final_orders_automated_evidence_before_human_ready() -> None:
     stage_c = read("src/server/Tests/R16StageCHarness.lua")
 
     assert 'R16FINAL = "R16FINAL"' in modes
-    assert 'Mode = "R17FINAL"' in modes
+    assert 'R17FINAL = "R17FINAL"' in modes
+    assert 'Mode = "G0"' in modes
     assert 'harnessMode == "R16FINAL"' in bootstrap
     assert "R16StageCHarness.RunEvidence()" in final
     assert "M0HumanHarness.start()" in final
