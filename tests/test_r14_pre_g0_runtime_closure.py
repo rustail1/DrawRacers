@@ -92,8 +92,12 @@ def test_r14_3_server_bootstrap_gates_harness_on_ready() -> None:
     for task in [3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16]:
         assert f'"B{task:02d}' in bootstrap
     assert "if specsPassed then" in bootstrap
-    ready_branch = bootstrap.split("if specsPassed then", 1)[1]
-    assert "M0HumanHarness.start()" in ready_branch
+    assert 'if harnessMode == "G0" then' in bootstrap
+    assert "M0HumanHarness.start()" in bootstrap
+    gate_start = bootstrap.index("if specsPassed then")
+    harness_start = bootstrap.index("local harnessOk, harnessError = xpcall(startSelectedHarness, debug.traceback)")
+    ready_publish = bootstrap.index('SetAttribute(STUDIO_GATE_ATTRIBUTE, "READY")')
+    assert gate_start < harness_start < ready_publish
 
 
 def test_r14_3_client_does_not_start_studio_drawing_before_ready() -> None:
