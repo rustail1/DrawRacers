@@ -9,13 +9,18 @@ def read(path: str) -> str:
 
 def test_r01_geometry_has_one_authoritative_plan_owner():
     geometry_path = ROOT / "src" / "shared" / "Math" / "GeometryMath.lua"
+    builder_path = ROOT / "src" / "shared" / "Math" / "LegShapeMath.lua"
     assert geometry_path.is_file(), "R01 requires shared GeometryMath owner"
+    assert builder_path.is_file(), "RCP-03 requires shared canonical shape owner"
     geometry = geometry_path.read_text(encoding="utf-8")
+    builder = builder_path.read_text(encoding="utf-8")
     assert "BuildSegmentPlan" in geometry
     assert "Instance.new" not in geometry
+    assert "GeometryMath.BuildSegmentPlan" in builder
+    assert "Instance.new" not in builder
 
     service = read("src/server/Services/LegShapeService.lua")
-    assert "GeometryMath.BuildSegmentPlan" in service
+    assert "LegShapeMath.BuildCanonical" in service
     assert "local function mapPointToLegSpace" not in service
     assert "local function buildSegmentPlan" not in service
 
