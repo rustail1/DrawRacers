@@ -227,6 +227,8 @@ function RacerRuntime.new(params: SpawnParams)
 		stabilizer = stabilizer,
 		antiStall = antiStall,
 		currentShapeSpec = nil :: ShapeSpec?,
+		_reshapeConnection = nil :: RBXScriptConnection?,
+		_reshapeGeneration = 0,
 		destroyed = false,
 	}, RacerRuntime)
 
@@ -270,6 +272,39 @@ end
 function RacerRuntime:GetCurrentShapeSpec(): ShapeSpec?
 	assert(not self.destroyed, "RacerRuntime is destroyed")
 	return self.currentShapeSpec
+end
+
+function RacerRuntime:_CancelReshape()
+	self._reshapeGeneration += 1
+	if self._reshapeConnection ~= nil then
+		self._reshapeConnection:Disconnect()
+		self._reshapeConnection = nil
+	end
+end
+
+function RacerRuntime:_StartReshape()
+	self:_CancelReshape()
+	local pair = self.legPair
+	assert(pair ~= nil, "reshape requires existing leg pair")
+	local generation = self._reshapeGeneration
+	local reshape = PhysicsConfig.LegReshape
+	local duration = math.clamp(reshape.TypicalDuration, reshape.MinimumDuration, reshape.MaximumDuration)
+	local elapsed = 0
+
+	self._reshapeConnection = RunService.Heartbeat:Connect(function(dt)
+		if self.destroyed or generation ~= self._reshapeGeneration or self.legPair ~= pair then
+			return
+		end
+		elapsed += dt
+		local progress = math.clamp(elapsed / duration, 0, 1)
+		pair:SetReshapeProgress(progress)
+		if progress >= 1 then
+			if self._reshapeConnection ~= nil then
+				self._reshapeConnection:Disconnect()
+				self._reshapeConnection = nil
+			end
+		end
+	end)
 end
 
 function RacerRuntime:_CreateInitialLegPair(shapeSpec: ShapeSpec, motorEnabled: boolean?)
@@ -351,12 +386,14 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 		return self:_CreateInitialLegPair(shapeSpec, motorEnabled)
 	end
 
-	local leftLeg, rightLeg = self.legPair:ReplaceGeometry(shapeSpec)
+	self:_CancelReshape()
+	local leftLeg, rightLeg = self.legPair:BeginGeometryReshape(shapeSpec)
 	self.legPair:SetEnabled(motorEnabled == true)
 	self.leftLeg = leftLeg
 	self.rightLeg = rightLeg
 	self.model:SetAttribute("DebugRedrawSafetyFallback", false)
 	self.model:SetAttribute("DebugRedrawPenetrationScore", 0)
+	self:_StartReshape()
 	return self.leftLeg, self.rightLeg
 end
 
@@ -392,6 +429,7 @@ function RacerRuntime:Destroy()
 	end
 
 	self.destroyed = true
+	self:_CancelReshape()
 	if self.legPair then
 		self.legPair:Destroy()
 		self.legPair = nil
