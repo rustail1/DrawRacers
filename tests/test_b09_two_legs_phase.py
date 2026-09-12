@@ -3,13 +3,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_b09_two_leg_same_xy_phase_contract() -> None:
+def test_b09_two_leg_same_xy_opposed_phase_contract() -> None:
     config = (ROOT / "src" / "shared" / "Config" / "PhysicsConfig.lua").read_text(encoding="utf-8")
     leg = (ROOT / "src" / "server" / "Runtime" / "LegAssembly.lua").read_text(encoding="utf-8")
     pair = (ROOT / "src" / "server" / "Runtime" / "LegPairAssembly.lua").read_text(encoding="utf-8")
     racer = (ROOT / "src" / "server" / "Runtime" / "RacerRuntime.lua").read_text(encoding="utf-8")
 
-    assert "RightPhaseOffsetDegrees = 0" in config
+    assert "RightPhaseOffsetDegrees = 180" in config
     for obsolete in [
         "PhaseLockToleranceDegrees",
         "PhaseLockRecoveryTime",
@@ -78,8 +78,8 @@ def test_b09_studio_spec_is_wired() -> None:
         "GetLegPair",
         "AxleJoint",
         "RightPhaseOffsetDegrees",
-        "co-phase structural difference",
-        "two-leg same-XY/co-phase tests PASS",
+        "opposed structural difference expected 180",
+        "two-leg same-XY/opposed-phase tests PASS",
     ]:
         assert token in text, f"missing B09 Studio acceptance token: {token}"
 
