@@ -45,14 +45,16 @@ def test_r16_3b_shared_math_uses_wide_isotropic_input_and_first_point_origin() -
 
 def test_r16_3b_authoritative_shape_is_first_point_anchored_without_network_schema_expansion() -> None:
     service = read("src/server/Services/LegShapeService.lua")
+    builder = read("src/shared/Math/LegShapeMath.lua")
     types = read("src/shared/Types/StrokeTypes.lua")
     network = read("docs/22_NETWORK_DATA_CONTRACTS.md")
 
-    assert "StrokeMath.ClampToRect" in service
-    assert "StrokeMath.AnchorToFirstPoint(cleaned)" in service
-    assert "normalizedPoints = anchored" in service
-    assert "GeometryMath.BuildSegmentPlan(anchored" in service
-    assert "StrokeMath.CenterOnBounds(cleaned)" not in service
+    assert "LegShapeMath.BuildCanonical" in service
+    assert "StrokeMath.ClampToRect" in builder
+    assert "StrokeMath.AnchorToFirstPoint(cleaned)" in builder
+    assert "normalizedPoints = anchored" in builder
+    assert "GeometryMath.BuildSegmentPlan(anchored" in builder
+    assert "StrokeMath.CenterOnBounds(cleaned)" not in builder
 
     submit = types.split("export type SubmitStrokePayload", 1)[1].split("export type StrokeResultPayload", 1)[0]
     assert "sequence" in submit and "points" in submit
