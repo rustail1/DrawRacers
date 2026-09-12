@@ -38,3 +38,29 @@ def test_rcp03_server_uses_shared_canonical_builder_and_remains_authoritative() 
     assert "StrokeMath.SimplifyRDP" not in server
     assert "StrokeMath.Resample" not in server
     assert "GeometryMath.BuildSegmentPlan" not in server
+
+
+def test_rcp03_client_preview_uses_same_builder_without_second_cleanup_pipeline() -> None:
+    client = (ROOT / "src/client/Controllers/DrawingController.lua").read_text(encoding="utf-8")
+
+    assert 'WaitForChild("LegShapeMath")' in client
+    assert "LegShapeMath.BuildCanonical" in client
+    assert "_renderLiveCanonicalPreview" in client
+    assert "StrokeMath.Normalize" in client
+    assert "StrokeMath.SimplifyRDP" not in client
+    assert "StrokeMath.Resample" not in client
+    assert "StrokeMath.Dedupe" not in client
+    assert "StrokeMath.ClampToRect" not in client
+
+
+def test_rcp03_client_submits_raw_normalized_samples_and_uses_fixed_main_canvas_mapping() -> None:
+    client = (ROOT / "src/client/Controllers/DrawingController.lua").read_text(encoding="utf-8")
+
+    assert "rawSemanticPoints" in client
+    assert "points = rawSemanticPoints" in client
+    assert "semanticPointsToPixels" in client
+    assert "fitSemanticPointsToPixels(self._acceptedSemanticPoints" in client, (
+        "auto-fit remains allowed only for the thumbnail"
+    )
+    assert "DESKTOP_CANVAS_SIZE = UDim2.fromScale(0.70, 0.40)" in client
+    assert "TOUCH_CANVAS_SIZE = UDim2.fromScale(0.84, 0.48)" in client
