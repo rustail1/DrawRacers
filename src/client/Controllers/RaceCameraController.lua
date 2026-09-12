@@ -194,7 +194,16 @@ function RaceCameraController:_step(dt: number)
 	end
 
 	local orbitDampingTime = if orbitInputActive then ORBIT_INPUT_DAMPING_TIME else ORBIT_RETURN_TIME
-	self._orbitYaw = CameraMath.SmoothAngleDegrees(self._orbitYaw, self._targetOrbitYaw, dt, orbitDampingTime)
+	if orbitInputActive then
+		-- The target yaw is intentionally unbounded while dragging. Smooth it as a
+		-- linear accumulated angle so a target beyond +/-180 degrees cannot make
+		-- shortest-angle wrapping reverse the user's drag direction.
+		self._orbitYaw = CameraMath.SmoothNumber(self._orbitYaw, self._targetOrbitYaw, dt, orbitDampingTime)
+	else
+		-- Once input is released, 360-degree-equivalent angles may return by the
+		-- shortest path to canonical side framing.
+		self._orbitYaw = CameraMath.SmoothAngleDegrees(self._orbitYaw, self._targetOrbitYaw, dt, orbitDampingTime)
+	end
 	self._orbitPitch = CameraMath.SmoothNumber(self._orbitPitch, self._targetOrbitPitch, dt, orbitDampingTime)
 
 	local body = findLocalRacerBody()
