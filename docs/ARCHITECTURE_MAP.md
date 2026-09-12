@@ -33,7 +33,9 @@ A documentation-only commit after the audited runtime base does not invalidate t
 
 **Bounded 2026-09-11 R17 presentation refresh:** Product Owner Decision Logs authorized the production `CameraMath` / `RaceCameraController` / `RiderPresentationController` slice before the normal D09/E03 cursor. The camera now owns a full 360 yaw target with smoothed rendered orbit and bounded pitch.
 
-**Bounded 2026-09-11 R17 mechanical refresh:** `LegPairAssembly.lua` is now the current production rotating-pair owner. It owns one shared axle, one `AxleJoint` HingeConstraint/motor and the **co-phase 0 degree** relation between the two rigid side `LegAssembly` children. `RacerRuntime` atomically swaps the whole pair and preserves one axle phase. This replaces the former independent left/right hinge-motor navigation rows. R16/B17 human-gate facts and later race/gameplay service absence remain unchanged.
+**Bounded 2026-09-11 R17 mechanical refresh:** `LegPairAssembly.lua` became the current production rotating-pair owner. It owns one shared axle and one `AxleJoint` HingeConstraint/motor for the two rigid side `LegAssembly` children. `RacerRuntime` atomically swaps the whole pair and preserves one axle phase. This replaces the former independent left/right hinge-motor navigation rows.
+
+**Bounded 2026-09-12 CORE contract refresh:** the intermediate 0-degree side relation is superseded. The same shared axle/motor now mounts the Right copy at fixed **180°** relative to Left (`RightPhaseOffsetDegrees = 180`), with both sides driven in the same motor direction/speed. Normal Roblox Studio `Play` also returns to **`G0`** as the committed fast manual CORE default; automatic B03–B16/R17 startup evidence is skipped in G0, while `R17FINAL`/`R16FINAL`/focused modes remain explicitly selectable. R16/B17 human-gate facts and later race/gameplay service absence remain unchanged.
 
 `docs/SOURCE_MAP.md` is different: it tracks provenance/research sources. `docs/21_SYSTEM_CLASS_ARCHITECTURE.md` is different: it owns target architecture. `docs/26_HANDOFF_MAP.md` routes features to owner specs. This file is only the **current implemented code navigation cache**.
 
@@ -88,7 +90,7 @@ SubmitStroke
                  -> AxleRoot
                  -> AxleJoint (single HingeConstraint motor)
                  -> Left LegAssembly rigid side
-                 -> Right LegAssembly rigid side at co-phase 0
+                 -> Right LegAssembly rigid side at fixed 180 degrees
   -> StrokeResult
   -> DrawingController authoritative accepted preview
 
@@ -99,7 +101,7 @@ RacerRuntime
   -> RacerAntiStall
   -> one shared LegPairAssembly
        -> one AxleRoot / one AxleJoint motor
-       -> Left/Right LegAssembly
+       -> Left/Right LegAssembly at fixed 180-degree relation
             -> LegRoot rigidly mounted to AxleRoot
             -> welded physical Segments
             -> nonphysical Visual
@@ -109,16 +111,19 @@ RacerRuntime
 STUDIO / M0
 Bootstrap.server
   -> M0TestScene
-  -> StudioSpecRunner
-  -> selected Studio harness
-  -> R16FINAL: R16FinalHarness
-       -> synchronous R16StageCHarness.RunEvidence
+  -> normal G0: skip startup regression/evidence suite
        -> M0HumanHarness
-       -> HUMAN G0 READY
-  -> R17FINAL: R17FinalHarness
-       -> R16 Stage-C + R17 origin/phase/body/course evidence
-       -> M0HumanHarness
-       -> HUMAN REVIEW READY
+       -> manual CORE READY
+  -> explicit evidence modes: StudioSpecRunner
+       -> selected Studio harness
+       -> R16FINAL: R16FinalHarness
+            -> synchronous R16StageCHarness.RunEvidence
+            -> M0HumanHarness
+            -> HUMAN G0 READY
+       -> R17FINAL: R17FinalHarness
+            -> R16 Stage-C + R17 origin/phase/body/course evidence
+            -> M0HumanHarness
+            -> HUMAN REVIEW READY
 
 Bootstrap.client
   -> InputController + DrawingController
@@ -151,11 +156,11 @@ Important current absence: `HUDController`, `ResultsController`, Garage/Store/Se
 
 | Area | Current file | Owns / first things to inspect | Immediate dependencies |
 |---|---|---|---|
-| Server composition / Studio gate | `src/server/Bootstrap.server.lua` | M0 scene build, regression spec run, selected harness dispatch, TESTING/BLOCKED/READY attribute | `DebugTelemetry`, `M0TestScene`, `StudioSpecRunner`, `StudioHarnessConfig` |
+| Server composition / Studio gate | `src/server/Bootstrap.server.lua` | M0 scene build, G0 direct manual startup, explicit evidence-mode regression spec run, selected harness dispatch, STARTING/TESTING/BLOCKED/READY attribute | `DebugTelemetry`, `M0TestScene`, `StudioSpecRunner`, `StudioHarnessConfig` |
 | Authoritative stroke processing | `src/server/Services/LegShapeService.lua` | network envelope/points validation, sequence/rate state, stroke cleanup, authoritative ShapeSpec, build request, acceptedPoints | `PhysicsConfig`, `StrokeMath`, `GeometryMath`, `StrokeTypes`, `RacerRuntime` interface |
 | Stroke remote transport | `src/server/Services/StrokeRemoteTransport.lua` | SubmitStroke server binding, safe processor invocation, StrokeResult response | `LegShapeService`, `StrokeTypes` |
 | Racer lifetime / atomic redraw | `src/server/Runtime/RacerRuntime.lua` | RacerTemplate/current racer model, body/hub markers, current ShapeSpec/version, staging+atomic swap of one shared leg pair, one axle-phase preservation, stabilizer/anti-stall lifetime | `PhysicsConfig`, `StrokeMath`, `GeometryMath`, `CollisionGroups`, `LegPairAssembly`, `RacerStabilizer`, `RacerAntiStall` |
-| Shared rotating leg pair | `src/server/Runtime/LegPairAssembly.lua` | `AxleRoot`, single `AxleJoint` HingeConstraint/motor, side sockets, **co-phase 0** right relation, left/right rigid side assembly lifetime, staged/commit/retire/destroy | `PhysicsConfig`, `StrokeTypes`, `CollisionGroups`, `LegAssembly` |
+| Shared rotating leg pair | `src/server/Runtime/LegPairAssembly.lua` | `AxleRoot`, single `AxleJoint` HingeConstraint/motor, side sockets, fixed **180°** right relation, left/right rigid side assembly lifetime, staged/commit/retire/destroy | `PhysicsConfig`, `StrokeTypes`, `CollisionGroups`, `LegAssembly` |
 | One rigid leg side | `src/server/Runtime/LegAssembly.lua` | `LegRoot`, hidden welded physical collider `Segments`, separate nonphysical `VisualSegment`/`VisualJoint` presentation, fixed socket/phase transform, staged/commit/destroy; **no motor owner** | `PhysicsConfig`, `StrokeTypes`, `CollisionGroups` |
 | Upright + lane plane | `src/server/Runtime/RacerStabilizer.lua` | mechanical Z plane and upright AlignOrientation, lane deviation flags | `PhysicsConfig` |
 | Bounded recovery assist | `src/server/Runtime/RacerAntiStall.lua` | eligible-contact bounded +X anti-stall pulse only | `PhysicsConfig`, `CollectionService` |
@@ -171,9 +176,9 @@ Important current absence: production `RacerService`, `RaceService`, `TrackServi
 
 | Area | Current file | What to inspect |
 |---|---|---|
-| Core physics/stroke numbers | `src/shared/Config/PhysicsConfig.lua` | stroke-processing limits, leg geometry/socket, one shared motor, **co-phase 0** side relation, material, stabilization, anti-stall/recovery values |
+| Core physics/stroke numbers | `src/shared/Config/PhysicsConfig.lua` | stroke-processing limits, leg geometry/socket, one shared motor, fixed **180°** side relation, material, stabilization, anti-stall/recovery values |
 | M0 scene/evidence numbers | `src/shared/Config/M0SceneConfig.lua` | lane/spawn/recovery, benchmark, R16 acceptance windows, canonical pieces |
-| Studio harness selection | `src/shared/Config/StudioHarnessConfig.lua` | selected Studio evidence mode; current committed default is `R17FINAL` while R17 human review is pending; `G0` remains selectable; evidence modes do not imply automatic human PASS |
+| Studio harness selection | `src/shared/Config/StudioHarnessConfig.lua` | selected Studio mode; current committed normal Play default is **`G0`**; `R17FINAL`/`R16FINAL`/focused evidence modes remain selectable and do not imply automatic human PASS |
 | Stroke pure math | `src/shared/Math/StrokeMath.lua` | clamp/dedupe/normalize/bounds/centering/simplify/resample/length |
 | Physical segment planning | `src/shared/Math/GeometryMath.lua` | normalized point mapping, radial cap, segment plan, inner-hub collision eligibility |
 | Camera pure math | `src/shared/Math/CameraMath.lua` | frame-rate-independent exponential smoothing, horizontal/vertical dead-zone stepping, angle smoothing and pitch clamp; no gameplay authority |
@@ -189,12 +194,12 @@ Intended behavior is still owned by the relevant Source-of-Truth docs, especiall
 Current Studio regression/evidence code lives under `src/server/Tests/` plus source-contract tests under `tests/`.
 
 Navigation clusters:
-- `StudioSpecRunner.lua` + B03–B16 `*Spec.lua` — deterministic Studio regression suite started by server bootstrap;
+- `StudioSpecRunner.lua` + B03–B16 `*Spec.lua` — deterministic Studio regression suite available to explicit evidence modes; normal committed G0 startup skips this suite;
 - `M0HumanHarness.lua` — current G0 human racer, real Character isolation, temporary Player->RacerRuntime resolver, fall recovery evidence;
 - `R16ReferenceShapes.lua` — canonical reference shapes;
 - `R16TrialRunner.lua` — shared trial spawn/contact/measurement runner; motor state reads the single `AxleJoint`;
 - `R16StageBHarness.lua` — R16 Stage-B measurements;
-- `R16StageCHarness.lua` — Stage-C aggregate/wall/live-redraw evidence; live redraw now checks one pair/one axle phase and no `AxleRoot_Retiring` leak;
+- `R16StageCHarness.lua` — Stage-C aggregate/wall/live-redraw evidence; live redraw checks one pair/one axle phase and no `AxleRoot_Retiring` leak;
 - `R16FinalHarness.lua` — `R16FINAL` synchronous Stage-B/C -> `M0HumanHarness` boundary; human G0 starts and `HUMAN G0 READY` is printed only after automated evidence passes;
 - `R17OriginExperiment.lua`, `R17PhaseEvidence.lua`, `R17BodyFeelExperiment.lua`, `R17ReferenceCourseHarness.lua` — R17 reference evidence owners;
 - `R17FinalHarness.lua` — `R17FINAL` ordered aggregate of R16 Stage-C + R17 automated/experimental evidence before `M0HumanHarness`; it prints `HUMAN REVIEW READY`, never a human PASS;
@@ -231,6 +236,7 @@ Use this table to avoid a repository-wide scan. Start with the listed cluster, t
 | debug values/panel wrong | `DebugTelemetry.lua`, `DebugTuningPanel.lua` | producer attributes in `RacerRuntime`/stabilizer/anti-stall and `AxleJoint` state |
 | R16FINAL ordering/evidence wrong | `R16FinalHarness.lua`, `R16StageCHarness.lua`, `Bootstrap.server.lua` | `StudioSpecRunner.lua`, `StudioHarnessConfig.lua`, current `SESSION.md` gate status |
 | R17FINAL ordering/evidence wrong | `R17FinalHarness.lua`, R17 evidence modules, `Bootstrap.server.lua` | `R16StageCHarness.lua`, `StudioHarnessConfig.lua`; human result still remains pending |
+| Studio normal G0 unexpectedly runs tests / shows TESTS RUNNING | `StudioHarnessConfig.lua`, `Bootstrap.server.lua`, `Bootstrap.client.lua` | `DECISION_LOG_STUDIO_CORE_ITERATION_DEFAULT_2026-09-12.md`, Rojo sync/current local HEAD |
 | Studio says TESTING/BLOCKED/READY unexpectedly | `Bootstrap.server.lua`, `StudioSpecRunner.lua` | selected harness, Output first failing spec |
 | files do not appear/update in Studio | `default.project.json` | local `git rev-parse HEAD`, `git status`, Rojo connection/output, filesystem path |
 
@@ -242,7 +248,7 @@ Do not change these casually. Read their owner docs/current definitions before p
 - `SubmitStroke` / `StrokeResult` payload and names — `StrokeTypes.lua`, `RemoteNames.lua`, doc `22`;
 - authoritative `ShapeSpec` meaning — `StrokeTypes.lua`, `LegShapeService.lua`, owner `73` plus current R16/R17 decision/status docs;
 - racer body/leg ownership and dependency direction — doc `21` plus `RacerRuntime.lua` / `LegPairAssembly.lua` / `LegAssembly.lua`;
-- shared axle invariant — exactly one `AxleJoint` motor, one axle phase, **co-phase 0** side relation; no independent per-side motor or Heartbeat phase-chasing owner;
+- shared axle invariant — exactly one `AxleJoint` motor, one axle phase, fixed **180°** Left↔Right structural relation, same motor direction/speed; no independent per-side motor or Heartbeat phase-chasing owner;
 - collision groups/matrix — `CollisionGroups.lua`, owner `65`;
 - production camera ownership — `CameraMath.lua` + `RaceCameraController.lua`, owners `08/16/24/59/68` and R17 Decision Logs; no second active camera controller and no artificial yaw wall;
 - human rider presentation — `RiderPresentationController.lua` + `RacePresentation`; client-only/nonphysical and no gameplay authority;
@@ -266,4 +272,4 @@ Refresh the affected section when any of these happens:
 
 Do **not** refresh the whole map merely because implementation line numbers or private helper functions changed.
 
-When refreshing, record a new `Last full runtime/navigation audit` date and runtime base HEAD only if a real broad audit was performed. For this bounded R17 architecture change, the affected navigation rows above were refreshed while the untouched parts still derive from the 2026-09-10 full audit.
+When refreshing, record a new `Last full runtime/navigation audit` date and runtime base HEAD only if a real broad audit was performed. For the bounded R17 architecture/CORE contract changes, the affected navigation rows above were refreshed while the untouched parts still derive from the 2026-09-10 full audit.
