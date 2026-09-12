@@ -83,7 +83,8 @@ def test_r16_10_final_harness_covers_unchanged_full_lab_and_live_redraw() -> Non
     stage_c = stage_c_path.read_text(encoding="utf-8")
 
     assert 'R16C = "R16C"' in modes
-    assert 'Mode = "R17FINAL"' in modes
+    assert 'R17FINAL = "R17FINAL"' in modes
+    assert 'Mode = "G0"' in modes
     assert 'harnessMode == "R16C"' in bootstrap
     assert 'WaitForChild("R16StageCHarness")' in bootstrap
 
