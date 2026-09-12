@@ -14,8 +14,8 @@ local MODES = {
 
 return {
 	Modes = MODES,
-	-- R17 reference acceptance is the current active Studio validation target.
-	-- Keep G0 selectable, but default fresh synced Studio runs to the full R17 evidence path
-	-- so a tester cannot accidentally validate only the legacy G0 harness.
-	Mode = "R17FINAL",
+	-- Normal Studio Play is the fast human core-iteration loop: scene + G0 racer,
+	-- with no automatic B03-B16/R17 evidence startup. Select a focused/R16/R17
+	-- evidence mode explicitly when that evidence is actually needed.
+	Mode = "G0",
 }
