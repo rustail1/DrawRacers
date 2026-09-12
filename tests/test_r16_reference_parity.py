@@ -221,17 +221,17 @@ def test_r16_1_qa_matrix_uses_exact_upright_acceptance() -> None:
     assert "racer does not endlessly spin from normal contacts" not in locomotion
 
 
-def test_r16_historical_180_phase_is_superseded_by_r17_cophase() -> None:
+def test_latest_phase_decision_restores_structural_180_on_shared_axle() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
     b13 = read("src/server/Tests/B13AtomicRedrawSpec.lua")
     safety = read("src/server/Runtime/RedrawSpawnSafety.lua")
-    decision = read("docs/DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md")
+    decision = read("docs/DECISION_LOG_R17_OPPOSED_LEG_PHASE_2026-09-12.md")
 
-    assert "RightPhaseOffsetDegrees = 0" in config
+    assert "RightPhaseOffsetDegrees = 180" in config
     assert "phaseDegrees = motor.RightPhaseOffsetDegrees" in pair
-    assert "co-phase structural difference" in b09
+    assert "opposed structural difference expected 180" in b09
     assert "selected safe phase was not applied" in b13
     assert "function RedrawSpawnSafety.ChoosePhase" in safety
     assert "180" in decision and "supersed" in decision.lower() and "co-phase" in decision.lower()
