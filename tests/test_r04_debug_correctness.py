@@ -13,7 +13,8 @@ def test_r04_collider_count_follows_canonical_leg_segments_not_transient_reshape
     assert 'segments:GetChildren()' in telemetry
     assert 'child:IsA("BasePart")' in telemetry
     assert 'string.match(child.Name, "^Segment_%d+$")' in telemetry
-    assert "ReshapeTipCollider" not in telemetry
+    assert "ReshapeTipCollider" in telemetry
+    assert 'child.Name == "ReshapeTipCollider"' not in telemetry
 
 
 def test_r04_simplified_points_come_from_current_shape_spec():
