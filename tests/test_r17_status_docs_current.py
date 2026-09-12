@@ -59,24 +59,26 @@ def test_status_docs_keep_current_r17_mechanics_and_camera_contract_exact() -> N
         assert "human studio pending" in section
 
 
-def test_current_status_docs_make_r17final_the_studio_default_until_human_review() -> None:
-    session = read("docs/SESSION.md")
-    features = read("docs/FEATURE_LIST.md")
-    readme = read("README.md")
+def test_latest_decision_makes_g0_the_fast_manual_studio_default_without_deleting_r17final() -> None:
+    decision = read("docs/DECISION_LOG_STUDIO_CORE_ITERATION_DEFAULT_2026-09-12.md")
+    config = read("src/shared/Config/StudioHarnessConfig.lua")
+    server = read("src/server/Bootstrap.server.lua")
+    client = read("src/client/Bootstrap.client.lua")
 
-    current_sections = [
-        session.split("## R17 CURRENT OVERRIDE", 1)[1].split("## Product state", 1)[0].lower(),
-        features.split("## Current milestone / canonical override", 1)[1].split("## Bootstrap", 1)[0].lower(),
-        readme.split("## Current state", 1)[1].split("## CORE / pre-G0 integrity repair", 1)[0].lower(),
-    ]
+    for token in [
+        "normal Roblox Studio `Play`",
+        "G0",
+        "B03–B16 Studio regression specs are **not** auto-run at startup",
+        "R17FINAL",
+        "remain selectable",
+        "GitHub `Contract Verify`",
+    ]:
+        assert token in decision, f"Studio core-iteration decision missing token: {token}"
 
-    for section in current_sections:
-        assert "r17final" in section
-        assert "default" in section
-        assert "committed" in section or "studio default" in section
-        assert "committed default studio mode remains `g0`" not in section
-        assert "committed default mode remains `g0`" not in section
-        assert "committed `studioharnessconfig.mode` remains `g0`" not in section
+    assert 'Mode = "G0"' in config
+    assert 'local runStartupRegressions = harnessMode ~= "G0"' in server
+    assert 'local manualCoreMode = StudioHarnessConfig.Mode == "G0"' in client
+    assert "HUMAN_GATE result" in decision
 
 
 def test_status_docs_record_reference_feel_autodev_without_fabricating_tuning_winner() -> None:
@@ -102,14 +104,14 @@ def test_status_docs_record_reference_feel_autodev_without_fabricating_tuning_wi
     assert "human review pass" not in merged
 
 
-def test_navigation_docs_route_to_current_r17_owners_and_default() -> None:
+def test_navigation_docs_route_to_current_r17_owners_while_latest_decision_owns_studio_default() -> None:
     architecture = read("docs/ARCHITECTURE_MAP.md")
     handoff = read("docs/26_HANDOFF_MAP.md")
+    decision = read("docs/DECISION_LOG_STUDIO_CORE_ITERATION_DEFAULT_2026-09-12.md")
 
     studio_row = next(line for line in architecture.splitlines() if "| Studio harness selection |" in line)
-    assert "current committed default is `R17FINAL`" in studio_row
-    assert "`G0` remains selectable" in studio_row
-    assert "current committed default remains `G0`" not in studio_row
+    assert "StudioHarnessConfig.lua" in studio_row
+    assert "R17FINAL" in studio_row
 
     hinge_row = next(line for line in handoff.splitlines() if line.startswith("| Hinge locomotion |"))
     assert "LegPairAssembly" in hinge_row
@@ -123,3 +125,5 @@ def test_navigation_docs_route_to_current_r17_owners_and_default() -> None:
     assert "current M0 owners" in sequencing_note
     assert "D09/E03 remain later" in sequencing_note
     assert "not an authorization to create" not in sequencing_note
+
+    assert "committed default Studio harness returns to `G0`" in decision
