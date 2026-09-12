@@ -78,24 +78,36 @@ def test_r17_12_socket_and_collision_contract_remain_reference_safe() -> None:
     assert 'CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.RacerLeg, false)' in collision
 
 
-def test_r17_14_redraw_swaps_one_pair_atomically_and_preserves_one_axle_phase() -> None:
+def test_r17_14_redraw_replaces_only_geometry_and_preserves_one_axle_phase() -> None:
     racer = read("src/server/Runtime/RacerRuntime.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
     apply = racer.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split(
         "function RacerRuntime:ApplyShape", 1
     )[0]
+    replace = pair.split("function LegPairAssembly:ReplaceGeometry", 1)[1].split(
+        "function LegPairAssembly:SetEnabled", 1
+    )[0]
+
+    assert "self.legPair:ReplaceGeometry(shapeSpec)" in apply
+    assert "LegPairAssembly.new" not in apply
+    assert "self.legPair:SetEnabled" in apply
 
     for token in [
-        "oldLegPair",
-        "stagedLegPair",
-        "stagedLegPair:Commit()",
-        "stagedLegPair:SetEnabled",
-        "oldLegPair:Destroy()",
-        "initialPhaseDegrees",
+        "stagedLeft",
+        "stagedRight",
+        "oldLeft",
+        "oldRight",
+        "stagedLeft:Commit()",
+        "stagedRight:Commit()",
+        "oldLeft:Destroy()",
+        "oldRight:Destroy()",
+        "self.axleRoot",
     ]:
-        assert token in apply, f"missing atomic shared-pair redraw token: {token}"
+        assert token in replace, f"missing stable-axle geometry replacement token: {token}"
 
-    assert "stagedLeftLeg" not in apply
-    assert "stagedRightLeg" not in apply
+    assert 'Instance.new("HingeConstraint")' not in replace
+    assert replace.index("stagedLeft:Commit()") < replace.index("oldLeft:Destroy()")
+    assert replace.index("stagedRight:Commit()") < replace.index("oldRight:Destroy()")
 
 
 def test_r17_contract_docs_record_shared_axle_opposed_phase_and_unbounded_yaw_without_passing_human_gate() -> None:
