@@ -84,11 +84,14 @@ def test_r17_14_redraw_replaces_only_geometry_and_preserves_one_axle_phase() -> 
     apply = racer.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split(
         "function RacerRuntime:ApplyShape", 1
     )[0]
-    replace = pair.split("function LegPairAssembly:ReplaceGeometry", 1)[1].split(
-        "function LegPairAssembly:SetEnabled", 1
+    reshape = pair.split("function LegPairAssembly:BeginGeometryReshape", 1)[1].split(
+        "function LegPairAssembly:SetReshapeProgress", 1
+    )[0]
+    helper = pair.split("local function buildStagedSides", 1)[1].split(
+        "function LegPairAssembly:ReplaceGeometry", 1
     )[0]
 
-    assert "self.legPair:ReplaceGeometry(shapeSpec)" in apply
+    assert "self.legPair:BeginGeometryReshape(shapeSpec)" in apply
     assert "LegPairAssembly.new" not in apply
     assert "self.legPair:SetEnabled" in apply
 
@@ -101,13 +104,14 @@ def test_r17_14_redraw_replaces_only_geometry_and_preserves_one_axle_phase() -> 
         "stagedRight:Commit()",
         "oldLeft:Destroy()",
         "oldRight:Destroy()",
-        "self.axleRoot",
     ]:
-        assert token in replace, f"missing stable-axle geometry replacement token: {token}"
+        assert token in reshape, f"missing stable-axle geometry reshape token: {token}"
 
-    assert 'Instance.new("HingeConstraint")' not in replace
-    assert replace.index("stagedLeft:Commit()") < replace.index("oldLeft:Destroy()")
-    assert replace.index("stagedRight:Commit()") < replace.index("oldRight:Destroy()")
+    assert "self.axleRoot" in helper
+    assert 'Instance.new("HingeConstraint")' not in reshape
+    assert 'Instance.new("HingeConstraint")' not in helper
+    assert reshape.index("stagedLeft:Commit()") < reshape.index("oldLeft:Destroy()")
+    assert reshape.index("stagedRight:Commit()") < reshape.index("oldRight:Destroy()")
 
 
 def test_r17_contract_docs_record_shared_axle_opposed_phase_and_unbounded_yaw_without_passing_human_gate() -> None:
