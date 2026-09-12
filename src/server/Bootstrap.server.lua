@@ -40,7 +40,11 @@ if RunService:IsStudio() then
 	local harnessMode = StudioHarnessConfig.Mode
 	local runStartupRegressions = harnessMode ~= "G0"
 
-	ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, if runStartupRegressions then "TESTING" else "STARTING")
+	if runStartupRegressions then
+		ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "TESTING")
+	else
+		ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "STARTING")
+	end
 
 	local sceneOk, sceneError = xpcall(function()
 		M0TestScene.build()
@@ -91,7 +95,7 @@ if RunService:IsStudio() then
 
 	if specsPassed then
 		local harnessOk, harnessError = xpcall(startSelectedHarness, debug.traceback)
-		if harnessOk then
+		if specsPassed and harnessOk then
 			ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "READY")
 			print("[DrawRacers][StudioGate] SERVER READY — client bootstrap must also report [ClientGate] READY")
 		else
