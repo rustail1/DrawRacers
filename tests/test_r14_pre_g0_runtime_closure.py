@@ -161,20 +161,20 @@ def test_r14_6_g0_fall_recovery_respawns_only_the_racer() -> None:
 def test_r14_7_atomic_redraw_rolls_back_partial_commit_failure() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
-    replace = pair[pair.index("function LegPairAssembly:ReplaceGeometry"):pair.index("function LegPairAssembly:SetEnabled")]
-    assert "pcall" in replace
-    assert "commitOk" in replace
-    assert "commitError" in replace
-    assert "oldLeft:SetRetiring(true)" in replace
-    assert "oldRight:SetRetiring(true)" in replace
-    assert "oldLeft:SetRetiring(false)" in replace
-    assert "oldRight:SetRetiring(false)" in replace
-    assert "stagedLeft:Destroy()" in replace
-    assert "stagedRight:Destroy()" in replace
-    assert replace.index("stagedLeft:Commit()") < replace.index("oldLeft:Destroy()")
-    assert replace.index("stagedRight:Commit()") < replace.index("oldRight:Destroy()")
+    reshape = pair[pair.index("function LegPairAssembly:BeginGeometryReshape"):pair.index("function LegPairAssembly:SetReshapeProgress")]
+    assert "pcall" in reshape
+    assert "commitOk" in reshape
+    assert "commitError" in reshape
+    assert "oldLeft:SetRetiring(true)" in reshape
+    assert "oldRight:SetRetiring(true)" in reshape
+    assert "oldLeft:SetRetiring(false)" in reshape
+    assert "oldRight:SetRetiring(false)" in reshape
+    assert "stagedLeft:Destroy()" in reshape
+    assert "stagedRight:Destroy()" in reshape
+    assert reshape.index("stagedLeft:Commit()") < reshape.index("oldLeft:Destroy()")
+    assert reshape.index("stagedRight:Commit()") < reshape.index("oldRight:Destroy()")
     apply = runtime[runtime.index("function RacerRuntime:_ApplyShapeSpec"):runtime.index("function RacerRuntime:ApplyShape")]
-    assert "self.legPair:ReplaceGeometry(shapeSpec)" in apply
+    assert "self.legPair:BeginGeometryReshape(shapeSpec)" in apply
     assert "LegPairAssembly.new" not in apply
 
 
