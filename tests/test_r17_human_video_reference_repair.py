@@ -7,19 +7,19 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_human_video_proves_shared_side_legs_are_co_phased_not_opposed() -> None:
+def test_human_reference_requires_shared_side_legs_to_be_opposed_by_180_degrees() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
     evidence = read("src/server/Tests/R17PhaseEvidence.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
 
-    # Human reference-video evidence: the two depth-separated rigid copies keep
-    # the same angular orientation. One axle remains correct; the old 180-degree
-    # local offset made the visible pair wrap around the cube like a cage.
-    assert "RightPhaseOffsetDegrees = 0" in config
-    assert "PHASE_TARGET_DEGREES = 0" in evidence
-    assert "co-phase" in b09.lower()
-    assert "expected 0" in b09.lower()
+    # Reference correction: the two depth-separated copies use the same drawing
+    # and the same shared motor direction, but the Right copy is structurally
+    # rotated half a turn around the shared axle relative to the Left copy.
+    assert "RightPhaseOffsetDegrees = 180" in config
+    assert "PHASE_TARGET_DEGREES = 180" in evidence
+    assert "opposed" in b09.lower() or "180" in b09
+    assert "expected 180" in b09.lower()
 
     assert 'side = "Left"' in pair and 'side = "Right"' in pair
     assert "RightPhaseOffsetDegrees" in pair
