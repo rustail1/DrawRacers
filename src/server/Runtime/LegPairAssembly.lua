@@ -143,18 +143,14 @@ function LegPairAssembly.new(params: BuildParams)
 		})
 	end)
 	if not sideBuildOk then
-		if leftLeg ~= nil then
-			leftLeg:Destroy()
-		end
-		if rightLeg ~= nil then
-			rightLeg:Destroy()
-		end
+		if leftLeg ~= nil then leftLeg:Destroy() end
+		if rightLeg ~= nil then rightLeg:Destroy() end
 		axleRoot:Destroy()
 		error(sideBuildError)
 	end
 	assert(leftLeg ~= nil and rightLeg ~= nil, "LegPairAssembly produced incomplete rigid sides")
 
-	local self = setmetatable({
+	return setmetatable({
 		racerModel = racerModel,
 		body = body,
 		legsFolder = legsFolder,
@@ -166,7 +162,6 @@ function LegPairAssembly.new(params: BuildParams)
 		committed = not staged,
 		destroyed = false,
 	}, LegPairAssembly)
-	return self
 end
 
 function LegPairAssembly:GetRoot(): Part
@@ -203,9 +198,7 @@ end
 
 function LegPairAssembly:Commit()
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	if self.committed then
-		return
-	end
+	if self.committed then return end
 	assert(self.axleRoot.Parent == nil, "staged axle root already has a parent")
 	assert(not self.leftLeg:IsCommitted() and not self.rightLeg:IsCommitted(), "staged sides unexpectedly committed")
 	self.axleRoot.Parent = self.legsFolder
@@ -214,17 +207,11 @@ function LegPairAssembly:Commit()
 	self.committed = true
 end
 
-function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
-	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	assert(self.committed, "ReplaceGeometry requires a committed stable axle")
-	assert(type(shapeSpec) == "table", "ReplaceGeometry requires authoritative shapeSpec")
-	assert(type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
-
+local function buildStagedSides(self: any, shapeSpec: ShapeSpec)
 	local geometry = PhysicsConfig.LegGeometry
 	local motor = PhysicsConfig.Motor
 	local stagedLeft = nil
 	local stagedRight = nil
-
 	local buildOk, buildError = pcall(function()
 		stagedLeft = buildLeg({
 			racerModel = self.racerModel,
@@ -246,15 +233,52 @@ function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
 		})
 	end)
 	if not buildOk then
-		if stagedLeft ~= nil then
-			stagedLeft:Destroy()
-		end
-		if stagedRight ~= nil then
-			stagedRight:Destroy()
-		end
+		if stagedLeft ~= nil then stagedLeft:Destroy() end
+		if stagedRight ~= nil then stagedRight:Destroy() end
 		error(buildError)
 	end
-	assert(stagedLeft ~= nil and stagedRight ~= nil, "ReplaceGeometry produced incomplete staged sides")
+	assert(stagedLeft ~= nil and stagedRight ~= nil, "geometry replacement produced incomplete staged sides")
+	return stagedLeft, stagedRight
+end
+
+function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
+	assert(not self.destroyed, "LegPairAssembly is destroyed")
+	assert(self.committed, "ReplaceGeometry requires a committed stable axle")
+	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
+
+	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec)
+	local oldLeft = self.leftLeg
+	local oldRight = self.rightLeg
+	oldLeft:SetRetiring(true)
+	oldRight:SetRetiring(true)
+
+	local commitOk, commitError = pcall(function()
+		stagedLeft:Commit()
+		stagedRight:Commit()
+	end)
+	if not commitOk then
+		stagedLeft:Destroy()
+		stagedRight:Destroy()
+		oldLeft:SetRetiring(false)
+		oldRight:SetRetiring(false)
+		error(commitError)
+	end
+
+	self.leftLeg = stagedLeft
+	self.rightLeg = stagedRight
+	oldLeft:Destroy()
+	oldRight:Destroy()
+	return self.leftLeg, self.rightLeg
+end
+
+function LegPairAssembly:BeginGeometryReshape(shapeSpec: ShapeSpec)
+	assert(not self.destroyed, "LegPairAssembly is destroyed")
+	assert(self.committed, "BeginGeometryReshape requires a committed stable axle")
+	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
+
+	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec)
+	stagedLeft:SetReshapeProgress(0)
+	stagedRight:SetReshapeProgress(0)
 
 	local oldLeft = self.leftLeg
 	local oldRight = self.rightLeg
@@ -280,6 +304,12 @@ function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
 	return self.leftLeg, self.rightLeg
 end
 
+function LegPairAssembly:SetReshapeProgress(progress: number)
+	assert(not self.destroyed, "LegPairAssembly is destroyed")
+	self.leftLeg:SetReshapeProgress(progress)
+	self.rightLeg:SetReshapeProgress(progress)
+end
+
 function LegPairAssembly:SetEnabled(enabled: boolean)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
 	self.joint.Enabled = enabled
@@ -293,19 +323,11 @@ function LegPairAssembly:SetRetiring(retiring: boolean)
 end
 
 function LegPairAssembly:Destroy()
-	if self.destroyed then
-		return
-	end
+	if self.destroyed then return end
 	self.destroyed = true
-	if self.leftLeg then
-		self.leftLeg:Destroy()
-	end
-	if self.rightLeg then
-		self.rightLeg:Destroy()
-	end
-	if self.axleRoot then
-		self.axleRoot:Destroy()
-	end
+	if self.leftLeg then self.leftLeg:Destroy() end
+	if self.rightLeg then self.rightLeg:Destroy() end
+	if self.axleRoot then self.axleRoot:Destroy() end
 	self.leftLeg = nil
 	self.rightLeg = nil
 	self.axleRoot = nil
