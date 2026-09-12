@@ -45,6 +45,13 @@ return {
 		HubOffsetZAbs = 1.62,
 		LegSocketZAbs = 1.5,
 	},
+	LegReshape = {
+		-- RCP-04: arcade-fast geometry replacement. Studio evidence may tune this
+		-- only inside the approved 0.08..0.15 second window.
+		TypicalDuration = 0.10,
+		MinimumDuration = 0.08,
+		MaximumDuration = 0.15,
+	},
 	Motor = {
 		AngularVelocity = -8.0,
 		MotorMaxTorque = 35000,
