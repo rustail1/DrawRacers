@@ -9,8 +9,10 @@ def test_r17_continuous_orbit_preserves_drag_direction_and_short_return() -> Non
         "function RaceCameraController:Start()", 1
     )[0]
 
-    active_branch = step_body.split("if orbitInputActive then", 1)[1].split("else", 1)[0]
-    return_branch = step_body.split("if orbitInputActive then", 1)[1].split("else", 1)[1].split("end", 1)[0]
+    branch_marker = "\n\tif orbitInputActive then\n"
+    branch_body = step_body.split(branch_marker, 1)[1]
+    active_branch, return_tail = branch_body.split("\n\telse\n", 1)
+    return_branch = return_tail.split("\n\tend\n", 1)[0]
 
     assert "self._orbitYaw = CameraMath.SmoothNumber(" in active_branch, (
         "continuous 360-degree drag must smooth the unbounded yaw target directly; "
