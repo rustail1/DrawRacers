@@ -5,21 +5,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_b11_authoritative_leg_shape_service_contract() -> None:
     service_path = ROOT / "src" / "server" / "Services" / "LegShapeService.lua"
+    builder_path = ROOT / "src" / "shared" / "Math" / "LegShapeMath.lua"
     assert service_path.is_file(), "missing B11 LegShapeService.lua"
+    assert builder_path.is_file(), "missing shared canonical LegShapeMath owner"
     text = service_path.read_text(encoding="utf-8")
+    builder = builder_path.read_text(encoding="utf-8")
 
     for token in [
         "function LegShapeService.ValidateAndBuild",
-        "StrokeMath.Clamp",
-        "StrokeMath.Dedupe",
-        "StrokeMath.SimplifyRDP",
-        "StrokeMath.Resample",
-        "StrokeMath.MeasureLength",
-        "StrokeMath.ComputeBounds",
+        'WaitForChild("LegShapeMath")',
+        "LegShapeMath.BuildCanonical",
         "MinimumRawPoints",
         "MaxRawPoints",
-        "MaxCleanedPoints",
-        "MinimumCleanedPolylineLength",
         'typeof(point) ~= "Vector2"',
         "ApplyValidatedShape",
         "ShapeVersion",
@@ -28,6 +25,18 @@ def test_b11_authoritative_leg_shape_service_contract() -> None:
         "debugId",
     ]:
         assert token in text, f"missing B11 authority token: {token}"
+
+    for token in [
+        "StrokeMath.ClampToRect",
+        "StrokeMath.Dedupe",
+        "StrokeMath.SimplifyRDP",
+        "StrokeMath.Resample",
+        "StrokeMath.MeasureLength",
+        "StrokeMath.ComputeBounds",
+        "MinimumCleanedPolylineLength",
+        "GeometryMath.BuildSegmentPlan",
+    ]:
+        assert token in builder, f"missing B11 canonical math token: {token}"
 
     for forbidden in [
         'Instance.new(',
@@ -38,6 +47,7 @@ def test_b11_authoritative_leg_shape_service_contract() -> None:
         'Workspace',
     ]:
         assert forbidden not in text, f"B11 service must not accept/create client world geometry directly: {forbidden}"
+        assert forbidden not in builder, f"B11 canonical builder must stay pure: {forbidden}"
 
 
 def test_b11_shape_types_and_runtime_commit_contract() -> None:
