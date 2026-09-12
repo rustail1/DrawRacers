@@ -52,8 +52,9 @@ def test_r16_3b_authoritative_shape_is_first_point_anchored_without_network_sche
     assert "LegShapeMath.BuildCanonical" in service
     assert "StrokeMath.ClampToRect" in builder
     assert "StrokeMath.AnchorToFirstPoint(cleaned)" in builder
-    assert "normalizedPoints = anchored" in builder
     assert "GeometryMath.BuildSegmentPlan(anchored" in builder
+    assert "mapped / geometryConfig.LegCanvasHalfSpan" in builder
+    assert "normalizedPoints = presentationPoints" in builder
     assert "StrokeMath.CenterOnBounds(cleaned)" not in builder
 
     submit = types.split("export type SubmitStrokePayload", 1)[1].split("export type StrokeResultPayload", 1)[0]
