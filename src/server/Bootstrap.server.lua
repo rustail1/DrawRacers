@@ -37,9 +37,10 @@ if RunService:IsStudio() then
 	)
 	local M0TestScene = require(script.Parent.M0TestScene)
 	local testsFolder = script.Parent:WaitForChild("Tests")
-	local StudioSpecRunner = require(testsFolder:WaitForChild("StudioSpecRunner"))
+	local harnessMode = StudioHarnessConfig.Mode
+	local runStartupRegressions = harnessMode ~= "G0"
 
-	ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "TESTING")
+	ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, if runStartupRegressions then "TESTING" else "STARTING")
 
 	local sceneOk, sceneError = xpcall(function()
 		M0TestScene.build()
@@ -48,47 +49,49 @@ if RunService:IsStudio() then
 		warn("[DrawRacers][StudioGate] scene build failed: " .. tostring(sceneError))
 	end
 
-	local specsPassed = false
-	if sceneOk then
+	local function startSelectedHarness()
+		print(string.format("[DrawRacers][StudioGate] selected mode=%s", tostring(harnessMode)))
+		if harnessMode == "G0" then
+			local M0HumanHarness = require(testsFolder:WaitForChild("M0HumanHarness"))
+			M0HumanHarness.start()
+		elseif harnessMode == "B08" then
+			local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
+			B08OneHingeMotorHarness.start()
+		elseif harnessMode == "B09" then
+			local B09TwoLegPhaseHarness = require(testsFolder:WaitForChild("B09TwoLegPhaseHarness"))
+			B09TwoLegPhaseHarness.start()
+		elseif harnessMode == "B10" then
+			local B10StabilizationHarness = require(testsFolder:WaitForChild("B10StabilizationHarness"))
+			B10StabilizationHarness.start()
+		elseif harnessMode == "R16B" then
+			local R16StageBHarness = require(testsFolder:WaitForChild("R16StageBHarness"))
+			R16StageBHarness.start()
+		elseif harnessMode == "R16C" then
+			local R16StageCHarness = require(testsFolder:WaitForChild("R16StageCHarness"))
+			R16StageCHarness.start()
+		elseif harnessMode == "R16FINAL" then
+			local R16FinalHarness = require(testsFolder:WaitForChild("R16FinalHarness"))
+			R16FinalHarness.start()
+		elseif harnessMode == "R17FINAL" then
+			local R17FinalHarness = require(testsFolder:WaitForChild("R17FinalHarness"))
+			R17FinalHarness.start()
+		elseif harnessMode ~= "NONE" then
+			error(string.format("unknown StudioHarnessConfig.Mode %s", tostring(harnessMode)))
+		end
+	end
+
+	local specsPassed = sceneOk
+	if sceneOk and runStartupRegressions then
+		local StudioSpecRunner = require(testsFolder:WaitForChild("StudioSpecRunner"))
 		local passed = StudioSpecRunner.run(testsFolder, STUDIO_REGRESSION_SPECS)
 		specsPassed = passed == true
+	elseif sceneOk then
+		print("[DrawRacers][StudioGate] G0 manual core mode — startup regression/evidence suite skipped")
 	end
 
 	if specsPassed then
-		local function startSelectedHarness()
-			local harnessMode = StudioHarnessConfig.Mode
-			print(string.format("[DrawRacers][StudioGate] selected mode=%s", tostring(harnessMode)))
-			if harnessMode == "G0" then
-				local M0HumanHarness = require(testsFolder:WaitForChild("M0HumanHarness"))
-				M0HumanHarness.start()
-			elseif harnessMode == "B08" then
-				local B08OneHingeMotorHarness = require(testsFolder:WaitForChild("B08OneHingeMotorHarness"))
-				B08OneHingeMotorHarness.start()
-			elseif harnessMode == "B09" then
-				local B09TwoLegPhaseHarness = require(testsFolder:WaitForChild("B09TwoLegPhaseHarness"))
-				B09TwoLegPhaseHarness.start()
-			elseif harnessMode == "B10" then
-				local B10StabilizationHarness = require(testsFolder:WaitForChild("B10StabilizationHarness"))
-				B10StabilizationHarness.start()
-			elseif harnessMode == "R16B" then
-				local R16StageBHarness = require(testsFolder:WaitForChild("R16StageBHarness"))
-				R16StageBHarness.start()
-			elseif harnessMode == "R16C" then
-				local R16StageCHarness = require(testsFolder:WaitForChild("R16StageCHarness"))
-				R16StageCHarness.start()
-			elseif harnessMode == "R16FINAL" then
-				local R16FinalHarness = require(testsFolder:WaitForChild("R16FinalHarness"))
-				R16FinalHarness.start()
-			elseif harnessMode == "R17FINAL" then
-				local R17FinalHarness = require(testsFolder:WaitForChild("R17FinalHarness"))
-				R17FinalHarness.start()
-			elseif harnessMode ~= "NONE" then
-				error(string.format("unknown StudioHarnessConfig.Mode %s", tostring(harnessMode)))
-			end
-		end
-
 		local harnessOk, harnessError = xpcall(startSelectedHarness, debug.traceback)
-		if specsPassed and harnessOk then
+		if harnessOk then
 			ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "READY")
 			print("[DrawRacers][StudioGate] SERVER READY — client bootstrap must also report [ClientGate] READY")
 		else
@@ -97,7 +100,7 @@ if RunService:IsStudio() then
 		end
 	else
 		ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "BLOCKED")
-		warn("[DrawRacers][StudioGate] BLOCKED — one or more server regression specs failed")
+		warn("[DrawRacers][StudioGate] BLOCKED — scene or explicitly requested startup regressions failed")
 	end
 end
 
