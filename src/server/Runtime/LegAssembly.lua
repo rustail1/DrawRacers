@@ -5,6 +5,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
 )
+local LegReshapeMath = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("LegReshapeMath")
+)
 local StrokeTypes = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
 )
@@ -13,6 +16,7 @@ local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
 local RACER_LEG_GROUP = "RacerLeg"
 local FRONT_VISUAL_COLOR = Color3.fromRGB(23, 32, 51)
 local BACK_VISUAL_COLOR = Color3.fromRGB(57, 68, 84)
+local MIN_DYNAMIC_LENGTH = 0.001
 
 local LegAssembly = {}
 LegAssembly.__index = LegAssembly
@@ -52,6 +56,22 @@ local function configureVisualPart(visual: Part, color: Color3)
 	visual.CastShadow = false
 end
 
+local function configurePhysicalPart(segment: Part, legMaterial: any)
+	segment.Anchored = false
+	segment.CanTouch = true
+	segment.CanQuery = true
+	segment.Massless = false
+	segment.CollisionGroup = RACER_LEG_GROUP
+	segment.CustomPhysicalProperties = PhysicalProperties.new(
+		legMaterial.Density,
+		legMaterial.Friction,
+		legMaterial.Elasticity,
+		legMaterial.FrictionWeight,
+		legMaterial.ElasticityWeight
+	)
+	segment.Transparency = 1
+end
+
 local function weldParts(name: string, part0: BasePart, part1: BasePart, parent: Instance)
 	local weld = Instance.new("WeldConstraint")
 	weld.Name = name
@@ -59,6 +79,22 @@ local function weldParts(name: string, part0: BasePart, part1: BasePart, parent:
 	weld.Part1 = part1
 	weld.Parent = parent
 	return weld
+end
+
+local function dynamicWeld(name: string, root: BasePart, part: BasePart): Weld
+	local weld = Instance.new("Weld")
+	weld.Name = name
+	weld.Part0 = root
+	weld.Part1 = part
+	weld.C0 = root.CFrame:ToObjectSpace(part.CFrame)
+	weld.C1 = CFrame.identity
+	weld.Parent = part
+	return weld
+end
+
+local function setDynamicFrame(root: Part, part: Part, weld: Weld, a: Vector2, b: Vector2)
+	part.CFrame = makeSegmentCFrame(root.CFrame, a, b)
+	weld.C0 = root.CFrame:ToObjectSpace(part.CFrame)
 end
 
 function LegAssembly.new(params: BuildParams)
@@ -125,6 +161,7 @@ function LegAssembly.new(params: BuildParams)
 	visualFolder.Parent = model
 
 	local segments = {}
+	local segmentCanCollide = {}
 	for _, planned in params.shapeSpec.segmentPlan do
 		local a = planned.a
 		local b = planned.b
@@ -140,28 +177,18 @@ function LegAssembly.new(params: BuildParams)
 			geometry.PhysicalLegSegmentThickness
 		)
 		segment.CFrame = makeSegmentCFrame(root.CFrame, a, b)
-		segment.Anchored = false
+		configurePhysicalPart(segment, legMaterial)
 		segment.CanCollide = planned.canCollide == true
-		segment.CanTouch = true
-		segment.CanQuery = true
-		segment.Massless = false
-		segment.CollisionGroup = RACER_LEG_GROUP
-		segment.CustomPhysicalProperties = PhysicalProperties.new(
-			legMaterial.Density,
-			legMaterial.Friction,
-			legMaterial.Elasticity,
-			legMaterial.FrictionWeight,
-			legMaterial.ElasticityWeight
-		)
-		segment.Transparency = 1
 		segment.Parent = segmentsFolder
 		weldParts("RootWeld", root, segment, segment)
 		table.insert(segments, segment)
+		table.insert(segmentCanCollide, planned.canCollide == true)
 	end
 
 	assert(#segments > 0, "LegAssembly produced no legal physical segments")
 
 	local mappedPoints = params.shapeSpec.mappedPoints or {}
+	local visualJoints = {}
 	for index, point in mappedPoints do
 		local visual = Instance.new("Part")
 		visual.Name = string.format("VisualJoint_%02d", index)
@@ -171,8 +198,10 @@ function LegAssembly.new(params: BuildParams)
 		configureVisualPart(visual, visualColor)
 		visual.Parent = visualFolder
 		weldParts("RootWeld", root, visual, visual)
+		table.insert(visualJoints, visual)
 	end
 
+	local visualSegments = {}
 	for _, planned in params.shapeSpec.segmentPlan do
 		local a = planned.a
 		local b = planned.b
@@ -185,12 +214,46 @@ function LegAssembly.new(params: BuildParams)
 		configureVisualPart(visual, visualColor)
 		visual.Parent = visualFolder
 		weldParts("RootWeld", root, visual, visual)
+		table.insert(visualSegments, visual)
 	end
+
+	-- RCP-04 keeps full completed segments rigid and uses one temporary tip segment
+	-- for the only segment currently growing. This avoids mutating WeldConstraint
+	-- offsets on already-completed geometry while still producing true a->endpoint growth.
+	local partialCollider = Instance.new("Part")
+	partialCollider.Name = "ReshapeTipCollider"
+	partialCollider.Size = Vector3.new(MIN_DYNAMIC_LENGTH, geometry.PhysicalLegSegmentThickness, geometry.PhysicalLegSegmentThickness)
+	partialCollider.CFrame = root.CFrame
+	configurePhysicalPart(partialCollider, legMaterial)
+	partialCollider.CanCollide = false
+	partialCollider.CanTouch = false
+	partialCollider.CanQuery = false
+	partialCollider.Massless = true
+	partialCollider.Parent = segmentsFolder
+	local partialColliderWeld = dynamicWeld("ReshapeTipWeld", root, partialCollider)
+
+	local partialVisual = Instance.new("Part")
+	partialVisual.Name = "ReshapeTipVisual"
+	partialVisual.Shape = Enum.PartType.Cylinder
+	partialVisual.Size = Vector3.new(MIN_DYNAMIC_LENGTH, visualThickness, visualThickness)
+	partialVisual.CFrame = root.CFrame
+	configureVisualPart(partialVisual, visualColor)
+	partialVisual.Transparency = 1
+	partialVisual.Parent = visualFolder
+	local partialVisualWeld = dynamicWeld("ReshapeTipVisualWeld", root, partialVisual)
 
 	local self = setmetatable({
 		model = model,
 		root = root,
 		segments = segments,
+		segmentCanCollide = segmentCanCollide,
+		segmentPlan = params.shapeSpec.segmentPlan,
+		visualSegments = visualSegments,
+		visualJoints = visualJoints,
+		partialCollider = partialCollider,
+		partialColliderWeld = partialColliderWeld,
+		partialVisual = partialVisual,
+		partialVisualWeld = partialVisualWeld,
 		mappedPoints = mappedPoints,
 		phaseDegrees = phaseDegrees,
 		legsFolder = legsFolder,
@@ -241,6 +304,66 @@ function LegAssembly:Commit()
 	self.committed = true
 end
 
+function LegAssembly:SetReshapeProgress(progress: number)
+	assert(not self.destroyed, "LegAssembly is destroyed")
+	local state = LegReshapeMath.Evaluate(self.segmentPlan, progress)
+	local geometry = PhysicsConfig.LegGeometry
+
+	for index, segment in self.segments do
+		local complete = index <= state.completeSegments
+		segment.CanCollide = complete and self.segmentCanCollide[index] == true
+		segment.CanTouch = complete
+		segment.CanQuery = complete
+		segment.Massless = not complete
+		self.visualSegments[index].Transparency = if complete then 0 else 1
+	end
+
+	for index, joint in self.visualJoints do
+		-- point 1 is the hub. Each later point appears only when the preceding
+		-- canonical segment has completed, so no future geometry flashes early.
+		joint.Transparency = if index == 1 or (index - 1) <= state.completeSegments then 0 else 1
+	end
+
+	local partialIndex = state.partialSegmentIndex
+	local endpoint = state.partialEndpoint
+	if partialIndex ~= nil and endpoint ~= nil then
+		local planned = self.segmentPlan[partialIndex]
+		local a = planned.a
+		local visibleLength = (endpoint - a).Magnitude
+		if visibleLength > MIN_DYNAMIC_LENGTH then
+			local segment = self.partialCollider
+			segment.Size = Vector3.new(
+				visibleLength,
+				geometry.PhysicalLegSegmentThickness,
+				geometry.PhysicalLegSegmentThickness
+			)
+			setDynamicFrame(self.root, segment, self.partialColliderWeld, a, endpoint)
+			segment.CanCollide = visibleLength > MIN_DYNAMIC_LENGTH and planned.canCollide == true
+			segment.CanTouch = true
+			segment.CanQuery = true
+			segment.Massless = false
+
+			self.partialVisual.Size = Vector3.new(visibleLength, geometry.VisualLegSegmentThickness, geometry.VisualLegSegmentThickness)
+			setDynamicFrame(self.root, self.partialVisual, self.partialVisualWeld, a, endpoint)
+			self.partialVisual.Transparency = 0
+		else
+			self.partialCollider.CanCollide = false
+			self.partialCollider.CanTouch = false
+			self.partialCollider.CanQuery = false
+			self.partialCollider.Massless = true
+			self.partialVisual.Transparency = 1
+		end
+	else
+		self.partialCollider.CanCollide = false
+		self.partialCollider.CanTouch = false
+		self.partialCollider.CanQuery = false
+		self.partialCollider.Massless = true
+		self.partialVisual.Transparency = 1
+	end
+
+	return state
+end
+
 function LegAssembly:SetRetiring(retiring: boolean)
 	assert(not self.destroyed, "LegAssembly is destroyed")
 	local baseName = if self.model:GetAttribute("Side") == "Left" then "LeftLeg" else "RightLeg"
@@ -258,7 +381,15 @@ function LegAssembly:Destroy()
 	self.model = nil
 	self.root = nil
 	self.legsFolder = nil
+	self.partialCollider = nil
+	self.partialVisual = nil
+	self.partialColliderWeld = nil
+	self.partialVisualWeld = nil
 	table.clear(self.segments)
+	table.clear(self.segmentCanCollide)
+	table.clear(self.segmentPlan)
+	table.clear(self.visualSegments)
+	table.clear(self.visualJoints)
 	table.clear(self.mappedPoints)
 end
 
