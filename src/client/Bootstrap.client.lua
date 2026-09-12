@@ -10,6 +10,7 @@ local DrawingController = require(controllers:WaitForChild("DrawingController"))
 local DebugTuningPanel = require(controllers:WaitForChild("DebugTuningPanel"))
 local RaceCameraController = require(controllers:WaitForChild("RaceCameraController"))
 local RiderPresentationController = require(controllers:WaitForChild("RiderPresentationController"))
+local RacerCosmeticsController = require(controllers:WaitForChild("RacerCosmeticsController"))
 
 local shared = ReplicatedStorage:WaitForChild("Shared")
 local RemoteNames = require(shared:WaitForChild("Net"):WaitForChild("RemoteNames"))
@@ -31,6 +32,7 @@ local inputController = InputController.new()
 local drawingController = DrawingController.new(inputController, drawHud, submitStroke, strokeResult)
 local raceCameraController = RaceCameraController.new(playerGui)
 local riderPresentationController = RiderPresentationController.new()
+local racerCosmeticsController = RacerCosmeticsController.new()
 local productionPresentationStarted = false
 
 local function startProductionPresentation()
@@ -40,6 +42,7 @@ local function startProductionPresentation()
 	productionPresentationStarted = true
 	raceCameraController:Start()
 	riderPresentationController:Start()
+	racerCosmeticsController:Start()
 end
 
 local debugTuningPanel = DebugTuningPanel.new(playerGui)
