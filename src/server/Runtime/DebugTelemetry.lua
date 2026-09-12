@@ -34,7 +34,10 @@ local function countColliderSegments(model: Model): number
 			local segments = leg:FindFirstChild("Segments")
 			if segments and segments:IsA("Folder") then
 				for _, child in segments:GetChildren() do
-					if child:IsA("BasePart") then
+					-- Count only canonical ShapeSpec colliders. RCP-04 keeps one
+					-- transient ReshapeTipCollider in this folder while growing the
+					-- current segment; it must not inflate gameplay/debug segment count.
+					if child:IsA("BasePart") and string.match(child.Name, "^Segment_%d+$") then
 						count += 1
 					end
 				end
