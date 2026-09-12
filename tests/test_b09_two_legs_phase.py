@@ -38,14 +38,14 @@ def test_b09_two_leg_same_xy_opposed_phase_contract() -> None:
         assert forbidden not in leg, f"B09 must not mirror/invert shape XY: {forbidden}"
 
     for token in [
-        'side = "Left"',
-        'side = "Right"',
-        "shapeSpec = params.shapeSpec",
+        '"Left"',
+        '"Right"',
         "RightPhaseOffsetDegrees",
         'joint.Name = "AxleJoint"',
         "function LegPairAssembly:GetPhaseDegrees()",
+        "function LegPairAssembly:ReplaceGeometry",
     ]:
-        assert token in pair, f"missing B09 shared-pair token: {token}"
+        assert token in pair, f"missing B09 stable-pair token: {token}"
 
     assert pair.count('Instance.new("HingeConstraint")') == 1
     assert 'Instance.new("HingeConstraint")' not in leg
@@ -60,9 +60,8 @@ def test_b09_two_leg_same_xy_opposed_phase_contract() -> None:
     apply_shape_spec = racer.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split(
         "function RacerRuntime:ApplyShape", 1
     )[0]
-    assert "initialPhaseDegrees" in apply_shape_spec
-    assert "oldLegPair:GetPhaseDegrees()" in apply_shape_spec
-    assert "stagedLegPair:Commit()" in apply_shape_spec
+    assert "self.legPair:ReplaceGeometry(shapeSpec)" in apply_shape_spec
+    assert "LegPairAssembly.new" not in apply_shape_spec
 
 
 def test_b09_studio_spec_is_wired() -> None:
