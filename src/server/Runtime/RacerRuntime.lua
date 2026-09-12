@@ -272,17 +272,10 @@ function RacerRuntime:GetCurrentShapeSpec(): ShapeSpec?
 	return self.currentShapeSpec
 end
 
-function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolean?)
-	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
-	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table", "shapeSpec missing segmentPlan")
-	assert(#shapeSpec.segmentPlan > 0, "shapeSpec requires physical segments")
-
+function RacerRuntime:_CreateInitialLegPair(shapeSpec: ShapeSpec, motorEnabled: boolean?)
+	assert(self.legPair == nil, "initial leg pair already exists")
 	local model = self.model
-	local legsFolder = model:FindFirstChild("Legs")
-	assert(legsFolder and legsFolder:IsA("Folder"), "RacerRuntime missing Legs folder")
-
-	local oldLegPair = self.legPair
-	local initialPhaseDegrees = if oldLegPair ~= nil then oldLegPair:GetPhaseDegrees() else 0
+	local initialPhaseDegrees = 0
 	local selectedPhaseDegrees = initialPhaseDegrees
 	local redrawSafetyFallback = false
 	local redrawPenetrationScore = 0
@@ -321,14 +314,7 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 		end
 		error(buildError)
 	end
-	assert(stagedLegPair ~= nil, "atomic redraw staging produced incomplete shared leg pair")
-
-	-- Safety selection completes while the old pair is still active. Only now is
-	-- the old pair marked retiring, so a selection/build error cannot remove the
-	-- player's last working geometry.
-	if oldLegPair ~= nil then
-		oldLegPair:SetRetiring(true)
-	end
+	assert(stagedLegPair ~= nil, "initial leg staging produced incomplete shared leg pair")
 
 	local commitOk, commitError = pcall(function()
 		stagedLegPair:Commit()
@@ -336,9 +322,6 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 	end)
 	if not commitOk then
 		stagedLegPair:Destroy()
-		if oldLegPair ~= nil then
-			oldLegPair:SetRetiring(false)
-		end
 		error(commitError)
 	end
 
@@ -350,16 +333,30 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 
 	if redrawSafetyFallback then
 		warn(string.format(
-			"[DrawRacers][RedrawSafety] no zero-penetration phase; selected %.1f deg score=%d",
+			"[DrawRacers][RedrawSafety] no zero-penetration initial phase; selected %.1f deg score=%d",
 			selectedPhaseDegrees,
 			redrawPenetrationScore
 		))
 	end
 
-	if oldLegPair ~= nil then
-		oldLegPair:Destroy()
+	return self.leftLeg, self.rightLeg
+end
+
+function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolean?)
+	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
+	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table", "shapeSpec missing segmentPlan")
+	assert(#shapeSpec.segmentPlan > 0, "shapeSpec requires physical segments")
+
+	if self.legPair == nil then
+		return self:_CreateInitialLegPair(shapeSpec, motorEnabled)
 	end
 
+	local leftLeg, rightLeg = self.legPair:ReplaceGeometry(shapeSpec)
+	self.legPair:SetEnabled(motorEnabled == true)
+	self.leftLeg = leftLeg
+	self.rightLeg = rightLeg
+	self.model:SetAttribute("DebugRedrawSafetyFallback", false)
+	self.model:SetAttribute("DebugRedrawPenetrationScore", 0)
 	return self.leftLeg, self.rightLeg
 end
 
