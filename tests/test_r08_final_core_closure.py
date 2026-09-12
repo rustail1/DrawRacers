@@ -48,10 +48,12 @@ def test_r08_g0_isolates_roblox_character_from_racer_physics() -> None:
 def test_r08_minimum_useful_leg_extent_is_configured_and_server_enforced() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     service = read("src/server/Services/LegShapeService.lua")
+    builder = read("src/shared/Math/LegShapeMath.lua")
 
     assert "MinUsefulLegExtent = 0.7" in config
-    assert "geometryPlan.extent < PhysicsConfig.LegGeometry.MinUsefulLegExtent" in service
-    assert 'reject("TOO_SHORT")' in service
+    assert "geometryPlan.extent < geometryConfig.MinUsefulLegExtent" in builder
+    assert 'return nil, "TOO_SHORT"' in builder
+    assert "LegShapeMath.BuildCanonical" in service
 
 
 def test_r08_antistall_is_bounded_and_only_eligible_on_explicit_flat_recovery_surfaces() -> None:
