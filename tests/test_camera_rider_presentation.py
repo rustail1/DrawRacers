@@ -141,7 +141,9 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "record.visual:GetPivot():ToObjectSpace(record.seatPart.CFrame)" in rider
     assert "targetSeat * localSeat:Inverse()" in rider
     assert "ScaleTo(RIDER_SCALE)" in rider
-    assert 'IsA("Accessory")' in rider
+    sanitize = rider[rider.index("local function sanitizeVisual"):rider.index("local function findSeatPart")]
+    assert 'descendant:IsA("Accessory")' not in sanitize
+    assert 'descendant:IsA("Tool")' in sanitize
     assert "CanCollide = false" in rider
     assert "CanTouch = false" in rider
     assert "CanQuery = false" in rider
