@@ -17,14 +17,14 @@ def test_rcp01_redraw_reuses_existing_axle_and_joint() -> None:
 
     apply_body = _function_body(runtime, "function RacerRuntime:_ApplyShapeSpec")
 
-    assert "ReplaceGeometry" in pair, "RCP-01 requires an explicit geometry-only replacement API"
-    assert "self.legPair:ReplaceGeometry" in apply_body, "redraw must reuse the existing leg pair"
+    assert "BeginGeometryReshape" in pair, "RCP-04 must preserve RCP-01 stable axle while reshaping geometry"
+    assert "self.legPair:BeginGeometryReshape" in apply_body, "redraw must reuse the existing leg pair"
     assert "LegPairAssembly.new" not in apply_body, "redraw must not allocate a replacement axle/joint"
 
 
 def test_rcp01_replace_geometry_is_failure_atomic() -> None:
     pair = (ROOT / "src/server/Runtime/LegPairAssembly.lua").read_text(encoding="utf-8")
-    body = _function_body(pair, "function LegPairAssembly:ReplaceGeometry")
+    body = _function_body(pair, "function LegPairAssembly:BeginGeometryReshape")
 
     assert "stagedLeft" in body and "stagedRight" in body
     assert "pcall" in body, "replacement geometry must be prepared behind an error boundary"
@@ -38,6 +38,9 @@ def test_rcp01_stable_motor_remains_single_owner() -> None:
 
     assert pair.count('Instance.new("HingeConstraint")') == 1
     assert 'Instance.new("HingeConstraint")' not in leg
-    replace_body = _function_body(pair, "function LegPairAssembly:ReplaceGeometry")
-    assert 'Instance.new("HingeConstraint")' not in replace_body
-    assert "self.axleRoot" in replace_body
+    reshape_body = _function_body(pair, "function LegPairAssembly:BeginGeometryReshape")
+    helper_body = pair[pair.index("local function buildStagedSides"):pair.index("function LegPairAssembly:ReplaceGeometry")]
+    assert 'Instance.new("HingeConstraint")' not in reshape_body
+    assert 'Instance.new("HingeConstraint")' not in helper_body
+    assert "buildStagedSides(self, shapeSpec)" in reshape_body
+    assert "axleRoot = self.axleRoot" in helper_body
