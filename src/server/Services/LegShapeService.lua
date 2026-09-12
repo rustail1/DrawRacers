@@ -6,11 +6,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
 )
-local StrokeMath = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("StrokeMath")
-)
-local GeometryMath = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("GeometryMath")
+local LegShapeMath = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("LegShapeMath")
 )
 local StrokeTypes = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
@@ -113,74 +110,31 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 		return reject("INVALID_RACER")
 	end
 
-	local config = PhysicsConfig.StrokeProcessing
 	local points, arrayError = validateRawPointArray(rawPoints)
 	if points == nil then
 		return reject(arrayError or "MALFORMED_POINTS")
 	end
 
-	local clamped, clampError = StrokeMath.ClampToRect(points, {
-		minX = -config.RawSemanticHalfWidth,
-		maxX = config.RawSemanticHalfWidth,
-		minY = -config.RawSemanticHalfHeight,
-		maxY = config.RawSemanticHalfHeight,
-		maxPoints = config.MaxRawPoints,
-	})
-	if clamped == nil then
-		return reject(clampError or "INVALID_STROKE")
-	end
-
-	local deduped = StrokeMath.Dedupe(clamped, config.DedupeDistance)
-	if #deduped < 2 then
-		return reject("TOO_SHORT")
-	end
-
-	local simplified = StrokeMath.SimplifyRDP(deduped, config.RDPEpsilon)
-	if #simplified < 2 then
-		return reject("TOO_SHORT")
-	end
-
-	local cleaned = StrokeMath.Resample(
-		simplified,
-		math.min(config.ResampleTargetPoints, config.MaxCleanedPoints)
+	local canonical, canonicalError = LegShapeMath.BuildCanonical(
+		points,
+		PhysicsConfig.StrokeProcessing,
+		PhysicsConfig.LegGeometry
 	)
-	if #cleaned > config.MaxCleanedPoints then
-		return reject("TOO_MANY_CLEANED_POINTS")
-	end
-
-	local cleanedLength = StrokeMath.MeasureLength(cleaned)
-	if #cleaned < 2 or cleanedLength < config.MinimumCleanedPolylineLength then
-		return reject("TOO_SHORT")
-	end
-
-	-- R16.3B: raw placement in the wide DrawInputRect is presentation-only.
-	-- The first cleaned authoritative point is the mechanical origin. This is
-	-- translation-only: preserve point order, size, direction and open/closed character.
-	local anchored = StrokeMath.AnchorToFirstPoint(cleaned)
-	local bounds = StrokeMath.ComputeBounds(anchored)
-	if bounds == nil then
-		return reject("TOO_SHORT")
-	end
-
-	local geometryPlan = GeometryMath.BuildSegmentPlan(anchored, PhysicsConfig.LegGeometry)
-	if #geometryPlan.segmentPlan == 0 then
-		return reject("TOO_SHORT")
-	end
-	if geometryPlan.extent < PhysicsConfig.LegGeometry.MinUsefulLegExtent then
-		return reject("TOO_SHORT")
+	if canonical == nil then
+		return reject(canonicalError or "INVALID_STROKE")
 	end
 
 	local nextVersion = racerRuntime:GetShapeVersion() + 1
 	local shapeSpec: ShapeSpec = {
 		version = nextVersion,
-		normalizedPoints = anchored,
-		mappedPoints = geometryPlan.mappedPoints,
-		bounds = bounds,
-		extent = geometryPlan.extent,
-		segmentPlan = geometryPlan.segmentPlan,
-		debugRawPointCount = #points,
-		debugPhysicsPointCount = #geometryPlan.mappedPoints,
-		debugId = buildDebugId(nextVersion, anchored, cleanedLength),
+		normalizedPoints = canonical.normalizedPoints,
+		mappedPoints = canonical.mappedPoints,
+		bounds = canonical.bounds,
+		extent = canonical.extent,
+		segmentPlan = canonical.segmentPlan,
+		debugRawPointCount = canonical.debugRawPointCount,
+		debugPhysicsPointCount = canonical.debugPhysicsPointCount,
+		debugId = buildDebugId(nextVersion, canonical.normalizedPoints, canonical.cleanedLength),
 	}
 
 	local applied, applyError = pcall(function()
