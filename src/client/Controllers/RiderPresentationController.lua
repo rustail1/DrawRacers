@@ -42,9 +42,11 @@ local function applyJockeyPose(visual: Model)
 end
 
 local function sanitizeVisual(visual: Model)
+	-- Preserve cosmetic Accessory instances (hat/hair/etc.). Their handles are
+	-- made nonphysical below just like every other visual BasePart. Only objects
+	-- that can execute code or behave as player-held gameplay tools are removed.
 	for _, descendant in visual:GetDescendants() do
-		if descendant:IsA("Accessory")
-			or descendant:IsA("Tool")
+		if descendant:IsA("Tool")
 			or descendant:IsA("Script")
 			or descendant:IsA("LocalScript")
 			or descendant:IsA("ModuleScript")
