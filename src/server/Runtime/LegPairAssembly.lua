@@ -49,6 +49,26 @@ local function axleBaseCFrame(body: Part): CFrame
 	return body.CFrame * CFrame.new(geometry.HubOffsetX, geometry.HubOffsetY, 0)
 end
 
+local function buildLeg(
+	racerModel: Model,
+	axleRoot: Part,
+	shapeSpec: ShapeSpec,
+	side: string,
+	socketZ: number,
+	phaseDegrees: number,
+	staged: boolean
+)
+	return LegAssembly.new({
+		racerModel = racerModel,
+		side = side,
+		shapeSpec = shapeSpec,
+		axleRoot = axleRoot,
+		socketZ = socketZ,
+		phaseDegrees = phaseDegrees,
+		staged = staged,
+	})
+end
+
 function LegPairAssembly.new(params: BuildParams)
 	assert(type(params.shapeSpec) == "table", "LegPairAssembly requires authoritative shapeSpec")
 	assert(type(params.shapeSpec.segmentPlan) == "table" and #params.shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
@@ -101,24 +121,24 @@ function LegPairAssembly.new(params: BuildParams)
 	local leftLeg = nil
 	local rightLeg = nil
 	local sideBuildOk, sideBuildError = pcall(function()
-		leftLeg = LegAssembly.new({
-			racerModel = racerModel,
-			side = "Left",
-			shapeSpec = params.shapeSpec,
-			axleRoot = axleRoot,
-			socketZ = -geometry.LegSocketZAbs,
-			phaseDegrees = 0,
-			staged = staged,
-		})
-		rightLeg = LegAssembly.new({
-			racerModel = racerModel,
-			side = "Right",
-			shapeSpec = params.shapeSpec,
-			axleRoot = axleRoot,
-			socketZ = geometry.LegSocketZAbs,
-			phaseDegrees = motor.RightPhaseOffsetDegrees,
-			staged = staged,
-		})
+		leftLeg = buildLeg(
+			racerModel,
+			axleRoot,
+			params.shapeSpec,
+			"Left",
+			-geometry.LegSocketZAbs,
+			0,
+			staged
+		)
+		rightLeg = buildLeg(
+			racerModel,
+			axleRoot,
+			params.shapeSpec,
+			"Right",
+			geometry.LegSocketZAbs,
+			motor.RightPhaseOffsetDegrees,
+			staged
+		)
 	end)
 	if not sideBuildOk then
 		if leftLeg ~= nil then
@@ -190,6 +210,72 @@ function LegPairAssembly:Commit()
 	self.leftLeg:Commit()
 	self.rightLeg:Commit()
 	self.committed = true
+end
+
+function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
+	assert(not self.destroyed, "LegPairAssembly is destroyed")
+	assert(self.committed, "ReplaceGeometry requires a committed stable axle")
+	assert(type(shapeSpec) == "table", "ReplaceGeometry requires authoritative shapeSpec")
+	assert(type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
+
+	local geometry = PhysicsConfig.LegGeometry
+	local motor = PhysicsConfig.Motor
+	local stagedLeft = nil
+	local stagedRight = nil
+
+	local buildOk, buildError = pcall(function()
+		stagedLeft = buildLeg(
+			self.racerModel,
+			self.axleRoot,
+			shapeSpec,
+			"Left",
+			-geometry.LegSocketZAbs,
+			0,
+			true
+		)
+		stagedRight = buildLeg(
+			self.racerModel,
+			self.axleRoot,
+			shapeSpec,
+			"Right",
+			geometry.LegSocketZAbs,
+			motor.RightPhaseOffsetDegrees,
+			true
+		)
+	end)
+	if not buildOk then
+		if stagedLeft ~= nil then
+			stagedLeft:Destroy()
+		end
+		if stagedRight ~= nil then
+			stagedRight:Destroy()
+		end
+		error(buildError)
+	end
+	assert(stagedLeft ~= nil and stagedRight ~= nil, "ReplaceGeometry produced incomplete staged sides")
+
+	local oldLeft = self.leftLeg
+	local oldRight = self.rightLeg
+	oldLeft:SetRetiring(true)
+	oldRight:SetRetiring(true)
+
+	local commitOk, commitError = pcall(function()
+		stagedLeft:Commit()
+		stagedRight:Commit()
+	end)
+	if not commitOk then
+		stagedLeft:Destroy()
+		stagedRight:Destroy()
+		oldLeft:SetRetiring(false)
+		oldRight:SetRetiring(false)
+		error(commitError)
+	end
+
+	self.leftLeg = stagedLeft
+	self.rightLeg = stagedRight
+	oldLeft:Destroy()
+	oldRight:Destroy()
+	return self.leftLeg, self.rightLeg
 end
 
 function LegPairAssembly:SetEnabled(enabled: boolean)
