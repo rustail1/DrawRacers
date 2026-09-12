@@ -12,6 +12,7 @@ export type CanonicalShape = {
 	extent: number,
 	segmentPlan: { any },
 	cleanedLength: number,
+	presentationAnchor: Vector2,
 	debugRawPointCount: number,
 	debugPhysicsPointCount: number,
 }
@@ -59,6 +60,7 @@ function LegShapeMath.BuildCanonical(
 		return nil, "TOO_SHORT"
 	end
 
+	local presentationAnchor = cleaned[1]
 	local anchored = StrokeMath.AnchorToFirstPoint(cleaned)
 	local bounds = StrokeMath.ComputeBounds(anchored)
 	if bounds == nil then
@@ -80,6 +82,7 @@ function LegShapeMath.BuildCanonical(
 		extent = geometryPlan.extent,
 		segmentPlan = geometryPlan.segmentPlan,
 		cleanedLength = cleanedLength,
+		presentationAnchor = presentationAnchor,
 		debugRawPointCount = #rawPoints,
 		debugPhysicsPointCount = #geometryPlan.mappedPoints,
 	}, nil
