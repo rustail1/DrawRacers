@@ -24,10 +24,15 @@ return {
 		MaxPendingStrokes = 4,
 	},
 	LegGeometry = {
-		LegCanvasHalfSpan = 3.15,
-		MaxLegExtentFromHub = 4.5,
+		-- RCP-02: the reference-scale leg reaches roughly twice as far as the
+		-- previous 3.15/4.5 mapping while retaining the same authoritative shape.
+		LegCanvasHalfSpan = 6.30,
+		MaxLegExtentFromHub = 9.0,
 		MinUsefulLegExtent = 0.7,
-		PhysicalLegSegmentThickness = 0.45,
+		-- Gameplay collision thickness stays materially smaller than presentation
+		-- thickness so larger-looking legs do not gain an oversized collider.
+		PhysicalLegSegmentThickness = 0.62,
+		VisualLegSegmentThickness = 0.90,
 		MaxColliderSegmentsPerLeg = 14,
 		InnerHubNoCollisionRadius = 0.65,
 		MinimumMappedSegmentLength = 0.08,
