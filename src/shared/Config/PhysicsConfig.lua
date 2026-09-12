@@ -44,10 +44,10 @@ return {
 		AngularVelocity = -8.0,
 		MotorMaxTorque = 35000,
 		MotorMaxAcceleration = 120,
-		-- Human reference-video correction: both depth-separated rigid copies are
-		-- co-phased on the one shared axle. The old 180-degree local offset made
-		-- one copy wrap above the cube while the other wrapped below it.
-		RightPhaseOffsetDegrees = 0,
+		-- Reference correction: both depth-separated copies remain rigid on one
+		-- shared axle and rotate in the same motor direction, while the Right copy
+		-- is mounted half a turn from the Left copy around that axle.
+		RightPhaseOffsetDegrees = 180,
 	},
 	PhysicalMaterials = {
 		LegSegment = {
