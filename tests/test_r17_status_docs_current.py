@@ -49,12 +49,13 @@ def test_status_docs_keep_current_r17_mechanics_and_camera_contract_exact() -> N
         for token in [
             "one `axlejoint`",
             "one motor",
-            "co-phase",
+            "rightphaseoffsetdegrees = 180",
             "full 360",
             "first cleaned point",
+            "g0",
         ]:
-            assert token in section, f"current status section missing R17 invariant: {token}"
-        assert "structural 180" not in section, "current R17 status must not claim obsolete 180-degree side offset"
+            assert token in section, f"current status section missing current CORE invariant: {token}"
+        assert "co-phase" not in section, "current status section must not claim the superseded 0-degree relation"
         assert "phase-chasing" in section
         assert "human studio pending" in section
 
@@ -104,14 +105,19 @@ def test_status_docs_record_reference_feel_autodev_without_fabricating_tuning_wi
     assert "human review pass" not in merged
 
 
-def test_navigation_docs_route_to_current_r17_owners_while_latest_decision_owns_studio_default() -> None:
+def test_navigation_docs_route_to_current_r17_owners_and_g0_default() -> None:
     architecture = read("docs/ARCHITECTURE_MAP.md")
     handoff = read("docs/26_HANDOFF_MAP.md")
     decision = read("docs/DECISION_LOG_STUDIO_CORE_ITERATION_DEFAULT_2026-09-12.md")
 
     studio_row = next(line for line in architecture.splitlines() if "| Studio harness selection |" in line)
     assert "StudioHarnessConfig.lua" in studio_row
+    assert "G0" in studio_row
     assert "R17FINAL" in studio_row
+
+    shared_pair_row = next(line for line in architecture.splitlines() if "| Shared rotating leg pair |" in line)
+    assert "180" in shared_pair_row
+    assert "co-phase 0" not in shared_pair_row
 
     hinge_row = next(line for line in handoff.splitlines() if line.startswith("| Hinge locomotion |"))
     assert "LegPairAssembly" in hinge_row
