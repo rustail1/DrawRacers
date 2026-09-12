@@ -102,16 +102,23 @@ def test_b12_drawing_controller_request_result_semantics() -> None:
         "sequence",
         "points",
         "StrokeMath.Normalize",
-        "StrokeMath.Clamp",
-        "StrokeMath.Dedupe",
-        "StrokeMath.SimplifyRDP",
-        "StrokeMath.Resample",
+        "LegShapeMath.BuildCanonical",
         "acceptedPoints",
         "_pendingStrokes",
         "_latestSubmittedSequence",
         "rejectReasonCode",
+        "rawSemanticPoints",
     ]:
         assert token in drawing, f"missing B12 DrawingController token: {token}"
+
+    # RCP-03 moved cleanup/simplification to one shared canonical builder.
+    for obsolete_client_cleanup in [
+        "StrokeMath.ClampToRect",
+        "StrokeMath.Dedupe",
+        "StrokeMath.SimplifyRDP",
+        "StrokeMath.Resample",
+    ]:
+        assert obsolete_client_cleanup not in drawing
 
     bootstrap = (ROOT / "src" / "client" / "Bootstrap.client.lua").read_text(encoding="utf-8")
     assert 'WaitForChild("RemoteNames")' in bootstrap
