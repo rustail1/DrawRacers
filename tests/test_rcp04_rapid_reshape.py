@@ -41,9 +41,10 @@ def test_rcp04_leg_assembly_can_apply_partial_geometry_without_midpoint_growth()
     assert "function LegAssembly:SetReshapeProgress" in leg
     assert "LegReshapeMath.Evaluate" in leg
     assert "partialEndpoint" in leg
-    assert "makeSegmentCFrame(root.CFrame, a, endpoint)" in leg
+    assert "setDynamicFrame(self.root, segment, self.partialColliderWeld, a, endpoint)" in leg
     assert "segment.Size = Vector3.new(" in leg
     assert "segment.CanCollide = visibleLength" in leg
+    assert 'partialCollider.Name = "ReshapeTipCollider"' in leg
 
 
 def test_rcp04_pair_uses_one_visible_pair_and_same_progress_for_both_sides() -> None:
@@ -64,6 +65,7 @@ def test_rcp04_runtime_drives_short_reshape_without_resetting_motor() -> None:
     assert "_reshapeConnection" in runtime
     assert "BeginGeometryReshape" in runtime
     assert "SetReshapeProgress" in runtime
-    assert "PhysicsConfig.LegReshape.TypicalDuration" in runtime
+    assert "local reshape = PhysicsConfig.LegReshape" in runtime
+    assert "reshape.TypicalDuration" in runtime
     assert "self.legPair:SetEnabled(false)" not in runtime
     assert "BodyCollider.Anchored" not in runtime
