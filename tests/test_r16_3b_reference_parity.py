@@ -155,7 +155,7 @@ def test_r16_3b_preserves_shape_and_core_physics_tuning_under_r17_shared_axle() 
         "AngularVelocity = -8.0",
         "MotorMaxTorque = 35000",
         "MotorMaxAcceleration = 120",
-        "RightPhaseOffsetDegrees = 0",
+        "RightPhaseOffsetDegrees = 180",
         "PhysicalLegSegmentThickness = 0.45",
         "MaxColliderSegmentsPerLeg = 14",
         "InnerHubNoCollisionRadius = 0.65",
