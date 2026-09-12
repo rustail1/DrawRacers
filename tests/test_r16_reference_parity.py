@@ -96,7 +96,8 @@ def test_r16_3b_server_anchors_shape_to_first_point_without_resizing() -> None:
     assert "point - origin" in stroke_math
     assert "local anchored = StrokeMath.AnchorToFirstPoint(cleaned)" in builder
     assert "GeometryMath.BuildSegmentPlan(anchored, geometryConfig)" in builder
-    assert "normalizedPoints = anchored" in builder
+    assert "mapped / geometryConfig.LegCanvasHalfSpan" in builder
+    assert "normalizedPoints = presentationPoints" in builder
     assert "StrokeMath.CenterOnBounds(cleaned)" not in builder
     assert "LegShapeMath.BuildCanonical" in service
     assert "shifted shape must anchor to same normalized geometry" in b11
