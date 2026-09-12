@@ -146,24 +146,28 @@ def test_r16_3b_r16final_orders_automated_evidence_before_human_ready() -> None:
     assert 'StudioHarnessConfig.Mode == "R16FINAL"' in client_bootstrap
 
 
-def test_r16_3b_preserves_shape_and_core_physics_tuning_under_r17_shared_axle() -> None:
+def test_r16_3b_preserves_shape_and_motor_tuning_while_rcp02_supersedes_leg_scale() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
+    leg = read("src/server/Runtime/LegAssembly.lua")
 
     for token in [
         "AngularVelocity = -8.0",
         "MotorMaxTorque = 35000",
         "MotorMaxAcceleration = 120",
         "RightPhaseOffsetDegrees = 180",
-        "PhysicalLegSegmentThickness = 0.45",
+        "LegCanvasHalfSpan = 6.30",
+        "MaxLegExtentFromHub = 9.0",
+        "PhysicalLegSegmentThickness = 0.62",
+        "VisualLegSegmentThickness = 0.90",
         "MaxColliderSegmentsPerLeg = 14",
         "InnerHubNoCollisionRadius = 0.65",
         "SegmentOverlapAllowance = 0.06",
-        "MaxLegExtentFromHub = 4.5",
     ]:
         assert token in config
 
+    assert "geometry.VisualLegSegmentThickness" in leg
     assert "LegPairAssembly.new" in runtime
     assert "shapeSpec = shapeSpec" in runtime
     assert 'side = "Left"' in pair and 'side = "Right"' in pair
