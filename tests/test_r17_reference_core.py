@@ -25,17 +25,17 @@ def test_r17_3_origin_experiment_contract() -> None:
 
 def test_r17_5_live_phase_evidence_contract() -> None:
     path = ROOT / "src/server/Tests/R17PhaseEvidence.lua"
-    assert path.exists(), "R17.5 requires live shared-axle co-phase evidence"
+    assert path.exists(), "R17.5 requires live shared-axle opposed-phase evidence"
     text = path.read_text(encoding="utf-8")
     for token in [
         'RacerRuntime', 'R16ReferenceShapes', 'RunService.Heartbeat:Wait()',
-        'PHASE_TARGET_DEGREES = 0', 'STRUCTURAL_ERROR_LIMIT = 0.15', 'MEASURE_SECONDS = 1.25',
+        'PHASE_TARGET_DEGREES = 180', 'STRUCTURAL_ERROR_LIMIT = 0.15', 'MEASURE_SECONDS = 1.25',
         'structuralPhaseErrorDegrees', 'countHinges', 'GetLegPair', 'GetPhaseDegrees',
         'AxleJoint', 'redrawDelta <= 1.0', 'singleMotorSafe', 'axleTravel',
-        'shared-axle co-phase evidence starting', '[DrawRacers][R17.5]',
+        'shared-axle opposed-phase evidence starting', '[DrawRacers][R17.5]',
         'function R17PhaseEvidence.RunEvidence()',
     ]:
-        assert token in text, f"missing R17.5 co-phase evidence token: {token}"
+        assert token in text, f"missing R17.5 opposed-phase evidence token: {token}"
     for obsolete in ['injectDrift', '_StepLegPhaseSync', 'PhaseLockRecoveryTime', 'averageMotorVelocity']:
         assert obsolete not in text
     assert 'AngularVelocity = -PhysicsConfig.Motor.AngularVelocity' not in text
