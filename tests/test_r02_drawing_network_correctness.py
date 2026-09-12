@@ -18,10 +18,14 @@ def test_r02_semantic_sampling_is_decoupled_from_visual_preview():
 
 def test_r02_client_rejects_obvious_too_short_payload_before_remote():
     drawing = read("src/client/Controllers/DrawingController.lua")
+    shared = read("src/shared/Math/LegShapeMath.lua")
     assert "MinimumRawPoints" in drawing
-    assert "MinimumCleanedPolylineLength" in drawing
-    assert "StrokeMath.MeasureLength(cleaned)" in drawing
+    assert "LegShapeMath.BuildCanonical" in drawing
+    assert "MinimumCleanedPolylineLength" in shared
+    assert "StrokeMath.MeasureLength(cleaned)" in shared
     assert '"TOO_FEW_POINTS"' in drawing
+    assert "FireServer" in drawing
+    assert drawing.index("LegShapeMath.BuildCanonical") < drawing.index("FireServer")
 
 
 def test_r02_accepted_result_order_tracks_server_truth_not_latest_submit_only():
