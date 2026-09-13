@@ -18,7 +18,7 @@ def test_mr04_runtime_uses_shared_canonical_shape_owner_for_internal_apply() -> 
     assert 'WaitForChild("StrokeMath")' not in runtime
     assert 'WaitForChild("GeometryMath")' not in runtime
 
-    internal = section(runtime, "local function makeInternalShapeSpec", "function RacerRuntime.new")
+    internal = section(runtime, "local function makeInternalShapeSpec", "local function publishValidatedShapeState")
     assert "CanonicalLegShape.Build" in internal
     assert "PhysicsConfig.StrokeProcessing" in internal
     assert "PhysicsConfig.LegGeometry" in internal
@@ -62,12 +62,18 @@ def test_mr04_recovery_is_destination_independent_and_runtime_owned() -> None:
 
 def test_mr04_validated_shape_publishes_authoritative_state_only_after_mechanical_apply() -> None:
     runtime = read("src/server/Runtime/RacerRuntime.lua")
+    publisher = section(runtime, "local function publishValidatedShapeState", "function RacerRuntime.EnsureTemplate")
     validated = section(runtime, "function RacerRuntime:ApplyValidatedShape", "function RacerRuntime:IsDestroyed")
 
+    assert "self.currentShapeSpec = shapeSpec" in publisher
+    assert 'self.model:SetAttribute("ShapeVersion", shapeSpec.version)' in publisher
+    assert publisher.index("self.currentShapeSpec = shapeSpec") < publisher.index(
+        'self.model:SetAttribute("ShapeVersion", shapeSpec.version)'
+    )
+
     apply_index = validated.index("self:_ApplyShapeSpec(shapeSpec, motorEnabled)")
-    current_index = validated.index("self.currentShapeSpec = shapeSpec")
-    version_index = validated.index('self.model:SetAttribute("ShapeVersion", shapeSpec.version)')
-    assert apply_index < current_index < version_index
+    publish_index = validated.index("publishValidatedShapeState(self, shapeSpec)")
+    assert apply_index < publish_index
     assert "shapeSpec.version == self:GetShapeVersion() + 1" in validated
 
 
