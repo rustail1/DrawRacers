@@ -9,8 +9,8 @@ local PhysicsConfig = require(
 local StrokeMath = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("StrokeMath")
 )
-local LegShapeMath = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("LegShapeMath")
+local CanonicalLegShape = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("CanonicalLegShape")
 )
 local StrokeTypes = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
@@ -683,7 +683,7 @@ function DrawingController:_buildCanonicalFromPixels(pixelPoints: { Vector2 }): 
 	end
 
 	local normalized = StrokeMath.Normalize(pixelPoints, inputSize)
-	local canonical, canonicalError = LegShapeMath.BuildCanonical(
+	local canonical, canonicalError = CanonicalLegShape.Build(
 		normalized,
 		PhysicsConfig.StrokeProcessing,
 		PhysicsConfig.LegGeometry

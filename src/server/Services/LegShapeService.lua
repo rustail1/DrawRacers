@@ -6,8 +6,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
 )
-local LegShapeMath = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("LegShapeMath")
+local CanonicalLegShape = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("CanonicalLegShape")
 )
 local StrokeTypes = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
@@ -115,7 +115,7 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 		return reject(arrayError or "MALFORMED_POINTS")
 	end
 
-	local canonical, canonicalError = LegShapeMath.BuildCanonical(
+	local canonical, canonicalError = CanonicalLegShape.Build(
 		points,
 		PhysicsConfig.StrokeProcessing,
 		PhysicsConfig.LegGeometry
@@ -141,7 +141,7 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 		racerRuntime:ApplyValidatedShape(shapeSpec, motorEnabled)
 	end)
 	if not applied then
-		warn(string.format("[DrawRacers][B11] validated shape build failed: %s", tostring(applyError)))
+		warn(string.format("[DrawRacers][LegShapeService] validated shape application failed: %s", tostring(applyError)))
 		return reject("BUILD_FAILED")
 	end
 

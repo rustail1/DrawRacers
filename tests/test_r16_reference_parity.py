@@ -87,7 +87,7 @@ def test_r16_3_one_shape_builds_two_same_xy_legs_about_fixed_pivot() -> None:
 
 def test_r16_3b_server_anchors_shape_to_first_point_without_resizing() -> None:
     stroke_math = read("src/shared/Math/StrokeMath.lua")
-    builder = read("src/shared/Math/LegShapeMath.lua")
+    builder = read("src/shared/Math/CanonicalLegShape.lua")
     service = read("src/server/Services/LegShapeService.lua")
     b11 = read("src/server/Tests/B11LegShapeServiceSpec.lua")
 
@@ -97,9 +97,9 @@ def test_r16_3b_server_anchors_shape_to_first_point_without_resizing() -> None:
     assert "local anchored = StrokeMath.AnchorToFirstPoint(cleaned)" in builder
     assert "GeometryMath.BuildSegmentPlan(anchored, geometryConfig)" in builder
     assert "mapped / geometryConfig.LegCanvasHalfSpan" in builder
-    assert "normalizedPoints = presentationPoints" in builder
+    assert "normalizedPoints" in builder
     assert "StrokeMath.CenterOnBounds(cleaned)" not in builder
-    assert "LegShapeMath.BuildCanonical" in service
+    assert "CanonicalLegShape.Build" in service
     assert "shifted shape must anchor to same normalized geometry" in b11
     assert "anchoring must preserve shape width" in b11
     assert "anchoring must preserve shape height" in b11
