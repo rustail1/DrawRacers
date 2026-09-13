@@ -6,9 +6,11 @@ return {
 	DefaultRiderSkinId = "Default",
 
 	LegSkins = {
-		-- Neutral default: preserve the intrinsic Left/Right presentation colors
-		-- and base material owned by LegAssembly. Explicit skins may override them.
-		Default = {},
+		-- Neutral default: restore the intrinsic Left/Right presentation colors
+		-- and base material owned by LegAssembly after any explicit cosmetic skin.
+		Default = {
+			PreserveBase = true,
+		},
 	},
 
 	CubeSkins = {
