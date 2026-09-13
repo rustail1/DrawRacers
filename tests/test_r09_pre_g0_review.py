@@ -7,22 +7,22 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_r09_accepted_preview_is_fixed_pivot_semantic_and_touch_layout_uses_current_tokens() -> None:
+def test_r09_accepted_preview_uses_cr3_support_presentation_and_touch_layout_tokens() -> None:
     drawing = read("src/client/Controllers/DrawingController.lua")
     for token in [
         "_acceptedSemanticPoints", "copySemanticPoints", "semanticPointsToPixels",
         "TOUCH_VALIDATION_POSITION", "TOUCH_VALIDATION_SIZE", "TOUCH_HINT_POSITION", "TOUCH_HINT_SIZE",
         "UDim2.fromScale(0.5, 0.565)", "UDim2.fromScale(0.5, 0.475)",
         "UDim2.fromScale(0.44, 0.058)", "UDim2.fromScale(0.50, 0.064)",
-        "CanonicalLegShape.Build", 'pivotMarker.Name = "PivotMarker"', "PivotStartRadiusNormalized",
+        "CanonicalLegShape.Build", "_presentationAnchors", "_acceptedPresentationAnchor",
     ]:
-        assert token in drawing, f"missing R09 responsive/fixed-pivot preview token: {token}"
+        assert token in drawing, f"missing R09 responsive/CR3 preview token: {token}"
+    for retired in ["PivotMarker", "PivotStartRadiusNormalized", "START FROM THE DOT", "AcceptedShapeThumbnail"]:
+        assert retired not in drawing
     assert "self._pendingStrokes[sequence] = copyPoints(previewPixels)" not in drawing
     assert "local serializedRawPoints = vector2ToSemanticPoints(rawSemanticPoints)" in drawing
     assert "points = serializedRawPoints" in drawing
     assert "copySemanticPoints(result.acceptedPoints)" in drawing
-    assert "_presentationAnchors" not in drawing
-    assert "_acceptedPresentationAnchor" not in drawing
 
     apply_layout = drawing[drawing.index("function DrawingController:_applyLayout"):drawing.index("function DrawingController:_applyPendingLayout")]
     assert "local toast = self._ui.validationToast" in apply_layout

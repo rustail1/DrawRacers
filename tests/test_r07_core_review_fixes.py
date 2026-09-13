@@ -34,8 +34,8 @@ def test_r07_b16_reports_raw_physics_point_counts_and_actual_twin_motor_state() 
     assert "DebugMotorEnabled" in panel
     assert "DebugMotorEnabled" in studio_spec
     for token in ["LeftDrive", "RightDrive", "DriveJoint"]:
-        assert token in telemetry, f"DebugTelemetry must inspect CR2 twin drives: {token}"
-        assert token in studio_spec, f"B16 Studio spec must exercise CR2 twin drives: {token}"
+        assert token in telemetry
+        assert token in studio_spec
     assert "AxleRoot" not in telemetry
     assert "AxleJoint" not in telemetry
     assert "AxleJoint" not in studio_spec
@@ -47,14 +47,17 @@ def test_r07_runtime_debug_folder_uses_dev_staging_environment_gate_not_studio_o
     assert 'environment == "DEV" or environment == "STAGING"' in runtime
 
 
-def test_r07_cr2_wide_semantic_draw_surface_has_visible_fixed_pivot_and_docs_match() -> None:
+def test_r07_cr3_wide_semantic_draw_surface_is_free_draw_without_extra_ui() -> None:
     drawing = read("src/client/Controllers/DrawingController.lua")
     layout = read("docs/59_UI_LAYOUT_WIREFRAME_SPEC.md")
     hierarchy = read("docs/68_UI_COMPONENT_HIERARCHY_IMPLEMENTATION_SPEC.md")
     assert "SemanticSquareConstraint" not in drawing
     assert "R16WideDrawSurfaceConstraint" in drawing
-    assert 'pivotMarker.Name = "PivotMarker"' in drawing
-    assert "PivotStartRadiusNormalized" in drawing
+    assert "PivotMarker" not in drawing
+    assert "PivotStartRadiusNormalized" not in drawing
+    assert "START FROM THE DOT" not in drawing
+    assert "AcceptedShapeThumbnail" not in drawing
+    assert "inputController:Bind(drawInputRect)" in drawing
     assert "wide semantic DrawInputRect" in layout
     assert "wide semantic DrawInputRect" in hierarchy
     assert "square semantic DrawInputRect" not in layout

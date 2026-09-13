@@ -7,12 +7,19 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_bg03_drive_pivots_live_on_horizontal_cube_edges() -> None:
+def test_bg03_drive_pivots_use_explicit_lower_body_mounts() -> None:
+    config = read("src/shared/Config/PhysicsConfig.lua")
     drive = read("src/server/Runtime/LegDriveAssembly.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
-    assert 'side == "Left" then -body.Size.X / 2 else body.Size.X / 2' in drive
-    assert "bodyAttachment.Position = Vector3.new(pivotX, 0, 0)" in drive
-    assert "CFrame.new(pivotX, 0, 0)" in drive
+    assert "LegMountHorizontalFraction = 0.78" in config
+    assert "LegMountVerticalFraction = -0.72" in config
+    assert '"LeftLegMount"' in pair
+    assert '"RightLegMount"' in pair
+    assert "mountY" in pair
+    assert "bodyMount: Attachment" in drive
+    assert "params.bodyMount" in drive
+    assert "body.Size.X / 2" not in drive
+    assert "pivotX" not in drive
     assert "LegSocketZAbs" not in pair
     assert "socketZ" not in pair
 

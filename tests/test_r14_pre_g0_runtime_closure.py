@@ -162,12 +162,13 @@ def test_r14_7_redraw_keeps_pair_drive_and_side_owners_persistent() -> None:
     assert "LegPairAssembly.new" not in apply
 
 
-def test_r14_8_player_toast_maps_internal_reason_codes_to_copy() -> None:
+def test_r14_8_player_toast_maps_internal_reason_codes_to_copy_without_center_gate() -> None:
     drawing = read("src/client/Controllers/DrawingController.lua")
     assert "validationMessageForReason" in drawing
     assert '"DRAW A DIFFERENT SHAPE"' in drawing
     assert '"TRY AGAIN"' in drawing
-    assert '"START FROM THE DOT"' in drawing
+    assert '"START FROM THE DOT"' not in drawing
+    assert "START_OFF_PIVOT" not in drawing
     assert "_setValidationReason" in drawing
     assert 'self:_setValidation(rejectReasonCode)' not in drawing
     assert 'self:_setValidation("TOO_FEW_POINTS")' not in drawing

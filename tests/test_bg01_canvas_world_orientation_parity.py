@@ -22,14 +22,20 @@ def test_bg01_phase_relationship_is_owned_by_pair_not_geometry() -> None:
     leg = read("src/server/Runtime/LegAssembly.lua")
     assert "PhysicsConfig.Motor.RightPhaseOffsetDegrees" in pair
     assert "LegDriveMath.PairPhaseErrorDegrees" in pair
+    assert "self.leftDrive:SetMotorVelocity(baseOmega)" in pair
+    assert "self.rightDrive:SetMotorVelocity(baseOmega)" in pair
+    assert "ComputePhaseCorrection" not in pair
     assert "phaseDegrees" not in leg
     assert "structuralPhase" not in leg.lower()
 
 
-def test_bg01_fixed_pivot_removes_presentation_anchor_split_truth() -> None:
+def test_bg01_support_anchor_restores_free_draw_presentation_without_changing_network_truth() -> None:
     canonical = read("src/shared/Math/CanonicalLegShape.lua")
     drawing = read("src/client/Controllers/DrawingController.lua")
     assert "AnchorToFirstPoint" not in canonical
-    assert "presentationAnchor" not in canonical
-    assert "_presentationAnchors" not in drawing
-    assert "PivotMarker" in drawing
+    assert "selectSupportAnchor" in canonical
+    assert "presentationAnchor" in canonical
+    assert "_presentationAnchors" in drawing
+    assert "_acceptedPresentationAnchor" in drawing
+    assert "PivotMarker" not in drawing
+    assert "START FROM THE DOT" not in drawing

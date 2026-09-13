@@ -29,25 +29,28 @@ def test_mr05_canonical_prediction_consumes_raw_semantic_points_directly() -> No
     assert "StrokeMath.Resample" not in build
 
 
-def test_mr05_submit_sends_raw_semantic_samples_not_client_canonical_geometry() -> None:
+def test_mr05_submit_sends_raw_semantic_samples_while_presentation_anchor_stays_client_only() -> None:
     drawing = read("src/client/Controllers/DrawingController.lua")
     submit = section(drawing, "function DrawingController:_submitStrokeIntent", "function DrawingController:_onStrokeResult")
     assert "local serializedRawPoints = vector2ToSemanticPoints(rawSemanticPoints)" in submit
     assert "points = serializedRawPoints" in submit
     assert "canonical.normalizedPoints" not in submit
-    assert "presentationAnchor" not in submit
+    assert "canonical.presentationAnchor" in submit
+    payload = submit.split("local payload: SubmitStrokePayload", 1)[1]
+    assert "presentationAnchor" not in payload.split("self._submitStroke:FireServer", 1)[0]
 
 
-def test_mr05_fixed_pivot_and_fixed_main_canvas_mapping() -> None:
+def test_mr05_free_draw_uses_fixed_scale_with_sequence_presentation_anchor_and_no_thumbnail() -> None:
     drawing = read("src/client/Controllers/DrawingController.lua")
-    assert 'pivotMarker.Name = "PivotMarker"' in drawing
-    assert "START FROM THE DOT" in drawing
-    assert "PivotStartRadiusNormalized" in drawing
+    assert "PivotMarker" not in drawing
+    assert "START FROM THE DOT" not in drawing
+    assert "PivotStartRadiusNormalized" not in drawing
     assert "semanticPointsToPixels" in drawing
     assert "vectorPointsToPixels" in drawing
-    assert "fitSemanticPointsToPixels" in drawing
-    assert "_presentationAnchors" not in drawing
-    assert "_acceptedPresentationAnchor" not in drawing
+    assert "fitSemanticPointsToPixels" not in drawing
+    assert "AcceptedShapeThumbnail" not in drawing
+    assert "_presentationAnchors" in drawing
+    assert "_acceptedPresentationAnchor" in drawing
 
 
 def test_mr05_server_accept_remains_authoritative() -> None:
@@ -55,5 +58,6 @@ def test_mr05_server_accept_remains_authoritative() -> None:
     result = section(drawing, "function DrawingController:_onStrokeResult", "function DrawingController:_capturePointerPoint")
     assert "validServerSemanticPoints(result.acceptedPoints)" in result
     assert "self._acceptedSemanticPoints = copySemanticPoints(result.acceptedPoints)" in result
+    assert "self._acceptedPresentationAnchor" in result
     assert "self:_renderAcceptedStroke()" in result
-    assert "self:_renderThumbnail()" in result
+    assert "_renderThumbnail" not in result

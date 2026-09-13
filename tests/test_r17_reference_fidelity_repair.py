@@ -7,8 +7,8 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def current_cr2() -> str:
-    return read("docs/CR2_CURRENT_SOURCE_OF_TRUTH.md")
+def current_cr3() -> str:
+    return read("docs/CR3_CURRENT_SOURCE_OF_TRUTH.md")
 
 
 def test_r17_9_camera_uses_full_yaw_target_and_smoothed_rendered_orbit() -> None:
@@ -22,7 +22,7 @@ def test_r17_9_camera_uses_full_yaw_target_and_smoothed_rendered_orbit() -> None
     assert "ClampPitch" in math
 
 
-def test_r17_10_production_uses_two_persistent_drive_motors() -> None:
+def test_r17_10_production_uses_two_persistent_drive_motors_under_one_pair_command_owner() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     drive = read("src/server/Runtime/LegDriveAssembly.lua")
     racer = read("src/server/Runtime/RacerRuntime.lua")
@@ -34,28 +34,38 @@ def test_r17_10_production_uses_two_persistent_drive_motors() -> None:
     assert "RightPhaseOffsetDegrees" in pair
     assert "function LegPairAssembly:GetLeftDrive" in pair
     assert "function LegPairAssembly:GetRightDrive" in pair
+    assert "self.leftDrive:SetMotorVelocity(baseOmega)" in pair
+    assert "self.rightDrive:SetMotorVelocity(baseOmega)" in pair
+    assert "ComputePhaseCorrection" not in pair
     assert 'require(script.Parent:WaitForChild("LegPairAssembly"))' in racer
     assert "phaseSyncConnection" not in racer
     assert 'Instance.new("HingeConstraint")' not in leg
     assert "ActuatorType" not in leg
 
 
-def test_r17_11_phase_correction_config_is_bounded_for_twin_drives() -> None:
+def test_r17_11_phase_correction_controller_is_retired_for_single_pair_command() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
+    drive_math = read("src/shared/Math/LegDriveMath.lua")
     assert "RightPhaseOffsetDegrees = 180" in config
-    assert "PhaseCorrectionGain" in config
-    assert "MaxPhaseCorrection" in config
-    assert "PhaseDeadbandDegrees" in config
-    for obsolete in ["PhaseLockToleranceDegrees", "PhaseLockRecoveryTime", "PhaseLockMaxRelativeCorrection"]:
-        assert obsolete not in config
+    for retired in [
+        "PhaseCorrectionGain", "MaxPhaseCorrection", "PhaseDeadbandDegrees",
+        "PhaseLockToleranceDegrees", "PhaseLockRecoveryTime", "PhaseLockMaxRelativeCorrection",
+    ]:
+        assert retired not in config
+    assert "ComputePhaseCorrection" not in drive_math
+    assert "PairPhaseErrorDegrees" in drive_math
 
 
-def test_r17_12_horizontal_pivot_and_collision_contract_are_reference_safe() -> None:
+def test_r17_12_lower_mount_and_collision_contract_are_reference_safe() -> None:
     collision = read("src/server/Runtime/CollisionGroups.lua")
     drive = read("src/server/Runtime/LegDriveAssembly.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
-    assert "body.Size.X / 2" in drive
-    assert "Vector3.new(pivotX, 0, 0)" in drive
+    config = read("src/shared/Config/PhysicsConfig.lua")
+    assert "body.Size.X / 2" not in drive
+    assert "bodyMount: Attachment" in drive
+    assert '"LeftLegMount"' in pair and '"RightLegMount"' in pair
+    assert "LegMountHorizontalFraction = 0.78" in config
+    assert "LegMountVerticalFraction = -0.72" in config
     assert "LegSocketZAbs" not in pair
     assert 'CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.Track, true)' in collision
     assert 'CollisionGroupSetCollidable(CollisionGroups.RacerBody, CollisionGroups.RacerLeg, false)' in collision
@@ -76,29 +86,29 @@ def test_r17_14_redraw_replaces_only_geometry_and_preserves_twin_drive_identity(
         assert obsolete not in stage
 
 
-def test_r17_contract_is_superseded_by_cr2_twin_pivot_without_passing_human_gate() -> None:
-    current = current_cr2()
-    design = read("docs/superpowers/specs/2026-09-14-core-repair-v2-twin-pivot-design.md")
-    assert "shared axle" in current.lower() and "retired" in current.lower()
+def test_r17_contract_is_superseded_by_cr3_without_passing_human_gate() -> None:
+    current = current_cr3()
+    design = read("docs/superpowers/specs/2026-09-14-core-repair-v3-free-draw-single-phase-design.md")
+    assert "No current `AxleRoot` / `AxleJoint`" in current
     assert "LegDriveAssembly" in current and "DriveJoint" in current
-    assert "HUMAN STUDIO PENDING" in current
-    assert "fixed pivot" in design.lower()
+    assert "G0 / HUMAN STUDIO: PENDING" in current
+    assert "free draw" in design.lower()
 
 
-def test_r17_current_source_routes_twin_drive_and_full_yaw_owners() -> None:
-    current = current_cr2()
-    for token in ["LegDriveAssembly", "LegPairAssembly", "DriveJoint", "full 360", "G0"]:
+def test_r17_current_source_routes_drive_mount_and_full_yaw_owners() -> None:
+    current = current_cr3()
+    for token in ["LegDriveAssembly", "LegPairAssembly", "DriveJoint", "LeftLegMount", "RightLegMount", "G0"]:
         assert token.lower() in current.lower()
-    assert "no current `AxleRoot`/`AxleJoint` shared-motor owner" in current
+    assert "No current `AxleRoot` / `AxleJoint`" in current
 
 
-def test_r17_exact_geometry_and_instance_contract_uses_twin_drive() -> None:
-    current = current_cr2()
-    for token in ["CORE REPAIR v2", "LeftDrive", "RightDrive", "DriveJoint", "fixed pivot", "HUMAN"]:
+def test_r17_exact_geometry_and_instance_contract_uses_cr3_drive_layout() -> None:
+    current = current_cr3()
+    for token in ["CR3", "LeftLegMount", "RightLegMount", "DriveJoint", "support anchor", "HUMAN"]:
         assert token.lower() in current.lower()
 
 
-def test_r17_core_tuning_and_camera_contract_match_twin_drive() -> None:
-    current = current_cr2()
-    for token in ["CORE REPAIR v2", "LegDriveAssembly", "TargetTipSpeed", "RightPhaseOffsetDegrees = 180", "full 360"]:
+def test_r17_core_tuning_and_camera_contract_match_current_drive_model() -> None:
+    current = current_cr3()
+    for token in ["CR3", "LegDriveAssembly", "TargetTipSpeed", "RightPhaseOffsetDegrees = 180"]:
         assert token.lower() in current.lower()

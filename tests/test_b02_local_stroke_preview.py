@@ -13,14 +13,15 @@ def test_b02_local_preview_contract() -> None:
         '"DrawCanvas"',
         '"DrawInputRect"',
         '"StrokePreview"',
-        '"AcceptedShapeThumbnail"',
         '"EmptyGhost"',
         '"ValidationToast"',
         '"DrawHint"',
     ]:
         assert token in text, f"missing hierarchy token {token}"
+    assert '"AcceptedShapeThumbnail"' not in text
+    assert '"PivotMarker"' not in text
+    assert "START FROM THE DOT" not in text
 
-    # RCP-03 supersedes the old R16.3B dimensions: roughly 2x area, same 1.75:1 semantic surface.
     assert "UDim2.fromScale(0.70, 0.40)" in text
     assert "UDim2.fromScale(0.84, 0.48)" in text
     assert "UDim2.fromScale(1, 1)" in text

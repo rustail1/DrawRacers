@@ -7,7 +7,7 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_mr06_mechanical_cluster_has_no_retired_shared_axle_paths() -> None:
+def test_mr06_mechanical_cluster_has_no_retired_shared_axle_or_fixed_center_paths() -> None:
     paths = [
         "src/server/Runtime/LegAssembly.lua",
         "src/server/Runtime/LegPairAssembly.lua",
@@ -19,10 +19,14 @@ def test_mr06_mechanical_cluster_has_no_retired_shared_axle_paths() -> None:
     combined = "\n".join(read(path) for path in paths)
     for retired in [
         '"AxleRoot"', '"AxleJoint"', "AxleMotorAttachment", "LegSocketZAbs",
-        "BeginGeometryReshape", "CompleteReshapeForRecovery", "presentationAnchor",
+        "BeginGeometryReshape", "CompleteReshapeForRecovery",
         "ReshapeSupportForce", "GravityCompensationFraction", "ReshapeTipCollider",
+        "PivotStartRadiusNormalized", "START_OFF_PIVOT", "START FROM THE DOT", "PivotMarker",
+        "AcceptedShapeThumbnail", "ComputePhaseCorrection",
     ]:
         assert retired not in combined
+    assert "presentationAnchor" in read("src/shared/Math/CanonicalLegShape.lua")
+    assert "_presentationAnchors" in read("src/client/Controllers/DrawingController.lua")
 
 
 def test_mr06_one_canonical_builder_and_twin_drive_hinge_owner() -> None:

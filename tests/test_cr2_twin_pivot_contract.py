@@ -11,20 +11,23 @@ def section(text: str, start: str, end: str) -> str:
     return text.split(start, 1)[1].split(end, 1)[0]
 
 
-def test_cr2_fixed_pivot_replaces_hidden_first_point_translation() -> None:
+def test_cr2_fixed_pivot_is_explicitly_superseded_by_cr3_free_draw() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     canonical = read("src/shared/Math/CanonicalLegShape.lua")
     controller = read("src/client/Controllers/DrawingController.lua")
-    assert "PivotStartRadiusNormalized" in config
-    assert "AnchorToFirstPoint" not in canonical
-    assert "presentationAnchor" not in canonical
-    assert "PivotMarker" in controller
-    assert "START FROM THE DOT" in controller
-    assert "_presentationAnchors" not in controller
-    assert "_acceptedPresentationAnchor" not in controller
+    current = read("docs/CR3_CURRENT_SOURCE_OF_TRUTH.md")
+    assert "PivotStartRadiusNormalized" not in config
+    assert "START_OFF_PIVOT" not in canonical
+    assert "selectSupportAnchor" in canonical
+    assert "presentationAnchor" in canonical
+    assert "PivotMarker" not in controller
+    assert "START FROM THE DOT" not in controller
+    assert "_presentationAnchors" in controller
+    assert "fixed center drawing pivot" in current.lower()
+    assert "historical" in current.lower()
 
 
-def test_cr2_twin_drive_modules_exist_and_own_two_hinges() -> None:
+def test_cr2_twin_drive_infrastructure_survives_but_mounts_move_to_explicit_lower_attachments() -> None:
     drive_path = ROOT / "src/server/Runtime/LegDriveAssembly.lua"
     math_path = ROOT / "src/shared/Math/LegDriveMath.lua"
     safety_path = ROOT / "src/server/Runtime/LegCollisionSafety.lua"
@@ -35,8 +38,9 @@ def test_cr2_twin_drive_modules_exist_and_own_two_hinges() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     leg = read("src/server/Runtime/LegAssembly.lua")
     assert drive.count('Instance.new("HingeConstraint")') == 1
-    assert "body.Size.X / 2" in drive
-    assert "Vector3.new(pivotX, 0, 0)" in drive
+    assert "bodyMount: Attachment" in drive
+    assert "body.Size.X / 2" not in drive
+    assert '"LeftLegMount"' in pair and '"RightLegMount"' in pair
     assert pair.count("LegDriveAssembly.new") == 2
     assert 'Instance.new("HingeConstraint")' not in pair
     assert 'Instance.new("HingeConstraint")' not in leg
@@ -44,24 +48,26 @@ def test_cr2_twin_drive_modules_exist_and_own_two_hinges() -> None:
     assert "LegSocketZAbs" not in pair
 
 
-def test_cr2_drive_speed_is_extent_aware_and_pair_target_is_180() -> None:
+def test_cr2_extent_aware_speed_survives_but_phase_chasing_is_retired() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     drive_math = read("src/shared/Math/LegDriveMath.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
-    for token in [
-        "TargetTipSpeed", "MinimumDriveRadius", "MinAngularVelocity", "MaxAngularVelocity",
-        "PhaseCorrectionGain", "MaxPhaseCorrection", "PhaseDeadbandDegrees",
-    ]:
+    for token in ["TargetTipSpeed", "MinimumDriveRadius", "MinAngularVelocity", "MaxAngularVelocity"]:
         assert token in config
+    for retired in ["PhaseCorrectionGain", "MaxPhaseCorrection", "PhaseDeadbandDegrees"]:
+        assert retired not in config
     assert "targetTipSpeed / radius" in drive_math
     assert "SignedShortestDeltaDegrees" in drive_math
     assert "PairPhaseErrorDegrees" in drive_math
+    assert "ComputePhaseCorrection" not in drive_math
     assert "RightPhaseOffsetDegrees = 180" in config
-    assert "LegDriveMath.ComputeAngularVelocity" in pair
-    assert "LegDriveMath.PairPhaseErrorDegrees" in pair
+    assert "local baseOmega = LegDriveMath.ComputeAngularVelocity" in pair
+    assert "self.leftDrive:SetMotorVelocity(baseOmega)" in pair
+    assert "self.rightDrive:SetMotorVelocity(baseOmega)" in pair
+    assert "ComputePhaseCorrection" not in pair
 
 
-def test_cr2_smaller_shape_scale_and_arcade_upright_are_explicit() -> None:
+def test_cr2_smaller_shape_scale_and_arcade_upright_are_retained() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     stabilizer = read("src/server/Runtime/RacerStabilizer.lua")
     assert "LegCanvasHalfSpan = 3.2" in config
@@ -100,7 +106,7 @@ def test_cr2_shape_version_is_published_only_after_mechanical_commit() -> None:
     assert "applyResult.rejectReasonCode" in service
 
 
-def test_cr2_old_shared_axle_runtime_contract_is_retired() -> None:
+def test_cr2_old_shared_axle_runtime_contract_remains_retired() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     leg = read("src/server/Runtime/LegAssembly.lua")
     config = read("src/shared/Config/PhysicsConfig.lua")

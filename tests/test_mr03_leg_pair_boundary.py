@@ -21,13 +21,15 @@ def test_mr03_pair_owns_two_persistent_drives_and_no_shared_axle() -> None:
         assert retired not in pair
 
 
-def test_mr03_initial_phase_is_split_across_two_drive_roots() -> None:
+def test_mr03_initial_phase_is_split_across_two_explicit_mount_drives() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     assert 'side = "Left"' in pair
     assert 'side = "Right"' in pair
-    assert "initialPhaseDegrees = params.initialPhaseDegrees or 0" in pair
-    assert "initialPhaseDegrees = (params.initialPhaseDegrees or 0) + PhysicsConfig.Motor.RightPhaseOffsetDegrees" in pair
+    assert "local initialPhase = params.initialPhaseDegrees or 0" in pair
+    assert "initialPhaseDegrees = initialPhase" in pair
+    assert "initialPhaseDegrees = initialPhase + PhysicsConfig.Motor.RightPhaseOffsetDegrees" in pair
     assert "RightPhaseOffsetDegrees" in pair
+    assert '"LeftLegMount"' in pair and '"RightLegMount"' in pair
 
 
 def test_mr03_runtime_constructs_pair_once_and_redraw_keeps_identity() -> None:
@@ -41,10 +43,12 @@ def test_mr03_runtime_constructs_pair_once_and_redraw_keeps_identity() -> None:
     assert "self.legPair:CommitStagedRedraw()" in apply_body
 
 
-def test_mr03_redraw_never_replaces_drive_or_side_owners() -> None:
+def test_mr03_redraw_never_replaces_drive_mount_or_side_owners() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     stage = section(pair, "function LegPairAssembly:StageRedraw", "function LegPairAssembly:SetStageProgress")
     assert "LegDriveAssembly.new" not in stage
     assert "LegAssembly.new" not in stage
+    assert "LeftLegMount" not in stage
+    assert "RightLegMount" not in stage
     assert "self.leftDrive:GetLeg():StageGeometry" in stage
     assert "self.rightDrive:GetLeg():StageGeometry" in stage

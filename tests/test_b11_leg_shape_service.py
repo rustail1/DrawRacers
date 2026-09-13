@@ -7,15 +7,17 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_b11_authoritative_fixed_pivot_shape_service_contract() -> None:
+def test_b11_authoritative_support_anchor_shape_service_contract() -> None:
     builder = read("src/shared/Math/CanonicalLegShape.lua")
     service = read("src/server/Services/LegShapeService.lua")
     config = read("src/shared/Config/PhysicsConfig.lua")
     assert "CanonicalLegShape.Build" in service
-    assert "PivotStartRadiusNormalized" in config
-    assert "START_OFF_PIVOT" in builder
+    assert "PivotStartRadiusNormalized" not in config
+    assert "START_OFF_PIVOT" not in builder
+    assert "selectSupportAnchor" in builder
+    assert "presentationAnchor" in builder
     assert "AnchorToFirstPoint" not in builder
-    assert "presentationAnchor" not in builder
+    assert "CenterOnBounds" not in builder
     assert "canonical.normalizedPoints" in service
     assert "canonical.segmentPlan" in service
     assert "racerRuntime:ApplyValidatedShape(shapeSpec, motorEnabled)" in service
