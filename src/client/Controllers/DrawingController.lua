@@ -19,8 +19,6 @@ local StrokeTypes = require(
 local DrawingController = {}
 DrawingController.__index = DrawingController
 
--- RCP-03: increase the gameplay drawing surface to roughly 2x its former area
--- while keeping height as the responsive owner of the canonical 1.75:1 surface.
 local DESKTOP_CANVAS_SIZE = UDim2.fromScale(0.70, 0.40)
 local TOUCH_CANVAS_SIZE = UDim2.fromScale(0.84, 0.48)
 local DRAW_INPUT_SIZE = UDim2.fromScale(1, 1)
@@ -83,7 +81,6 @@ local function initialLayoutFamily(): string
 	if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
 		return "touch"
 	end
-
 	local family = inputTypeFamily(UserInputService:GetLastInputType())
 	if family ~= nil then
 		return family
@@ -225,8 +222,7 @@ local function validServerSemanticPoints(points: any): boolean
 	return math.abs(first.x) <= 1e-6 and math.abs(first.y) <= 1e-6
 end
 
--- Fixed isotropic gameplay mapping. No per-shape fit is allowed here: semantic
--- size on the canvas must preserve the same relative size used by world legs.
+-- Fixed isotropic gameplay mapping. No per-shape fit is allowed here.
 local function semanticPointsToPixels(
 	points: { SemanticPoint },
 	size: Vector2,
@@ -255,7 +251,7 @@ local function vectorPointsToPixels(points: { Vector2 }, size: Vector2, presenta
 	return result
 end
 
--- Auto-fit is intentionally thumbnail-only and never used by the main gameplay preview.
+-- Auto-fit is thumbnail-only and never used by the gameplay preview.
 local function fitSemanticPointsToPixels(points: { SemanticPoint }, size: Vector2): { Vector2 }
 	if #points == 0 then
 		return {}
@@ -291,7 +287,6 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	end
 
 	local touchLayout = layoutFamily == "touch"
-
 	drawHud.Enabled = true
 	drawHud.DisplayOrder = 20
 	drawHud.ResetOnSpawn = false
@@ -441,7 +436,7 @@ function DrawingController.new(inputController: any, drawHud: ScreenGui, submitS
 		_resultConnection = nil,
 		_layoutConnection = nil,
 		_livePoints = {} :: { Vector2 },
-		_semanticPixelPoints = {} :: { Vector2 },
+		_rawSemanticPoints = {} :: { Vector2 },
 		_acceptedSemanticPoints = {} :: { SemanticPoint },
 		_acceptedPresentationAnchor = nil :: SemanticPoint?,
 		_presentationAnchors = {} :: { [number]: SemanticPoint },
@@ -488,12 +483,10 @@ end
 function DrawingController:_renderThumbnail()
 	local thumbnail = self._ui.acceptedShapeThumbnail
 	clearSegments(thumbnail)
-
 	local thumbSize = thumbnail.AbsoluteSize
 	if thumbSize.X <= 0 or thumbSize.Y <= 0 then
 		return
 	end
-
 	local mapped = fitSemanticPointsToPixels(self._acceptedSemanticPoints, thumbSize)
 	renderPolyline(thumbnail, mapped, math.max(2, self:_strokeThickness() * 0.45), 0.1)
 end
@@ -543,9 +536,17 @@ function DrawingController:_toLocal(screenPoint: Vector2): Vector2
 	return screenPoint - self._ui.drawInputRect.AbsolutePosition
 end
 
+function DrawingController:_toSemantic(localPoint: Vector2): Vector2?
+	local inputSize = self._ui.drawInputRect.AbsoluteSize
+	if inputSize.X <= 0 or inputSize.Y <= 0 then
+		return nil
+	end
+	return StrokeMath.Normalize({ localPoint }, inputSize)[1]
+end
+
 function DrawingController:_clearLiveStroke()
 	table.clear(self._livePoints)
-	table.clear(self._semanticPixelPoints)
+	table.clear(self._rawSemanticPoints)
 	clearSegments(self._ui.liveLayer)
 end
 
@@ -575,39 +576,31 @@ function DrawingController:_setValidationReason(reasonCode: string)
 	self:_setValidation(validationMessageForReason(reasonCode))
 end
 
-function DrawingController:_normalizedPixelDistance(a: Vector2, b: Vector2): number
-	local inputSize = self._ui.drawInputRect.AbsoluteSize
-	if inputSize.X <= 0 or inputSize.Y <= 0 then
-		return math.huge
-	end
-	local unit = inputSize.Y * 0.5
-	return (a - b).Magnitude / unit
-end
-
-function DrawingController:_compactSemanticPixelPoints()
-	local samples = self._semanticPixelPoints
-	if #samples <= 2 then
+local function compactEveryOther(points: { Vector2 })
+	if #points <= 2 then
 		return
 	end
-
-	local compacted = table.create(math.ceil(#samples / 2) + 1)
-	table.insert(compacted, samples[1])
-	for index = 3, #samples - 1, 2 do
-		table.insert(compacted, samples[index])
+	local compacted = table.create(math.ceil(#points / 2) + 1)
+	table.insert(compacted, points[1])
+	for index = 3, #points - 1, 2 do
+		table.insert(compacted, points[index])
 	end
-	local finalPoint = samples[#samples]
+	local finalPoint = points[#points]
 	if compacted[#compacted] ~= finalPoint then
 		table.insert(compacted, finalPoint)
 	end
-
-	table.clear(self._semanticPixelPoints)
+	table.clear(points)
 	for _, point in compacted do
-		table.insert(self._semanticPixelPoints, point)
+		table.insert(points, point)
 	end
 end
 
-function DrawingController:_tryAppendSemanticPoint(point: Vector2, forceFinal: boolean)
-	local samples = self._semanticPixelPoints
+function DrawingController:_compactRawSemanticPoints()
+	compactEveryOther(self._rawSemanticPoints)
+end
+
+function DrawingController:_tryAppendRawSemanticPoint(point: Vector2, forceFinal: boolean)
+	local samples = self._rawSemanticPoints
 	local config = PhysicsConfig.StrokeProcessing
 	local last = samples[#samples]
 	if last == nil then
@@ -619,40 +612,16 @@ function DrawingController:_tryAppendSemanticPoint(point: Vector2, forceFinal: b
 	end
 
 	if #samples >= config.MaxRawPoints then
-		self:_compactSemanticPixelPoints()
+		self:_compactRawSemanticPoints()
 		last = samples[#samples]
 	end
-
-	if forceFinal then
-		table.insert(samples, point)
-		return
-	end
-
-	if self:_normalizedPixelDistance(point, last) >= config.RawSampleMinMovementNormalized then
+	if forceFinal or (point - last).Magnitude >= config.RawSampleMinMovementNormalized then
 		table.insert(samples, point)
 	end
 end
 
 function DrawingController:_compactLivePoints()
-	local points = self._livePoints
-	if #points <= 2 then
-		return
-	end
-
-	local compacted = table.create(math.ceil(#points / 2) + 1)
-	table.insert(compacted, points[1])
-	for index = 3, #points - 1, 2 do
-		table.insert(compacted, points[index])
-	end
-	local finalPoint = points[#points]
-	if compacted[#compacted] ~= finalPoint then
-		table.insert(compacted, finalPoint)
-	end
-
-	table.clear(self._livePoints)
-	for _, point in compacted do
-		table.insert(self._livePoints, point)
-	end
+	compactEveryOther(self._livePoints)
 end
 
 function DrawingController:_appendLivePoint(point: Vector2, _forceFinal: boolean)
@@ -665,33 +634,21 @@ function DrawingController:_appendLivePoint(point: Vector2, _forceFinal: boolean
 	if (point - previous).Magnitude <= 0 then
 		return
 	end
-
-	local maxPoints = PhysicsConfig.StrokeProcessing.MaxRawPoints
-	if #points >= maxPoints then
+	if #points >= PhysicsConfig.StrokeProcessing.MaxRawPoints then
 		self:_compactLivePoints()
 	end
 	table.insert(points, point)
 end
 
-function DrawingController:_buildCanonicalFromPixels(pixelPoints: { Vector2 }): (any?, { Vector2 }?, string?)
-	local inputSize = self._ui.drawInputRect.AbsoluteSize
-	if inputSize.X <= 0 or inputSize.Y <= 0 then
-		return nil, nil, "DRAW_SURFACE_NOT_READY"
+function DrawingController:_buildCanonical(rawSemanticPoints: { Vector2 }): (any?, string?)
+	if #rawSemanticPoints < PhysicsConfig.StrokeProcessing.MinimumRawPoints then
+		return nil, "TOO_FEW_POINTS"
 	end
-	if #pixelPoints < PhysicsConfig.StrokeProcessing.MinimumRawPoints then
-		return nil, nil, "TOO_FEW_POINTS"
-	end
-
-	local normalized = StrokeMath.Normalize(pixelPoints, inputSize)
-	local canonical, canonicalError = CanonicalLegShape.Build(
-		normalized,
+	return CanonicalLegShape.Build(
+		rawSemanticPoints,
 		PhysicsConfig.StrokeProcessing,
 		PhysicsConfig.LegGeometry
 	)
-	if canonical == nil then
-		return nil, normalized, canonicalError or "INVALID_STROKE"
-	end
-	return canonical, normalized, nil
 end
 
 function DrawingController:_renderLiveCanonicalPreview()
@@ -701,25 +658,14 @@ function DrawingController:_renderLiveCanonicalPreview()
 		return
 	end
 
-	local canonical = self:_buildCanonicalFromPixels(self._semanticPixelPoints)
+	local canonical = self:_buildCanonical(self._rawSemanticPoints)
 	if canonical == nil then
-		-- Before a valid gameplay shape exists, keep a faint immediate trace for input feedback.
-		-- As soon as the shared builder accepts the stroke, this is replaced by canonical geometry.
-		renderPolyline(self._ui.liveLayer, self._semanticPixelPoints, self:_strokeThickness(), 0.55)
+		-- Pixel trace is presentation-only feedback before a legal canonical shape exists.
+		renderPolyline(self._ui.liveLayer, self._livePoints, self:_strokeThickness(), 0.55)
 		return
 	end
-
 	local pixels = vectorPointsToPixels(canonical.normalizedPoints, inputSize, canonical.presentationAnchor)
 	renderPolyline(self._ui.liveLayer, pixels, self:_strokeThickness(), 0)
-end
-
-function DrawingController:_prepareRawSemanticPoints(pixelPoints: { Vector2 }): ({ SemanticPoint }?, any?, string?)
-	local canonical, normalized, canonicalError = self:_buildCanonicalFromPixels(pixelPoints)
-	if canonical == nil or normalized == nil then
-		return nil, nil, canonicalError or "INVALID_STROKE"
-	end
-	local rawSemanticPoints = vector2ToSemanticPoints(normalized)
-	return rawSemanticPoints, canonical, nil
 end
 
 function DrawingController:_pendingStrokeCount(): number
@@ -740,14 +686,14 @@ function DrawingController:_prunePresentationAnchors(referenceSequence: number)
 	end
 end
 
-function DrawingController:_submitStrokeIntent(semanticPixelPoints: { Vector2 })
+function DrawingController:_submitStrokeIntent(rawSemanticPoints: { Vector2 })
 	if self._submitStroke == nil then
 		self:_setValidationReason("NETWORK_NOT_READY")
 		return
 	end
 
-	local rawSemanticPoints, canonical, prepareError = self:_prepareRawSemanticPoints(semanticPixelPoints)
-	if rawSemanticPoints == nil or canonical == nil then
+	local canonical, prepareError = self:_buildCanonical(rawSemanticPoints)
+	if canonical == nil then
 		self:_setValidationReason(prepareError or "INVALID_STROKE")
 		return
 	end
@@ -758,20 +704,20 @@ function DrawingController:_submitStrokeIntent(semanticPixelPoints: { Vector2 })
 		return
 	end
 
+	local serializedRawPoints = vector2ToSemanticPoints(rawSemanticPoints)
 	local sequence = self._nextSequence
 	self._nextSequence += 1
 	self._latestSubmittedSequence = sequence
 	self._pendingGeneration += 1
 	local generation = self._pendingGeneration
 	self._pendingStrokes[sequence] = {
-		points = copySemanticPoints(rawSemanticPoints),
+		points = copySemanticPoints(serializedRawPoints),
 		generation = generation,
 	}
-	local presentationAnchor: SemanticPoint = {
+	self._presentationAnchors[sequence] = {
 		x = canonical.presentationAnchor.X,
 		y = canonical.presentationAnchor.Y,
 	}
-	self._presentationAnchors[sequence] = presentationAnchor
 	self:_prunePresentationAnchors(sequence)
 	self:_setValidation(nil)
 
@@ -791,24 +737,22 @@ function DrawingController:_submitStrokeIntent(semanticPixelPoints: { Vector2 })
 
 	local payload: SubmitStrokePayload = {
 		sequence = sequence,
-		points = rawSemanticPoints,
+		points = serializedRawPoints,
 	}
 	self._submitStroke:FireServer(payload)
-	print(("[DrawRacers][B12] stroke submitted sequence=%d points=%d"):format(sequence, #rawSemanticPoints))
+	print(("[DrawRacers][B12] stroke submitted sequence=%d points=%d"):format(sequence, #serializedRawPoints))
 end
 
 function DrawingController:_onStrokeResult(result: any)
 	if type(result) ~= "table" then
 		return
 	end
-
 	local sequence = result.sequence
 	if type(sequence) ~= "number" or math.floor(sequence) ~= sequence then
 		return
 	end
 
 	self._pendingStrokes[sequence] = nil
-
 	if result.accepted == true then
 		if not validServerSemanticPoints(result.acceptedPoints) then
 			warn(("[DrawRacers][R14.1] malformed authoritative acceptedPoints sequence=%d"):format(sequence))
@@ -826,7 +770,6 @@ function DrawingController:_onStrokeResult(result: any)
 			self:_renderThumbnail()
 			self._ui.emptyGhost.Visible = not self._hasStartedStroke
 			self:_setValidation(nil)
-
 			for pendingSequence, _ in self._pendingStrokes do
 				if pendingSequence < sequence then
 					self._pendingStrokes[pendingSequence] = nil
@@ -857,7 +800,10 @@ end
 
 function DrawingController:_capturePointerPoint(point: Vector2, forceFinal: boolean)
 	self:_appendLivePoint(point, forceFinal)
-	self:_tryAppendSemanticPoint(point, forceFinal)
+	local semanticPoint = self:_toSemantic(point)
+	if semanticPoint ~= nil then
+		self:_tryAppendRawSemanticPoint(semanticPoint, forceFinal)
+	end
 	self:_renderLiveCanonicalPreview()
 end
 
@@ -886,21 +832,21 @@ function DrawingController:_onPointer(event)
 
 		self:_capturePointerPoint(self:_toLocal(event.position), true)
 		local pendingPixels = copyPoints(self._livePoints)
-		local semanticPixels = copyPoints(self._semanticPixelPoints)
+		local rawSemanticPoints = copyPoints(self._rawSemanticPoints)
 		self._drawing = false
 		self:_clearLiveStroke()
 		self._ui.acceptedLayer.Visible = true
 		self:_renderAcceptedStroke()
 		self._ui.emptyGhost.Visible = not self._hasStartedStroke
 
-		if #semanticPixels >= PhysicsConfig.StrokeProcessing.MinimumRawPoints then
-			self:_submitStrokeIntent(semanticPixels)
+		if #rawSemanticPoints >= PhysicsConfig.StrokeProcessing.MinimumRawPoints then
+			self:_submitStrokeIntent(rawSemanticPoints)
 		else
 			self:_setValidationReason("TOO_FEW_POINTS")
 		end
 		print(("[DrawRacers][B02] local stroke complete pending=%d semantic=%d accepted=%d"):format(
 			#pendingPixels,
-			#semanticPixels,
+			#rawSemanticPoints,
 			#self.acceptedPoints
 		))
 		self:_applyPendingLayout()
@@ -908,7 +854,6 @@ function DrawingController:_onPointer(event)
 		if not self._drawing then
 			return
 		end
-
 		self._drawing = false
 		self:_clearLiveStroke()
 		self._ui.acceptedLayer.Visible = true
@@ -923,7 +868,6 @@ function DrawingController:Start()
 	if self._connection then
 		return
 	end
-
 	local inputController = self._inputController
 	local drawInputRect = self._ui.drawInputRect
 	inputController:Bind(drawInputRect)
@@ -937,13 +881,11 @@ function DrawingController:Start()
 		end
 		self:_applyLayout(family)
 	end)
-
 	if self._strokeResult ~= nil and self._resultConnection == nil then
 		self._resultConnection = self._strokeResult.OnClientEvent:Connect(function(result)
 			self:_onStrokeResult(result)
 		end)
 	end
-
 	print("[DrawRacers][B02] local draw preview ready")
 end
 
@@ -965,6 +907,8 @@ function DrawingController:Destroy()
 	table.clear(self._pendingStrokes)
 	table.clear(self._presentationAnchors)
 	table.clear(self._acceptedSemanticPoints)
+	table.clear(self._livePoints)
+	table.clear(self._rawSemanticPoints)
 	self._acceptedPresentationAnchor = nil
 	self._inputController:Unbind()
 	if self._ui.safeRoot then
