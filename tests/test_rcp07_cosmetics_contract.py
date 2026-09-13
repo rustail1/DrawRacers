@@ -97,6 +97,21 @@ def test_rcp07_switching_back_to_default_restores_intrinsic_leg_style() -> None:
     )
 
 
+def test_rcp07_switching_back_to_default_restores_rider_tint() -> None:
+    catalog = read("src/shared/Config/CosmeticsCatalog.lua")
+    controller = read("src/client/Controllers/RacerCosmeticsController.lua")
+    rider_block = catalog.split("RiderSkins = {", 1)[1]
+    assert "PreserveBase = true" in rider_block, (
+        "Default rider skin needs restore semantics so a previous tint cannot remain stuck"
+    )
+    assert "_baseRiderStyles" in controller, (
+        "controller must remember the cloned rider's intrinsic part colors before applying tint skins"
+    )
+    assert "applyRiderStyle(rider, riderStyle, self._baseRiderStyles)" in controller, (
+        "rider skin application must receive the base-style cache so Default can restore original avatar colors"
+    )
+
+
 def test_rcp07_bootstrap_starts_cosmetics_with_other_presentation_owners() -> None:
     bootstrap = read("src/client/Bootstrap.client.lua")
     assert 'WaitForChild("RacerCosmeticsController")' in bootstrap
