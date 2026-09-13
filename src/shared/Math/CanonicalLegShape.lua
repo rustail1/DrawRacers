@@ -24,6 +24,7 @@ export type CanonicalShape = {
 	extent: number,
 	segmentPlan: { ShapeSegmentPlanEntry },
 	cleanedLength: number,
+	presentationAnchor: Vector2,
 	debugRawPointCount: number,
 	debugPhysicsPointCount: number,
 }
@@ -39,12 +40,59 @@ local function freezeSegmentPlan(segmentPlan: { ShapeSegmentPlanEntry }): { Shap
 	return table.freeze(segmentPlan)
 end
 
-local function copyPoints(points: { Vector2 }): { Vector2 }
-	local result = table.create(#points)
-	for index, point in points do
-		result[index] = point
+local EPSILON = 1e-6
+
+local function selectSupportAnchor(cleaned: { Vector2 }): Vector2
+	assert(#cleaned > 0, "selectSupportAnchor requires points")
+	local bounds = StrokeMath.ComputeBounds(cleaned)
+	assert(bounds ~= nil, "support anchor requires finite bounds")
+	local boundsCenterX = (bounds.min.X + bounds.max.X) * 0.5
+
+	local leftCandidate = cleaned[1]
+	local topCandidate = cleaned[1]
+	local rightCandidate = cleaned[1]
+	local topDistanceFromCenter = math.abs(topCandidate.X - boundsCenterX)
+
+	for index = 2, #cleaned do
+		local point = cleaned[index]
+
+		if point.X < leftCandidate.X - EPSILON
+			or (math.abs(point.X - leftCandidate.X) <= EPSILON and point.Y > leftCandidate.Y + EPSILON)
+		then
+			leftCandidate = point
+		end
+
+		local distanceFromCenter = math.abs(point.X - boundsCenterX)
+		if point.Y > topCandidate.Y + EPSILON
+			or (
+				math.abs(point.Y - topCandidate.Y) <= EPSILON
+				and distanceFromCenter < topDistanceFromCenter - EPSILON
+			)
+		then
+			topCandidate = point
+			topDistanceFromCenter = distanceFromCenter
+		end
+
+		if point.X > rightCandidate.X + EPSILON
+			or (math.abs(point.X - rightCandidate.X) <= EPSILON and point.Y > rightCandidate.Y + EPSILON)
+		then
+			rightCandidate = point
+		end
 	end
-	return result
+
+	local firstCleaned = cleaned[1]
+	local supportAnchor = leftCandidate
+	local bestDistance = (firstCleaned - leftCandidate).Magnitude
+	local topDistance = (firstCleaned - topCandidate).Magnitude
+	if topDistance < bestDistance - EPSILON then
+		supportAnchor = topCandidate
+		bestDistance = topDistance
+	end
+	local rightDistance = (firstCleaned - rightCandidate).Magnitude
+	if rightDistance < bestDistance - EPSILON then
+		supportAnchor = rightCandidate
+	end
+	return supportAnchor
 end
 
 function CanonicalLegShape.Build(
@@ -59,10 +107,9 @@ function CanonicalLegShape.Build(
 		return nil, "TOO_FEW_POINTS"
 	end
 
-	-- CORE REPAIR v2 canonical pipeline:
-	-- raw -> clamp -> fixed-pivot start validation -> snap first sample only
-	-- -> dedupe -> simplify -> resample -> world mapping -> segment plan.
-	-- The full stroke is never translated to hide an arbitrary first point.
+	-- CR3 canonical pipeline:
+	-- raw -> clamp -> dedupe -> simplify -> resample -> choose one support point
+	-- from LEFT/TOP/RIGHT geometry -> translation only -> world mapping -> segment plan.
 	local clamped, clampError = StrokeMath.ClampToRect(rawPoints, {
 		minX = -strokeConfig.RawSemanticHalfWidth,
 		maxX = strokeConfig.RawSemanticHalfWidth,
@@ -74,26 +121,15 @@ function CanonicalLegShape.Build(
 		return nil, clampError or "INVALID_STROKE"
 	end
 
-	local pivotRadius = strokeConfig.PivotStartRadiusNormalized or 0
-	if #clamped == 0 or clamped[1].Magnitude > pivotRadius then
-		return nil, "START_OFF_PIVOT"
-	end
-
-	local pivotSnapped = copyPoints(clamped)
-	pivotSnapped[1] = Vector2.zero
-
-	local deduped = StrokeMath.Dedupe(pivotSnapped, strokeConfig.DedupeDistance)
+	local deduped = StrokeMath.Dedupe(clamped, strokeConfig.DedupeDistance)
 	if #deduped < 2 then
 		return nil, "TOO_SHORT"
 	end
-	-- Cleanup must preserve the explicit mechanical origin.
-	deduped[1] = Vector2.zero
 
 	local simplified = StrokeMath.SimplifyRDP(deduped, strokeConfig.RDPEpsilon)
 	if #simplified < 2 then
 		return nil, "TOO_SHORT"
 	end
-	simplified[1] = Vector2.zero
 
 	local cleaned = StrokeMath.Resample(
 		simplified,
@@ -105,14 +141,19 @@ function CanonicalLegShape.Build(
 	if #cleaned < 2 then
 		return nil, "TOO_SHORT"
 	end
-	cleaned[1] = Vector2.zero
 
 	local cleanedLength = StrokeMath.MeasureLength(cleaned)
 	if cleanedLength < strokeConfig.MinimumCleanedPolylineLength then
 		return nil, "TOO_SHORT"
 	end
 
-	local geometryPlan = GeometryMath.BuildSegmentPlan(cleaned, geometryConfig)
+	local supportAnchor = selectSupportAnchor(cleaned)
+	local anchored = table.create(#cleaned)
+	for index, point in cleaned do
+		anchored[index] = point - supportAnchor
+	end
+
+	local geometryPlan = GeometryMath.BuildSegmentPlan(anchored, geometryConfig)
 	if #geometryPlan.segmentPlan == 0 then
 		return nil, "TOO_SHORT"
 	end
@@ -124,11 +165,6 @@ function CanonicalLegShape.Build(
 	local normalizedPoints = table.create(#geometryPlan.mappedPoints)
 	for index, mapped in geometryPlan.mappedPoints do
 		normalizedPoints[index] = mapped / geometryConfig.LegCanvasHalfSpan
-	end
-	-- Geometry radial-clamping preserves the origin, but assert it explicitly as part
-	-- of the fixed-pivot public contract.
-	if #normalizedPoints > 0 then
-		normalizedPoints[1] = Vector2.zero
 	end
 
 	local bounds = StrokeMath.ComputeBounds(normalizedPoints)
@@ -143,6 +179,7 @@ function CanonicalLegShape.Build(
 		extent = geometryPlan.extent,
 		segmentPlan = freezeSegmentPlan(geometryPlan.segmentPlan),
 		cleanedLength = cleanedLength,
+		presentationAnchor = supportAnchor,
 		debugRawPointCount = #rawPoints,
 		debugPhysicsPointCount = #geometryPlan.mappedPoints,
 	}), nil
