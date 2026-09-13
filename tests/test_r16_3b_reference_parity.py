@@ -149,7 +149,7 @@ def test_r16_3b_r16final_orders_automated_evidence_before_human_ready() -> None:
     assert 'StudioHarnessConfig.Mode == "R16FINAL"' in client_bootstrap
 
 
-def test_r16_3b_preserves_shape_and_motor_tuning_while_rcp02_supersedes_leg_scale() -> None:
+def test_r16_3b_preserves_shape_and_motor_tuning_while_bg02_supersedes_temporary_rcp02_scale() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
@@ -160,10 +160,10 @@ def test_r16_3b_preserves_shape_and_motor_tuning_while_rcp02_supersedes_leg_scal
         "MotorMaxTorque = 35000",
         "MotorMaxAcceleration = 120",
         "RightPhaseOffsetDegrees = 180",
-        "LegCanvasHalfSpan = 6.30",
-        "MaxLegExtentFromHub = 9.0",
-        "PhysicalLegSegmentThickness = 0.62",
-        "VisualLegSegmentThickness = 0.90",
+        "LegCanvasHalfSpan = 4.8",
+        "MaxLegExtentFromHub = 6.9",
+        "PhysicalLegSegmentThickness = 0.54",
+        "VisualLegSegmentThickness = 0.78",
         "MaxColliderSegmentsPerLeg = 14",
         "InnerHubNoCollisionRadius = 0.65",
         "SegmentOverlapAllowance = 0.06",
