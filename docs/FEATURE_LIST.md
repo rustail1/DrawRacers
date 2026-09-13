@@ -1,26 +1,27 @@
-# FEATURE LIST — SCOPE SOURCE OF TRUTH v1.4.7 / R17
+# FEATURE LIST — SCOPE SOURCE OF TRUTH v1.5.0 / MR-06
 
 Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
 ## Current milestone / canonical override
 **Current milestone:** M0 — Physics Lab  
 **Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle lab → debug/tuning/reference-core evidence, implementation items **B03–B16** plus bounded R17 repair/evidence work.  
-**Current implementation integrity:** R01–R12, R14.1–R14.11, R15/R15.1, R16 Stage A/B/C + R16.3B, and the bounded **R17 reference-core/shared-axle/camera-rider/reference-feel overrides** are present in `main` at repository level. Live Roblox solver/visual/human evidence remains **HUMAN STUDIO PENDING**.
+**Current implementation integrity:** R01–R12, R14.1–R14.11, R15/R15.1, R16 Stage A/B/C + R16.3B, the bounded **R17 reference-core/shared-axle/camera-rider/reference-feel overrides**, and **MR-01..MR-06 mechanical core rewrite** are present in `main` at repository level. MR-01..MR-06 are closed at source/contract/build level and the mechanical core is **READY FOR HUMAN ACCEPTANCE**; live Roblox solver/visual/human evidence remains **HUMAN STUDIO PENDING**.
 
-Current R17 invariants:
+Current R17/MR-06 invariants:
 - R16.3B stroke origin remains: after cleanup the **first cleaned point** becomes authoritative `(0,0)` by translation only; wide `1.75:1` semantic DrawInputRect remains isotropic by height.
-- `LegPairAssembly` is the current mechanical owner: one **shared axle**, one `AxleRoot`, one `AxleJoint`, **one motor**, two rigid side `LegAssembly` objects.
+- `CanonicalLegShape` is the single canonical shape builder. `DrawingController` uses it for prediction, submits raw semantic points, and renders server-authoritative accepted points; `LegShapeService` is the thin server authority layer and recomputes the same canonical pipeline.
+- `RacerRuntime` owns racer lifecycle/version/reshape orchestration. `LegPairAssembly` is the current mechanical owner: one **shared axle**, one `AxleRoot`, one `AxleJoint`, **one motor**, and two persistent rigid side `LegAssembly` owners.
 - The rigid Left/Right copies use the same ShapeSpec and a fixed opposed relation, `RightPhaseOffsetDegrees = 180`; both rotate with the same shared motor direction/speed. There is no second side actuator and no runtime phase-chasing correction.
+- Instant redraw preserves the existing pair, side owners, `AxleRoot`/`AxleJoint`, motor and current rotational phase. Only side geometry is replaced, then grows **hub-to-tip** on that stable axle through the bounded rapid reshape; BodyCollider CFrame and linear/angular velocity are not reset. No compatibility-hub, staged-pair, retiring-pair or whole-pair handoff path remains in the current mechanical core.
 - Production `RaceCameraController`/`CameraMath` are active M0 owners under R17. Normal follow uses a **stable two-axis dead-zone** anchor before smoothing. Hold-RMB yaw is **full 360°**, pitch remains bounded, rendered orbit/return are smoothed, and body rotation is not camera authority.
-- Instant redraw preserves the existing `AxleRoot`/`AxleJoint`, motor and current rotational phase. Only side geometry is replaced, then grows **hub-to-tip** on that stable axle through the bounded rapid reshape; BodyCollider CFrame and linear/angular velocity are not reset. Collision-safe phase search is initial-spawn safety only, not redraw behavior.
 - Production `RiderPresentationController` is active as a normalized nonphysical human rider presentation owner under R17. E03 later extends/accepts the same owner for 8-player readability; it does not introduce a duplicate rider system.
 - R17.6 compares **body density**, **leg density**, **motor speed**, and optional **body friction** only on temporary Studio racers. **Production tuning remains unchanged** until human Studio evidence is reviewed; `HUMAN BODY FEEL CHOICE PENDING`.
-- R17.7 retains the canonical reference-course matrix. `R17FINAL` remains an explicit one-click ordered Studio evidence route, while normal Roblox Studio `Play` now uses committed **`G0`** as the fast manual CORE loop and skips automatic B03–B16/R17 startup evidence. No CI result may fabricate human acceptance.
+- R17.7 retains the canonical reference-course matrix. `R17FINAL` remains an explicit one-click ordered Studio evidence route, while normal Roblox Studio `Play` uses committed **`G0`** as the fast manual CORE loop and skips automatic B03–B16/R17 startup evidence. No CI result may fabricate human acceptance.
 - Studio Gate A — **HUMAN STUDIO PENDING**. Studio Gate B — **HUMAN STUDIO PENDING**. Studio Gate C — **HUMAN STUDIO PENDING**. B17/G0 remains **HUMAN_GATE PENDING**.
 
 **Rule:** only one gameplay feature may be ACTIVE at a time. `SESSION.md` owns the evidence cursor; `25` owns implementation order. No C01 or later work may start without the required M0 human evidence and recorded B17/G0 PASS or an explicit Product Owner gate decision.
 
-The 2026-09-10 Camera/Rider decision remains the original contract lock, but its old D09/E03-only implementation timing is superseded by the 2026-09-11 R17 Product Owner overrides. D09/E03 remain later multiplayer/readability extension-and-acceptance tasks for the already-existing `RaceCameraController` and `RiderPresentationController`; they are not duplicate implementations. The 2026-09-12 phase/default decisions supersede the intermediate 0°/R17FINAL-default interpretation without changing this scope.
+The 2026-09-10 Camera/Rider decision remains the original contract lock, but its old D09/E03-only implementation timing is superseded by the 2026-09-11 R17 Product Owner overrides. D09/E03 remain later multiplayer/readability extension-and-acceptance tasks for the already-existing `RaceCameraController` and `RiderPresentationController`; they are not duplicate implementations. The 2026-09-12 phase/default decisions supersede the intermediate 0°/R17FINAL-default interpretation without changing this scope. The 2026-09-13 MR-01..MR-06 rewrite supersedes the old duplicated/staged mechanical implementation details without expanding WHAT/WHY scope.
 
 ## Bootstrap — required before M0
 - ACCEPTED — A01 Git/Rojo baseline
@@ -34,6 +35,7 @@ The 2026-09-10 Camera/Rider decision remains the original contract lock, but its
 - CLOSED / REPAIR COMPLETE — R01–R12 implementation-integrity series.
 - CLOSED / IMPLEMENTATION-REGRESSION-CI-DOCS — R14.1–R14.11 runtime/tooling/evidence closure; Studio checkpoints: HUMAN PENDING.
 - CLOSED / HISTORICAL FOUNDATION — R15.1 mechanical `PlaneConstraint` Z lock; its historical free-world-Z orientation detail is superseded by R16.1.
+- CLOSED / MR-01..MR-06 MECHANICAL CORE REWRITE — one canonical builder, persistent pair/axle/joint/side owners, direct hub-to-tip redraw path; repository/static/build closure is GREEN and status is **READY FOR HUMAN ACCEPTANCE**; human G0 remains pending.
 - ACTIVE / R16 Stage A / R16.1–R16.4 IMPLEMENTED; Studio Gate A — HUMAN STUDIO PENDING.
 - ACTIVE / R16 Stage B / R16.5–R16.7 IMPLEMENTED/AUTOMATED GREEN; Studio Gate B — HUMAN STUDIO PENDING.
 - ACTIVE / R16 Stage C / R16.8–R16.10 IMPLEMENTED/AUTOMATED GREEN; Studio Gate C — HUMAN STUDIO PENDING.
