@@ -8,6 +8,8 @@ local RIDER_SCALE = 0.65
 local RIDER_MOUNT_X_OFFSET = -0.15
 local RIDER_SEAT_CLEARANCE = 0.05
 local RIDER_NAME_PREFIX = "RiderPresentation_"
+local COWBOY_HAT_COLOR = Color3.fromRGB(112, 72, 42)
+local COWBOY_HAT_BAND_COLOR = Color3.fromRGB(48, 33, 25)
 
 local RiderPresentationController = {}
 RiderPresentationController.__index = RiderPresentationController
@@ -82,6 +84,65 @@ local function sanitizeVisual(visual: Model)
 	end
 end
 
+local function configureCowboyPart(part: Part, color: Color3)
+	part.Material = Enum.Material.SmoothPlastic
+	part.Color = color
+	part.Anchored = false
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.Massless = true
+	part.CastShadow = true
+end
+
+local function weldCowboyPart(head: BasePart, part: Part)
+	local weld = Instance.new("WeldConstraint")
+	weld.Name = part.Name .. "Weld"
+	weld.Part0 = head
+	weld.Part1 = part
+	weld.Parent = part
+end
+
+local function applyCowboyPresentation(visual: Model)
+	local head = visual:FindFirstChild("Head", true)
+	if head == nil or not head:IsA("BasePart") then
+		return
+	end
+
+	local oldHat = visual:FindFirstChild("CowboyHatPresentation")
+	if oldHat ~= nil then
+		oldHat:Destroy()
+	end
+
+	local hat = Instance.new("Folder")
+	hat.Name = "CowboyHatPresentation"
+	hat.Parent = visual
+
+	local brim = Instance.new("Part")
+	brim.Name = "CowboyHatBrim"
+	brim.Size = Vector3.new(head.Size.X * 1.7, math.max(0.08, head.Size.Y * 0.10), head.Size.Z * 1.55)
+	configureCowboyPart(brim, COWBOY_HAT_COLOR)
+	brim.CFrame = head.CFrame * CFrame.new(0, head.Size.Y * 0.54, 0)
+	brim.Parent = hat
+	weldCowboyPart(head, brim)
+
+	local crown = Instance.new("Part")
+	crown.Name = "CowboyHatCrown"
+	crown.Size = Vector3.new(head.Size.X * 0.92, head.Size.Y * 0.58, head.Size.Z * 0.92)
+	configureCowboyPart(crown, COWBOY_HAT_COLOR)
+	crown.CFrame = head.CFrame * CFrame.new(0, head.Size.Y * 0.86, 0)
+	crown.Parent = hat
+	weldCowboyPart(head, crown)
+
+	local band = Instance.new("Part")
+	band.Name = "CowboyHatBand"
+	band.Size = Vector3.new(head.Size.X * 0.98, math.max(0.07, head.Size.Y * 0.10), head.Size.Z * 0.98)
+	configureCowboyPart(band, COWBOY_HAT_BAND_COLOR)
+	band.CFrame = head.CFrame * CFrame.new(0, head.Size.Y * 0.65, 0)
+	band.Parent = hat
+	weldCowboyPart(head, band)
+end
+
 local function findSeatPart(visual: Model): BasePart?
 	for _, name in { "LowerTorso", "Torso", "HumanoidRootPart" } do
 		local candidate = visual:FindFirstChild(name, true)
@@ -108,6 +169,7 @@ local function cloneCharacterVisual(character: Model): Model?
 	sanitizeVisual(visual)
 	visual:ScaleTo(RIDER_SCALE)
 	applyJockeyPose(visual)
+	applyCowboyPresentation(visual)
 	return visual
 end
 
