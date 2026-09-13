@@ -87,3 +87,13 @@ def test_b07_studio_spec_distinguishes_corner_mapping_from_radial_cap() -> None:
     assert "assertClose(hardCapped.Magnitude, hardCapGeometry.MaxLegExtentFromHub" in spec_text
 
     assert "assertClose(mapped[3].Magnitude, 4.5" not in spec_text
+
+
+def test_b07_destroy_does_not_mutate_borrowed_shape_spec_tables() -> None:
+    leg = (ROOT / "src" / "server" / "Runtime" / "LegAssembly.lua").read_text(encoding="utf-8")
+
+    # Both Left and Right assemblies receive the same authoritative ShapeSpec tables.
+    # Destroying a staged/retiring side must not clear those caller-owned tables,
+    # because initial phase restaging may immediately reuse the same ShapeSpec.
+    assert "table.clear(self.segmentPlan)" not in leg
+    assert "table.clear(self.mappedPoints)" not in leg
