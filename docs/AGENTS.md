@@ -35,15 +35,18 @@ Mandatory routing:
 
 If current code correctly implements current Source of Truth but the user wants different behavior, do not call it a bug and do not patch around the current spec.
 
+`MODULE_REWRITE` is an implementation strategy, not an extra task classification. When investigation proves a module boundary structurally unhealthy, follow `DEVELOPMENT_PRINCIPLES.md`; if the desired WHAT/WHY or approved external contract changes, route through `CONTRACT_CHANGE` first.
+
 ## Mandatory start of every task
-1. Read `FEATURE_LIST.md` and confirm feature is in scope. **Do not load `_HISTORY/` for normal implementation.**
-2. Read `SESSION.md` for the exact current cursor and human-gate status.
-3. Use `26_HANDOFF_MAP.md` to select only the relevant specialized spec(s).
-4. For catalog implementation tasks read the exact row in `66_ZERO_TO_RELEASE_TASK_ACCEPTANCE_CATALOG.md`.
-5. For architecture/network tasks read `21_SYSTEM_CLASS_ARCHITECTURE.md` and/or `22_NETWORK_DATA_CONTRACTS.md`.
-6. Read relevant Decision Log and relevant existing code.
-7. Inspect current remote `main` HEAD before planning/writing.
-8. Inspect the existing Roblox/Rojo owner before creating anything new.
+1. Read `DEVELOPMENT_PRINCIPLES.md` for module ownership, local-fix vs `MODULE_REWRITE`, testing, lifecycle, client/server, and performance rules.
+2. Read `FEATURE_LIST.md` and confirm feature is in scope. **Do not load `_HISTORY/` for normal implementation.**
+3. Read `SESSION.md` for the exact current cursor and human-gate status.
+4. Use `26_HANDOFF_MAP.md` to select only the relevant specialized spec(s).
+5. For catalog implementation tasks read the exact row in `66_ZERO_TO_RELEASE_TASK_ACCEPTANCE_CATALOG.md`.
+6. For architecture/network tasks read `21_SYSTEM_CLASS_ARCHITECTURE.md` and/or `22_NETWORK_DATA_CONTRACTS.md`.
+7. Read relevant Decision Log and relevant existing code.
+8. Inspect current remote `main` HEAD before planning/writing.
+9. Inspect the existing Roblox/Rojo owner before creating anything new.
 
 ## Repository execution policy
 - Repository: `rustail1/DrawRacers`.
@@ -88,6 +91,8 @@ Once approved, the plan is a scope contract. If implementation requires a file/s
 
 Do not stack speculative fixes. If the root-cause hypothesis is disproved, return to investigation with the new evidence.
 
+If investigation proves the current owner structurally unhealthy under `DEVELOPMENT_PRINCIPLES.md`, do not force a local patch merely because BUGFIX normally prefers minimal scope. Stop, report the module-boundary failure, and obtain an approved coherent `MODULE_REWRITE` plan for that owner/direct-consumer boundary. Do not preserve obsolete internals with another compatibility branch.
+
 ## Design-freeze rule
 There are no known open WHAT/WHY questions required for implementation. Empirical outcomes are not treated as “already proven”; use `55` for bounded test/rework/escalation. If a test fails, route to the owner spec and rework/tune implementation. Do not invent a new mechanic or reopen product identity unless the human explicitly approves a Decision Log + Feature List scope change.
 
@@ -96,18 +101,19 @@ If observed desired behavior contradicts current Source of Truth, classify it as
 ## Task size
 One task = one observable behavior that can be separately implemented and tested. Break giant requests into minimal vertical steps.
 
-For a bugfix, the approved plan determines the blast radius. Do not turn a local repair into architecture cleanup.
+For a bugfix, the approved plan determines the blast radius. Do not turn a local repair into unrelated architecture cleanup. A proven `MODULE_REWRITE` is not unrelated cleanup: it is a bounded replacement of the unhealthy natural owner and only the direct consumers approved in that rewrite plan.
 
 ## Implementation loop
 Normal feature/tuning loop:
 
 `Expected result -> technical reconnaissance -> minimal change -> run/test -> report -> human acceptance -> next step`.
 
-BUGFIX uses the stricter `BUGFIX_PROTOCOL.md` lifecycle above.
+BUGFIX uses the stricter `BUGFIX_PROTOCOL.md` lifecycle above. Approved module rewrites use the ordered workflow in `DEVELOPMENT_PRINCIPLES.md`.
 
 ## Source of truth
 - Scope: `FEATURE_LIST.md`
 - Product: Project Bible/specialized specs
+- Engineering evolution/module-rewrite rules: `DEVELOPMENT_PRINCIPLES.md`
 - Global physics/race/camera numbers: `16`; UI geometry: `59`; level geometry/content: `60`; economy/progression/prices: `61`; performance thresholds: `57`
 - Canonical persistent profile: `31_SAVE_DATA_MIGRATION_RECOVERY.md`
 - Empirical gate protocol: `55_EMPIRICAL_PRODUCT_GATE_PROTOCOL.md`
@@ -140,7 +146,7 @@ Never silently duplicate/change facts across files.
 ## Architecture lock
 Do not invent new top-level Service/Controller families that overlap owners defined in `21_SYSTEM_CLASS_ARCHITECTURE.md` without a Decision Log. Circular project-module dependencies are forbidden. `Bootstrap.server.lua` / `Bootstrap.client.lua` are composition roots; lower-level modules do not reach back into orchestration services.
 
-A local bugfix must reuse the existing natural owner unless the approved plan explicitly proves an architecture-boundary change is necessary.
+A local bugfix must reuse the existing natural owner unless the approved plan explicitly proves an architecture-boundary change is necessary. Within that owner, a local patch is allowed only while the module remains healthy under `DEVELOPMENT_PRINCIPLES.md`; structural failure escalates to a coherent module rewrite rather than another patch layer.
 
 ## Testing
 AI may automate math/invariants/errors. Human must test feel/UX/camera/physics in Roblox Studio. Clean console is not sufficient.
