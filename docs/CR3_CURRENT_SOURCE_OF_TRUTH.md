@@ -12,7 +12,7 @@ This file is the current mechanical entrypoint. Where older R16/R17/CR2 notes di
 - There is no `AcceptedShapeThumbnail` inside the gameplay drawing surface.
 - Raw semantic samples are still sent to the server; the server recomputes the canonical shape.
 - Canonical cleanup remains clamp -> dedupe -> simplify -> resample.
-- After cleanup, `CanonicalLegShape` chooses one actual support point from LEFT / TOP / RIGHT candidates using the first cleaned point only as a gesture hint.
+- After cleanup, `CanonicalLegShape` chooses one actual **support anchor** from LEFT / TOP / RIGHT candidates using the first cleaned point only as a gesture hint.
 - The canonical shape is translated by `-supportAnchor` only. CR3 does not rotate, mirror, reverse, auto-fit, or resize the authored shape.
 - `presentationAnchor` is client presentation metadata used to render authoritative translated points back where the player drew them. It is not part of the network payload and is not physical authority.
 - `StrokeResult.acceptedPoints` remains authoritative server output. The local origin may occur at any accepted point index.
