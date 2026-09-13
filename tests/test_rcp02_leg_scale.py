@@ -4,13 +4,16 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_rcp02_leg_reach_is_approximately_doubled_and_thickness_is_split() -> None:
+def test_rcp02_leg_reach_uses_human_repaired_reference_scale_and_split_thickness() -> None:
     config = (ROOT / "src/shared/Config/PhysicsConfig.lua").read_text(encoding="utf-8")
 
-    assert re.search(r"LegCanvasHalfSpan\s*=\s*6\.3", config)
-    assert re.search(r"MaxLegExtentFromHub\s*=\s*9\.0", config)
-    assert re.search(r"PhysicalLegSegmentThickness\s*=\s*0\.6[0-5]", config)
-    assert re.search(r"VisualLegSegmentThickness\s*=\s*0\.9", config)
+    # BG-02 human evidence supersedes the temporary 2x RCP-02 scale. Keep the
+    # leg clearly larger than the old 3.15/4.5 baseline without letting it
+    # dominate the current 3-stud body and obstacle lab.
+    assert re.search(r"LegCanvasHalfSpan\s*=\s*4\.8", config)
+    assert re.search(r"MaxLegExtentFromHub\s*=\s*6\.9", config)
+    assert re.search(r"PhysicalLegSegmentThickness\s*=\s*0\.54", config)
+    assert re.search(r"VisualLegSegmentThickness\s*=\s*0\.78", config)
 
 
 def test_rcp02_leg_assembly_uses_configured_visual_thickness_without_changing_body() -> None:
