@@ -17,12 +17,37 @@ type Style = {
 	Color: Color3?,
 	Tint: Color3?,
 	Material: Enum.Material?,
+	PreserveBase: boolean?,
 }
 
+type BaseStyle = {
+	Color: Color3,
+	Material: Enum.Material,
+}
+
+type BaseStyleMap = { [BasePart]: BaseStyle }
 type SignatureMap = { [Model]: string }
 type RiderInstanceMap = { [Model]: Model }
 
-local function styleParts(root: Instance?, style: Style, tintOnly: boolean?)
+local function captureBaseStyle(baseStyles: BaseStyleMap, part: BasePart)
+	if baseStyles[part] == nil then
+		baseStyles[part] = {
+			Color = part.Color,
+			Material = part.Material,
+		}
+	end
+end
+
+local function restoreBaseStyle(baseStyles: BaseStyleMap, part: BasePart)
+	local base = baseStyles[part]
+	if base == nil then
+		return
+	end
+	part.Color = base.Color
+	part.Material = base.Material
+end
+
+local function styleParts(root: Instance?, style: Style, tintOnly: boolean?, baseStyles: BaseStyleMap?)
 	if root == nil then
 		return
 	end
@@ -33,11 +58,18 @@ local function styleParts(root: Instance?, style: Style, tintOnly: boolean?)
 					descendant.Color = style.Tint
 				end
 			else
-				if style.Color ~= nil then
-					descendant.Color = style.Color
+				if baseStyles ~= nil then
+					captureBaseStyle(baseStyles, descendant)
 				end
-				if style.Material ~= nil then
-					descendant.Material = style.Material
+				if style.PreserveBase == true and baseStyles ~= nil then
+					restoreBaseStyle(baseStyles, descendant)
+				else
+					if style.Color ~= nil then
+						descendant.Color = style.Color
+					end
+					if style.Material ~= nil then
+						descendant.Material = style.Material
+					end
 				end
 			end
 		end
@@ -67,14 +99,14 @@ local function findRiderVisual(racer: Model): Model?
 	return if candidate and candidate:IsA("Model") then candidate else nil
 end
 
-local function applyLegStyle(racer: Model, style: Style)
+local function applyLegStyle(racer: Model, style: Style, baseStyles: BaseStyleMap)
 	local legs = racer:FindFirstChild("Legs")
 	if legs == nil then
 		return
 	end
 	for _, leg in legs:GetChildren() do
 		if leg:IsA("Model") then
-			styleParts(leg:FindFirstChild("Visual"), style, false)
+			styleParts(leg:FindFirstChild("Visual"), style, false, baseStyles)
 		end
 	end
 end
@@ -93,6 +125,7 @@ function RacerCosmeticsController.new()
 		_connection = nil :: RBXScriptConnection?,
 		_signatures = {} :: SignatureMap,
 		_riderInstances = {} :: RiderInstanceMap,
+		_baseLegStyles = setmetatable({}, { __mode = "k" }) :: BaseStyleMap,
 	}, RacerCosmeticsController)
 end
 
@@ -124,7 +157,7 @@ function RacerCosmeticsController:_applyRacer(racer: Model)
 		return
 	end
 
-	applyLegStyle(racer, legStyle)
+	applyLegStyle(racer, legStyle, self._baseLegStyles)
 	applyCubeStyle(racer, cubeStyle)
 	applyRiderStyle(rider, riderStyle)
 	self._signatures[racer] = signature
@@ -177,6 +210,7 @@ function RacerCosmeticsController:Destroy()
 	end
 	table.clear(self._signatures)
 	table.clear(self._riderInstances)
+	table.clear(self._baseLegStyles)
 end
 
 return RacerCosmeticsController
