@@ -204,6 +204,8 @@ local function runLiveMovingRedrawTrial(): boolean
 			break
 		end
 
+		local axleBeforeRedraw = pairBeforeRedraw:GetRoot()
+		local jointBeforeRedraw = pairBeforeRedraw:GetJoint()
 		local bodyCFrameBeforeRedraw = movingBody.CFrame
 		local linearBeforeRedraw = movingBody.AssemblyLinearVelocity
 		local angularBeforeRedraw = movingBody.AssemblyAngularVelocity
@@ -229,7 +231,11 @@ local function runLiveMovingRedrawTrial(): boolean
 		end
 
 		local pairAfterRedraw = racer:GetLegPair()
-		if pairAfterRedraw == nil or pairAfterRedraw == pairBeforeRedraw then
+		local stablePairPreserved = pairAfterRedraw ~= nil
+			and pairAfterRedraw == pairBeforeRedraw
+			and pairAfterRedraw:GetRoot() == axleBeforeRedraw
+			and pairAfterRedraw:GetJoint() == jointBeforeRedraw
+		if not stablePairPreserved then
 			movingRedrawPassed = false
 			break
 		end
@@ -274,7 +280,7 @@ function R16StageCHarness.RunEvidence(): boolean
 end
 
 function R16StageCHarness.start()
-	assert(RunService:IsStudio(), "R16StageCHarness is Studio-only")
+	assert(RunService:IsStudio(), "R16StageCHarness evidence is Studio-only")
 	if started then
 		return
 	end
