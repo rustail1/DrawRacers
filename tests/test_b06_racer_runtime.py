@@ -12,8 +12,6 @@ def test_b06_racer_runtime_contract() -> None:
         "RacerTemplate",
         "BodyCollider",
         "Vector3.new(3, 3, 3)",
-        "LeftHub",
-        "RightHub",
         "RuntimeAttachments",
         "LaneAlignAttachment",
         "OrientationAttachment",
@@ -30,12 +28,13 @@ def test_b06_racer_runtime_contract() -> None:
 
     assert "Humanoid" not in text
     assert "Motor6D" not in text
+    for retired_marker in ["LeftHub", "RightHub", "makeCompatibilityHub"]:
+        assert retired_marker not in text, f"retired B06 compatibility marker remains: {retired_marker}"
 
-    # B06 owns only the racer template/runtime shell. Later B08/R16 work may
-    # legitimately orchestrate motors elsewhere in RacerRuntime, but template
-    # construction itself must not instantiate motor/hinge primitives.
+    # The racer template owns only the body/runtime shell. LegPairAssembly creates
+    # the one physical axle/hinge later, after an authoritative shape exists.
     template_section = text.split("function RacerRuntime.EnsureTemplate()", 1)[1].split(
-        "local function ensureRuntimeFolder", 1
+        "function RacerRuntime.new", 1
     )[0]
     assert "AngularVelocity" not in template_section, "B06 template must not configure motor velocity"
     assert "HingeConstraint" not in template_section, "B06 template must not instantiate leg hinges"
@@ -54,6 +53,8 @@ def test_b06_studio_spec_is_wired() -> None:
         "[DrawRacers][B06] RacerTemplate/RacerRuntime tests PASS",
     ]:
         assert token in text, f"missing B06 Studio spec token: {token}"
+
+    assert "LeftHub" not in text and "RightHub" not in text
 
     bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
     assert "B06RacerRuntimeSpec" in bootstrap
