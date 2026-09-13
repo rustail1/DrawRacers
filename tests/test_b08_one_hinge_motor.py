@@ -32,14 +32,19 @@ def test_b08_one_hinge_motor_contract() -> None:
     assert pair.count('Instance.new("HingeConstraint")') == 1
     assert 'Instance.new("HingeConstraint")' not in leg
 
+    # BG-04 human evidence supersedes the old blanket VectorForce ban only for
+    # the short gravity-cancel support inside the stable pair. It must have no
+    # X/Z propulsion and must not leak into LegAssembly.
     for source in (pair, leg):
         for forbidden in [
             "AssemblyLinearVelocity =",
             "ApplyImpulse(",
-            "VectorForce",
             "LinearVelocity =",
         ]:
             assert forbidden not in source, f"B08 must not use hidden propulsion: {forbidden}"
+    assert 'Instance.new("VectorForce")' in pair
+    assert "Vector3.new(0, supportedMass * Workspace.Gravity * fraction, 0)" in pair
+    assert 'Instance.new("VectorForce")' not in leg
 
 
 def test_b08_studio_flat_harness_contract() -> None:
