@@ -31,6 +31,7 @@ def test_rcp04_config_keeps_arcade_duration_bounded() -> None:
         "TypicalDuration = 0.10",
         "MinimumDuration = 0.08",
         "MaximumDuration = 0.15",
+        "GravityCompensationFraction = 1.0",
     ]:
         assert token in config, f"missing RCP-04 config token: {token}"
 
@@ -47,16 +48,19 @@ def test_rcp04_leg_assembly_can_apply_partial_geometry_without_midpoint_growth()
     assert 'partialCollider.Name = "ReshapeTipCollider"' in leg
 
 
-def test_rcp04_pair_uses_one_visible_pair_and_same_progress_for_both_sides() -> None:
+def test_rcp04_pair_uses_one_visible_pair_same_progress_and_only_bounded_vertical_support() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     assert "function LegPairAssembly:BeginGeometryReshape" in pair
     assert "function LegPairAssembly:SetReshapeProgress" in pair
-    assert "self.leftLeg:SetReshapeProgress(progress)" in pair
-    assert "self.rightLeg:SetReshapeProgress(progress)" in pair
+    assert "self.leftLeg:SetReshapeProgress" in pair
+    assert "self.rightLeg:SetReshapeProgress" in pair
     assert "stagedLeft:SetReshapeProgress(0)" in pair
     assert "stagedRight:SetReshapeProgress(0)" in pair
     assert "oldLeft:Destroy()" in pair and "oldRight:Destroy()" in pair
-    assert "VectorForce" not in pair
+    assert 'Instance.new("VectorForce")' in pair
+    assert "Vector3.new(0," in pair
+    assert "ApplyAtCenterOfMass = true" in pair
+    assert "BodyCollider.Anchored" not in pair
 
 
 def test_rcp04_runtime_drives_short_reshape_without_resetting_motor() -> None:
