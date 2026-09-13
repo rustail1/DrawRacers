@@ -23,4 +23,4 @@ def test_presentation_bounds_are_computed_from_world_equivalent_points() -> None
     shape = (ROOT / "src/shared/Math/CanonicalLegShape.lua").read_text(encoding="utf-8")
 
     assert "StrokeMath.ComputeBounds(normalizedPoints)" in shape
-    assert "geometryConfig.LegCanvasHalfSpan <= 0" in shape
+    assert 'assert(geometryConfig.LegCanvasHalfSpan > 0, "LegCanvasHalfSpan must be positive")' in shape
