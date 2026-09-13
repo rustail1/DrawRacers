@@ -1,9 +1,9 @@
 # 65 — STUDIO DATAMODEL / INSTANCE / PROPERTY SPEC
-Статус: **EXACT AUTHORING & RUNTIME INSTANCE CONTRACT v1.3.6 / R17 CO-PHASE OVERRIDE**.
+Статус: **EXACT AUTHORING & RUNTIME INSTANCE CONTRACT v1.4.0 / MR-06 PERSISTENT SHARED AXLE**.
 
-Цель: убрать вопрос «какие именно Instances/имена/атрибуты/группы/свойства создавать в Studio». Архитектурные владельцы = `21`; numeric physics = `16`; TrackPiece geometry = `60`; UI hierarchy = `68`.
+Цель: убрать вопрос «какие именно Instances/имена/атрибуты/группы/свойства создавать в Studio». Архитектурные владельцы = `21`; numeric physics = `16`; TrackPiece geometry = `60`; UI hierarchy = `68`; current mechanical rewrite = `docs/superpowers/specs/2026-09-13-core-module-rewrite-design.md`.
 
-Camera/rider presentation is authorized early by the 2026-09-10/11 Product Owner Decision Logs. `RaceCameraController` and `RiderPresentationController` are current provisional M0/R17 presentation owners; D09/E03 later extend and accept them for multiplayer/readability rather than introducing duplicate owners. The R17 mechanical override makes `LegPairAssembly` the current runtime owner of one shared axle, one `AxleJoint`, one motor and two rigid **co-phase** left/right side assemblies at opposite Z sockets. Human-video evidence on 2026-09-12 supersedes the interim structural-180 relation. Human physics/camera/rider acceptance remains **HUMAN STUDIO PENDING**.
+The current M0 mechanical contract is one persistent `LegPairAssembly`: one shared `AxleRoot`, one `AxleJoint`, one motor and two persistent rigid side `LegAssembly` owners. Both sides consume the same canonical ShapeSpec and the Right side is structurally opposed by `RightPhaseOffsetDegrees = 180`. Redraw changes side geometry in place; it does not replace the pair, axle, joint or side owners. Camera/rider presentation remains separate and nonphysical. Live physics/camera/rider acceptance remains **HUMAN STUDIO PENDING**.
 
 ## 1. Root tree — exact launch names
 ```text
@@ -57,14 +57,11 @@ Canonical invariant: Body↔own Leg, Leg↔own Leg, Body↔Body, Leg↔Leg and e
 RacerTemplate
   BodyCollider (Part) [PrimaryPart]
   VisualRoot (Folder or Model)
-  LeftHub (Part)
-    MotorAttachment (Attachment) [marker/compatibility]
-  RightHub (Part)
-    MotorAttachment (Attachment) [marker/compatibility]
   RuntimeAttachments (Folder)
     LaneAlignAttachment (Attachment)
     OrientationAttachment (Attachment)
 ```
+
 Required BodyCollider launch properties:
 - Size = `3,3,3` studs (`16` fixed baseline);
 - Anchored=false;
@@ -76,19 +73,11 @@ Required BodyCollider launch properties:
 - CustomPhysicalProperties = density/friction/elasticity from `16`.
 
 Hub Parts:
-- Anchored=false;
-- CanCollide=false;
-- CanTouch=false unless debug requires;
-- Transparency=1;
-- hub offsets are owned numerically by `PhysicsConfig.LegGeometry` / `16` and mapped mechanically by `73`:
-  - `HubOffsetX = 0.0`;
-  - `HubOffsetY = 0.0`;
-  - `HubOffsetZAbs = 1.62`;
-  - LeftHub = `(HubOffsetX, HubOffsetY, -HubOffsetZAbs)` relative to BodyCollider center;
-  - RightHub = `(HubOffsetX, HubOffsetY, +HubOffsetZAbs)` relative to BodyCollider center;
-- CollisionGroup=`RacerBody`.
-
-Under R17 these hub Parts remain body-welded stable markers/compatibility anchors. Their `MotorAttachment` children are not actuator owners. `LegPairAssembly` ensures the actual shared body-side `AxleMotorAttachment` on `BodyCollider` when an accepted pair exists.
+- current MR-06 runtime creates **no compatibility hub Parts** in `RacerTemplate` and no side marker owns locomotion;
+- axle-center numbers are owned by `PhysicsConfig.LegGeometry`: `HubOffsetX = 0.0`, `HubOffsetY = 0.0`;
+- `HubOffsetZAbs = 1.62` remains a legacy/reference configuration value only and does not authorize a runtime marker Part;
+- real side placement is owned by `LegSocketZAbs = 1.5` on the persistent shared axle;
+- `LegPairAssembly` creates/ensures the actual body-side `AxleMotorAttachment` only when an accepted mechanical pair exists.
 
 No humanoid/character controller is used for racer locomotion.
 
@@ -98,10 +87,8 @@ Created under `Workspace.Runtime.Racers/<RacerRuntimeId>` / `Legs`. The shared b
 Racer_<RaceId>_<Slot>
   BodyCollider
     AxleMotorAttachment (Attachment)
-  LeftHub
-    MotorAttachment (Attachment) [marker/compatibility]
-  RightHub
-    MotorAttachment (Attachment) [marker/compatibility]
+  VisualRoot
+  RuntimeAttachments
   Legs
     AxleRoot (Part)
       MotorAttachment (Attachment)
@@ -131,7 +118,7 @@ Racer_<RaceId>_<Slot>
 - body-side attachment for the single shared hinge.
 
 `AxleRoot`:
-- created by `LegPairAssembly`;
+- created exactly once for a racer by `LegPairAssembly` when the first accepted shape materializes the mechanical pair;
 - Size = `0.2,0.2,0.2`;
 - centered at body-local `(HubOffsetX, HubOffsetY,0)` and rotated by the one current axle phase;
 - Anchored=false;
@@ -145,14 +132,14 @@ Racer_<RaceId>_<Slot>
 - `Attachment1 = AxleRoot.MotorAttachment`;
 - `ActuatorType=Motor`;
 - angular speed/torque/acceleration come from `PhysicsConfig.Motor`;
-- one motor rotates both rigid side assemblies around canonical +Z.
+- **one motor** rotates both rigid side assemblies around canonical +Z.
 
 Side `LegRoot` Parts:
-- are rigid side-geometry roots, not hinge/motor owners;
+- are persistent rigid side-geometry roots, not hinge/motor owners;
 - use `LegSocketZAbs = 1.5` from `PhysicsConfig.LegGeometry` as the side mount offset;
 - Left socket Z = `-1.5`, local phase `0`;
-- Right socket Z = `+1.5`, local phase `RightPhaseOffsetDegrees = 0`;
-- therefore Left/Right remain **co-phase** while physically separated across the cube depth;
+- Right socket Z = `+1.5`, local phase `RightPhaseOffsetDegrees = 180`;
+- both sides use the same canonical XY geometry while remaining structurally **180° opposed**;
 - each `LegRoot` is welded to `AxleRoot` by `AxleWeld`;
 - Anchored=false, CanCollide=false, CanTouch=false, CanQuery=false, Transparency=1, Massless=true;
 - CollisionGroup=`RacerLeg`.
@@ -160,28 +147,33 @@ Side `LegRoot` Parts:
 Segment Parts:
 - Anchored=false;
 - CollisionGroup=`RacerLeg`;
-- thickness/default count/physical props = `16`;
+- physical thickness/default count/physical props come from `16`;
 - rigidly welded to that side `LegRoot`; exact local segment centers/orientation/length are `73`;
 - no script per segment;
-- visual ribbon/line has no collision.
+- physical collider Parts are hidden from presentation.
 
 Visual Parts:
 - `CanCollide=false`, `CanTouch=false`, `CanQuery=false`, `Massless=true`;
-- presentation only; cannot affect solver/mass/locomotion.
+- presentation only; cannot affect solver/mass/locomotion;
+- use the exact same canonical centerline as physical geometry, with visual-only thickness/smoothing allowed.
 
-There is no second side actuator and no Heartbeat phase-correction owner. Rebuild swaps the complete `LegPairAssembly` atomically per `03/24/73` and preserves one axle phase.
+Redraw contract:
+- `RacerRuntime` retains the same `LegPairAssembly`;
+- `LegPairAssembly` retains the same `AxleRoot`, `AxleJoint`, Left owner and Right owner;
+- both side owners receive the same new canonical ShapeSpec and reshape **hub-to-tip** in lockstep;
+- no normal redraw staging/retiring pair handoff exists;
+- no body CFrame, anchoring, linear velocity or angular velocity reset is part of redraw.
 
 ## 5. Runtime racer model
 Each spawned racer is:
 ```text
 Workspace.Runtime.Racers/Racer_<RaceId>_<Slot>
   BodyCollider
-    AxleMotorAttachment (when an accepted LegPairAssembly exists)
+    AxleMotorAttachment (after first accepted LegPairAssembly exists)
   VisualRoot
-  LeftHub
-  RightHub
+  RuntimeAttachments
   Legs
-    AxleRoot (while a shape is accepted)
+    AxleRoot (after first accepted shape)
     LeftLeg
     RightLeg
   Presentation
@@ -297,19 +289,19 @@ Do not create per-level bespoke tags for behavior already expressible by TrackPi
 ## 11. Workspace lifecycle
 `Workspace.Runtime.Tracks` and `Racers` are empty at server boot in production flow. RaceService/TrackService later create runtime content and destroy it after heat/intermission cleanup. Current M0 harnesses also clean their temporary racers/trials. No completed heat/trial may leave live Constraints/Connections/Parts behind. Client-local `RacePresentation` rider visuals follow the same cleanup expectation and never become server gameplay state.
 
-For each accepted shape, runtime cleanup expectation is exact: one active `AxleRoot`, one active `AxleJoint`, two active side leg models, and no `AxleRoot_Retiring` / `LeftLeg_Retiring` / `RightLeg_Retiring` after a successful transaction.
+For each racer with an accepted shape, runtime cleanup expectation is exact: one persistent active `AxleRoot`, one active `AxleJoint`, two persistent side leg models, and no retiring/staging mechanical tree after a successful redraw.
 
 ## 12. Acceptance
 Repository/instance-contract PASS requires:
 - a fresh synced project creates the canonical roots;
 - current racer geometry uses one `LegPairAssembly`, one `AxleRoot`, one `AxleJoint`, **one motor**, two rigid side `LegAssembly` models and `LegSocketZAbs = 1.5`;
-- Left/Right remain **co-phase (0° local difference)** with no per-side actuator/phase chase;
+- Left/Right use the same canonical XY shape and remain structurally **180° opposed** via `RightPhaseOffsetDegrees = 180`, with no per-side actuator/phase chase;
 - collision isolation remains canonical and visual leg/rider geometry remains nonphysical;
-- atomic redraw leaves exactly one active pair and preserves BodyCollider motion state;
+- redraw keeps the same pair/axle/joint/side owners and preserves BodyCollider motion state;
 - runtime teardown returns object counts near baseline;
 - no gameplay script depends on manually hidden unversioned Studio objects outside this contract;
 - rider identity/fallback remains bounded and bots do not impersonate human avatars.
 
-Live solver feel, camera feel, rider pose/readability and full Studio behavior remain **HUMAN STUDIO PENDING** until actual Studio evidence is supplied.
+Live solver feel, redraw feel, camera feel, rider pose/readability and full Studio behavior remain **HUMAN STUDIO PENDING** until actual Studio evidence is supplied.
 
 Exact freehand coordinate/pivot/collider mapping owner: `73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md`.
