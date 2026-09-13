@@ -3,6 +3,13 @@
 Date: 2026-09-13  
 Documentation version: **v1.6.0 MR-06 MECHANICAL CORE REWRITE / READY FOR HUMAN ACCEPTANCE**
 
+## CR2 CURRENT OVERRIDE — canonical current state
+`docs/CR2_CURRENT_SOURCE_OF_TRUTH.md` is the current mechanical owner and supersedes the lower historical R16/R17/MR current-state wording wherever it conflicts. CORE REPAIR v2 keeps the wide semantic DrawInputRect but uses a **fixed visible pivot** at semantic `(0,0)`: drawing must start near that dot and the canonical builder no longer translates every shape by its first cleaned point.
+
+The current locomotion topology is **twin-drive**: `LegPairAssembly` owns persistent Left/Right `LegDriveAssembly` instances, each with its own `DriveRoot`, `DriveJoint` motor and persistent `LegAssembly`; the old one-`AxleRoot`/one-`AxleJoint` **shared axle** topology is **retired**. Left/Right target `RightPhaseOffsetDegrees = 180`, use extent-aware drive speed and bounded differential phase correction. Redraw keeps the pair, both drives, both joints and both side owners while old physical geometry remains active until a collision-safe staged candidate commits.
+
+Repository/source/contracts/build are green for CR2, but live Roblox contact/solver/feel, redraw feel, obstacle trade-offs, camera/rider readability and the empirical product gate remain **HUMAN STUDIO PENDING**. Normal Studio `Play` remains `G0`; **B17/G0 remains HUMAN_GATE PENDING**, and no M0.5/multiplayer/meta/economy/shop work is authorized before that gate or another explicit bounded Product Owner decision.
+
 ## R17 CURRENT OVERRIDE — canonical current state
 This section supersedes any lower historical wording that still calls R16.3B the current implementation, describes Camera/Rider as implementation-pending, treats the intermediate 0-degree side relation as current, names `R17FINAL` as the normal Studio default, or describes redraw as a pair/side replacement transaction. The historical R01–R16/R17 evidence below is intentionally retained for regression traceability.
 
