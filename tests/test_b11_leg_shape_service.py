@@ -30,6 +30,11 @@ def test_b11_authoritative_leg_shape_service_contract() -> None:
     for token in [
         "function CanonicalLegShape.Build",
         "StrokeMath.ClampToRect",
+        "minX = -strokeConfig.RawSemanticHalfWidth",
+        "maxX = strokeConfig.RawSemanticHalfWidth",
+        "minY = -strokeConfig.RawSemanticHalfHeight",
+        "maxY = strokeConfig.RawSemanticHalfHeight",
+        "maxPoints = strokeConfig.MaxRawPoints",
         "StrokeMath.Dedupe",
         "StrokeMath.SimplifyRDP",
         "StrokeMath.Resample",
@@ -50,6 +55,9 @@ def test_b11_authoritative_leg_shape_service_contract() -> None:
     ]:
         assert forbidden not in text, f"B11 service must not accept/create client world geometry directly: {forbidden}"
         assert forbidden not in builder, f"B11 canonical builder must stay pure: {forbidden}"
+
+    for forbidden in ["game:GetService", "ReplicatedStorage"]:
+        assert forbidden not in builder, f"canonical builder must not depend on DataModel services: {forbidden}"
 
     for forbidden in ["StrokeMath.SimplifyRDP", "StrokeMath.Resample", "GeometryMath.BuildSegmentPlan"]:
         assert forbidden not in text, f"service must not duplicate canonical geometry pipeline: {forbidden}"

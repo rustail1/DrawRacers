@@ -102,7 +102,7 @@ def test_b12_drawing_controller_request_result_semantics() -> None:
         "sequence",
         "points",
         "StrokeMath.Normalize",
-        "LegShapeMath.BuildCanonical",
+        "CanonicalLegShape.Build",
         "acceptedPoints",
         "_pendingStrokes",
         "_latestSubmittedSequence",
@@ -111,7 +111,7 @@ def test_b12_drawing_controller_request_result_semantics() -> None:
     ]:
         assert token in drawing, f"missing B12 DrawingController token: {token}"
 
-    # RCP-03 moved cleanup/simplification to one shared canonical builder.
+    # MR-01 keeps cleanup/simplification in one shared canonical builder.
     for obsolete_client_cleanup in [
         "StrokeMath.ClampToRect",
         "StrokeMath.Dedupe",

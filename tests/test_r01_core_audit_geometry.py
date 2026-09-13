@@ -9,9 +9,11 @@ def read(path: str) -> str:
 
 def test_r01_geometry_has_one_authoritative_plan_owner():
     geometry_path = ROOT / "src" / "shared" / "Math" / "GeometryMath.lua"
-    builder_path = ROOT / "src" / "shared" / "Math" / "LegShapeMath.lua"
+    builder_path = ROOT / "src" / "shared" / "Math" / "CanonicalLegShape.lua"
+    legacy_builder_path = ROOT / "src" / "shared" / "Math" / "LegShapeMath.lua"
     assert geometry_path.is_file(), "R01 requires shared GeometryMath owner"
-    assert builder_path.is_file(), "RCP-03 requires shared canonical shape owner"
+    assert builder_path.is_file(), "MR-01 requires shared CanonicalLegShape owner"
+    assert not legacy_builder_path.exists(), "legacy LegShapeMath must not remain as a parallel owner"
     geometry = geometry_path.read_text(encoding="utf-8")
     builder = builder_path.read_text(encoding="utf-8")
     assert "BuildSegmentPlan" in geometry
@@ -20,7 +22,7 @@ def test_r01_geometry_has_one_authoritative_plan_owner():
     assert "Instance.new" not in builder
 
     service = read("src/server/Services/LegShapeService.lua")
-    assert "LegShapeMath.BuildCanonical" in service
+    assert "CanonicalLegShape.Build" in service
     assert "local function mapPointToLegSpace" not in service
     assert "local function buildSegmentPlan" not in service
 
@@ -30,6 +32,8 @@ def test_r01_geometry_has_one_authoritative_plan_owner():
     assert "local function mapPoint" not in leg
     assert "distanceFromOriginToSegment" not in leg
 
+    # Runtime still owns its legacy internal test/apply path until MR-04. It must
+    # not become a second network-authoritative canonical owner in MR-01.
     runtime = read("src/server/Runtime/RacerRuntime.lua")
     assert "GeometryMath.BuildSegmentPlan" in runtime
     assert "ApplyValidatedShape(shapeSpec" in runtime

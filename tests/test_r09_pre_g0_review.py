@@ -22,7 +22,7 @@ def test_r09_accepted_preview_is_semantic_and_touch_layout_uses_current_rcp03_to
         "UDim2.fromScale(0.5, 0.475)",
         "UDim2.fromScale(0.44, 0.058)",
         "UDim2.fromScale(0.50, 0.064)",
-        "LegShapeMath.BuildCanonical",
+        "CanonicalLegShape.Build",
     ]:
         assert token in drawing, f"missing R09 responsive/semantic preview token: {token}"
 
