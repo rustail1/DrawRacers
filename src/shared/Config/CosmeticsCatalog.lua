@@ -21,8 +21,10 @@ return {
 	},
 
 	RiderSkins = {
+		-- Neutral default restores the cloned avatar's authored part colors after
+		-- any temporary rider tint skin has been selected.
 		Default = {
-			Tint = nil,
+			PreserveBase = true,
 		},
 	},
 }
