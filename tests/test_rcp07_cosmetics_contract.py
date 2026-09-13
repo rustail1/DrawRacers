@@ -56,6 +56,17 @@ def test_rcp07_controller_is_presentation_only() -> None:
         assert forbidden not in text, f"cosmetic controller must remain presentation-only: {forbidden}"
 
 
+def test_rcp07_rider_recreation_invalidates_cosmetic_cache_by_instance_identity() -> None:
+    text = read("src/client/Controllers/RacerCosmeticsController.lua")
+    assert "tostring(rider)" not in text, (
+        "rider cache must not key recreation by tostring(instance): rider clones reuse the same name"
+    )
+    assert "_riderInstances" in text, "controller must remember the exact styled rider instance per racer"
+    assert "self._riderInstances[racer] == rider" in text, (
+        "cache hit must require the current rider to be the same Instance that was previously styled"
+    )
+
+
 def test_rcp07_bootstrap_starts_cosmetics_with_other_presentation_owners() -> None:
     bootstrap = read("src/client/Bootstrap.client.lua")
     assert 'WaitForChild("RacerCosmeticsController")' in bootstrap
