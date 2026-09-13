@@ -120,6 +120,7 @@ local function createActiveRacer(player: Player)
 	model:SetAttribute("DebugTarget", true)
 	model:SetAttribute("OwnerUserId", player.UserId)
 	model:SetAttribute("RecoveryCount", 0)
+	model:SetAttribute("CameraMinFollowY", M0SceneConfig.CameraMinFollowY)
 	activeRacer = racer
 	return racer
 end
