@@ -55,6 +55,10 @@ return {
 		TypicalDuration = 0.10,
 		MinimumDuration = 0.08,
 		MaximumDuration = 0.15,
+		-- BG-04 human evidence showed the body can free-fall almost a stud while
+		-- the old colliders are retired and the new HUB->TIP shape is still growing.
+		-- Counter gravity only during this tiny transition; no X/Z force or anchoring.
+		GravityCompensationFraction = 1.0,
 	},
 	Motor = {
 		AngularVelocity = -8.0,
