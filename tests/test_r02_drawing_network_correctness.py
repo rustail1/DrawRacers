@@ -10,10 +10,11 @@ def read(path: str) -> str:
 def test_r02_semantic_sampling_is_decoupled_from_visual_preview():
     drawing = read("src/client/Controllers/DrawingController.lua")
     assert "RawSampleMinMovementNormalized" in drawing
-    assert "_semanticPixelPoints" in drawing
-    assert "_tryAppendSemanticPoint" in drawing
+    assert "_rawSemanticPoints" in drawing
+    assert "_tryAppendRawSemanticPoint" in drawing
     assert "MaxRawPoints" in drawing
     assert "_livePoints" in drawing
+    assert "self:_toSemantic(point)" in drawing
 
 
 def test_r02_client_rejects_obvious_too_short_payload_before_remote():
