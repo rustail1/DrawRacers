@@ -158,21 +158,18 @@ def test_r14_6_g0_fall_recovery_respawns_only_the_racer() -> None:
     assert "activeRacer:Destroy()" in harness
 
 
-def test_r14_7_atomic_redraw_rolls_back_partial_commit_failure() -> None:
+def test_r14_7_redraw_keeps_pair_and_side_owners_persistent() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
     reshape = pair[pair.index("function LegPairAssembly:BeginGeometryReshape"):pair.index("function LegPairAssembly:SetReshapeProgress")]
-    assert "pcall" in reshape
-    assert "commitOk" in reshape
-    assert "commitError" in reshape
-    assert "oldLeft:SetRetiring(true)" in reshape
-    assert "oldRight:SetRetiring(true)" in reshape
-    assert "oldLeft:SetRetiring(false)" in reshape
-    assert "oldRight:SetRetiring(false)" in reshape
-    assert "stagedLeft:Destroy()" in reshape
-    assert "stagedRight:Destroy()" in reshape
-    assert reshape.index("stagedLeft:Commit()") < reshape.index("oldLeft:Destroy()")
-    assert reshape.index("stagedRight:Commit()") < reshape.index("oldRight:Destroy()")
+
+    assert "self.leftLeg:ReplaceGeometry(shapeSpec)" in reshape
+    assert "self.rightLeg:ReplaceGeometry(shapeSpec)" in reshape
+    assert "self.leftLeg:SetReshapeProgress(0)" in reshape
+    assert "self.rightLeg:SetReshapeProgress(0)" in reshape
+    for obsolete in ["stagedLeft", "stagedRight", "oldLeft", "oldRight", "SetRetiring", ":Commit()"]:
+        assert obsolete not in reshape
+
     apply = runtime[runtime.index("function RacerRuntime:_ApplyShapeSpec"):runtime.index("function RacerRuntime:ApplyShape")]
     assert "self.legPair:BeginGeometryReshape(shapeSpec)" in apply
     assert "LegPairAssembly.new" not in apply

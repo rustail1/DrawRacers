@@ -23,7 +23,8 @@ def test_bg04_reshape_has_bounded_gravity_support_on_stable_pair() -> None:
     begin = pair.split("function LegPairAssembly:BeginGeometryReshape", 1)[1].split(
         "function LegPairAssembly:SetReshapeProgress", 1
     )[0]
-    assert begin.index("_SetReshapeSupportEnabled(true)") < begin.index("oldLeft:Destroy()")
+    assert begin.index("_SetReshapeSupportEnabled(true)") < begin.index("self.leftLeg:ReplaceGeometry(shapeSpec)")
+    assert "oldLeft:Destroy()" not in begin and "oldRight:Destroy()" not in begin
 
 
 def test_bg05_recovery_is_owned_by_racer_runtime_before_teleport() -> None:

@@ -35,7 +35,8 @@ def test_r17_10_production_uses_one_shared_axle_motor_for_both_rigid_sides() -> 
     for token in [
         'joint.Name = "AxleJoint"',
         "Enum.ActuatorType.Motor",
-        "PhysicsConfig.Motor.AngularVelocity",
+        "local motor = PhysicsConfig.Motor",
+        "joint.AngularVelocity = motor.AngularVelocity",
         'side = "Left"',
         'side = "Right"',
         "RightPhaseOffsetDegrees",
@@ -87,31 +88,27 @@ def test_r17_14_redraw_replaces_only_geometry_and_preserves_one_axle_phase() -> 
     reshape = pair.split("function LegPairAssembly:BeginGeometryReshape", 1)[1].split(
         "function LegPairAssembly:SetReshapeProgress", 1
     )[0]
-    helper = pair.split("local function buildStagedSides", 1)[1].split(
-        "function LegPairAssembly:ReplaceGeometry", 1
-    )[0]
 
     assert "self.legPair:BeginGeometryReshape(shapeSpec)" in apply
     assert "LegPairAssembly.new" not in apply
     assert "self.legPair:SetEnabled" in apply
 
     for token in [
-        "stagedLeft",
-        "stagedRight",
-        "oldLeft",
-        "oldRight",
-        "stagedLeft:Commit()",
-        "stagedRight:Commit()",
-        "oldLeft:Destroy()",
-        "oldRight:Destroy()",
+        "self.leftLeg:ReplaceGeometry(shapeSpec)",
+        "self.rightLeg:ReplaceGeometry(shapeSpec)",
+        "self.leftLeg:SetReshapeProgress(0)",
+        "self.rightLeg:SetReshapeProgress(0)",
     ]:
-        assert token in reshape, f"missing stable-axle geometry reshape token: {token}"
+        assert token in reshape, f"missing persistent-side geometry reshape token: {token}"
 
-    assert "self.axleRoot" in helper
-    assert 'Instance.new("HingeConstraint")' not in reshape
-    assert 'Instance.new("HingeConstraint")' not in helper
-    assert reshape.index("stagedLeft:Commit()") < reshape.index("oldLeft:Destroy()")
-    assert reshape.index("stagedRight:Commit()") < reshape.index("oldRight:Destroy()")
+    for obsolete in [
+        "buildStagedSides", "stagedLeft", "stagedRight", "oldLeft", "oldRight",
+        "SetRetiring", "LegAssembly.new", 'Instance.new("HingeConstraint")',
+    ]:
+        assert obsolete not in reshape, f"legacy redraw handoff remains: {obsolete}"
+
+    assert "self.axleRoot.CFrame =" not in reshape
+    assert "self.joint" not in reshape
 
 
 def test_r17_contract_docs_record_shared_axle_opposed_phase_and_unbounded_yaw_without_passing_human_gate() -> None:
