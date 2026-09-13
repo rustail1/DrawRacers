@@ -99,8 +99,8 @@ function B09TwoLegPhaseSpec.run()
 	assert(right:GetModel().Name == "RightLeg")
 	assertStructuralPair(racer)
 
-	-- Redraw preserves the one live axle phase. Both depth-separated sides keep
-	-- their fixed 180-degree relation; there is no independent right motor to recover or drift.
+	-- Redraw preserves the one live pair and axle phase. Both depth-separated
+	-- sides keep their fixed 180-degree relation; there is no pair handoff.
 	local pairBefore = racer:GetLegPair()
 	local axleBefore = pairBefore:GetRoot()
 	local geometry = PhysicsConfig.LegGeometry
@@ -111,7 +111,7 @@ function B09TwoLegPhaseSpec.run()
 
 	racer:ApplyShape(SHAPE_B, false)
 	local pairAfter = racer:GetLegPair()
-	assert(pairAfter ~= pairBefore, "redraw must replace shared pair")
+	assert(pairAfter == pairBefore, "redraw must preserve shared pair")
 	local phaseAfter = pairAfter:GetPhaseDegrees()
 	assert(angularDistanceDegrees(phaseAfter, phaseBefore) <= 0.1, "redraw must preserve the single axle phase")
 	assertStructuralPair(racer)
