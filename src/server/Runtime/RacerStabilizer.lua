@@ -11,11 +11,7 @@ local PhysicsConfig = require(
 local RacerStabilizer = {}
 RacerStabilizer.__index = RacerStabilizer
 
-export type Params = {
-	racerModel: Model,
-	body: Part,
-	laneCenterZ: number,
-}
+export type Params = { racerModel: Model, body: Part, laneCenterZ: number }
 
 local function takeAttachment(runtimeAttachments: Instance, body: Part, name: string): Attachment
 	local attachment = runtimeAttachments:FindFirstChild(name)
@@ -38,13 +34,12 @@ local function createLaneReference(model: Model, body: Part, laneCenterZ: number
 	laneReference.Transparency = 1
 	laneReference.Parent = racersRoot
 	laneReference:SetAttribute("RacerModelName", model.Name)
-
-	local referenceAttachment = Instance.new("Attachment")
-	referenceAttachment.Name = "LanePlaneReferenceAttachment"
-	referenceAttachment.Axis = Vector3.zAxis
-	referenceAttachment.SecondaryAxis = Vector3.yAxis
-	referenceAttachment.Parent = laneReference
-	return laneReference, referenceAttachment
+	local laneReferenceAttachment = Instance.new("Attachment")
+	laneReferenceAttachment.Name = "LanePlaneReferenceAttachment"
+	laneReferenceAttachment.Axis = Vector3.zAxis
+	laneReferenceAttachment.SecondaryAxis = Vector3.yAxis
+	laneReferenceAttachment.Parent = laneReference
+	return laneReference, laneReferenceAttachment
 end
 
 function RacerStabilizer.new(params: Params)
@@ -53,7 +48,6 @@ function RacerStabilizer.new(params: Params)
 	local body = params.body
 	local runtimeAttachments = model:FindFirstChild("RuntimeAttachments")
 	assert(runtimeAttachments and runtimeAttachments:IsA("Folder"), "racerModel missing RuntimeAttachments")
-
 	local laneAttachment = takeAttachment(runtimeAttachments, body, "LaneAlignAttachment")
 	local orientationAttachment = takeAttachment(runtimeAttachments, body, "OrientationAttachment")
 	orientationAttachment.Axis = Vector3.xAxis
@@ -74,7 +68,6 @@ function RacerStabilizer.new(params: Params)
 	orientationAlign.Attachment0 = orientationAttachment
 	orientationAlign.AlignType = Enum.AlignType.AllAxes
 	orientationAlign.CFrame = CFrame.identity
-	-- CR2: the cube is an arcade-upright chassis. X/Y translation remains physics-driven.
 	orientationAlign.RigidityEnabled = true
 	orientationAlign.ReactionTorqueEnabled = false
 	orientationAlign.Responsiveness = config.OrientationResponsiveness
@@ -85,48 +78,28 @@ function RacerStabilizer.new(params: Params)
 
 	model:SetAttribute("LaneHardBoundExceeded", false)
 	model:SetAttribute("LaneNormalBoundExceeded", false)
-
 	local self = setmetatable({
-		model = model,
-		body = body,
-		laneCenterZ = params.laneCenterZ,
-		laneReference = laneReference,
-		lanePlane = lanePlane,
-		orientationAlign = orientationAlign,
-		connection = nil,
-		destroyed = false,
+		model = model, body = body, laneCenterZ = params.laneCenterZ,
+		laneReference = laneReference, lanePlane = lanePlane, orientationAlign = orientationAlign,
+		connection = nil, destroyed = false,
 	}, RacerStabilizer)
-	self.connection = RunService.Heartbeat:Connect(function()
-		self:Step()
-	end)
+	self.connection = RunService.Heartbeat:Connect(function() self:Step() end)
 	return self
 end
 
 function RacerStabilizer:Step()
 	if self.destroyed or self.body == nil or self.body.Parent == nil then return end
 	local config = PhysicsConfig.Stabilization
-	local errorZ = self.body.Position.Z - self.laneCenterZ
-	local absoluteError = math.abs(errorZ)
+	local absoluteError = math.abs(self.body.Position.Z - self.laneCenterZ)
 	self.lanePlane.Enabled = true
 	self.orientationAlign.Enabled = true
 	self.model:SetAttribute("LaneNormalBoundExceeded", absoluteError > config.LaneNormalError)
 	self.model:SetAttribute("LaneHardBoundExceeded", absoluteError > config.LaneHardBound)
 end
 
-function RacerStabilizer:GetLaneConstraint(): PlaneConstraint
-	assert(not self.destroyed, "RacerStabilizer is destroyed")
-	return self.lanePlane
-end
-
-function RacerStabilizer:GetOrientationAlign(): AlignOrientation
-	assert(not self.destroyed, "RacerStabilizer is destroyed")
-	return self.orientationAlign
-end
-
-function RacerStabilizer:GetLaneCenterZ(): number
-	assert(not self.destroyed, "RacerStabilizer is destroyed")
-	return self.laneCenterZ
-end
+function RacerStabilizer:GetLaneConstraint(): PlaneConstraint assert(not self.destroyed); return self.lanePlane end
+function RacerStabilizer:GetOrientationAlign(): AlignOrientation assert(not self.destroyed); return self.orientationAlign end
+function RacerStabilizer:GetLaneCenterZ(): number assert(not self.destroyed); return self.laneCenterZ end
 
 function RacerStabilizer:Destroy()
 	if self.destroyed then return end
@@ -135,12 +108,8 @@ function RacerStabilizer:Destroy()
 	if self.lanePlane then self.lanePlane:Destroy() end
 	if self.orientationAlign then self.orientationAlign:Destroy() end
 	if self.laneReference then self.laneReference:Destroy() end
-	self.connection = nil
-	self.lanePlane = nil
-	self.orientationAlign = nil
-	self.laneReference = nil
-	self.body = nil
-	self.model = nil
+	self.connection = nil; self.lanePlane = nil; self.orientationAlign = nil; self.laneReference = nil
+	self.body = nil; self.model = nil
 end
 
 return RacerStabilizer
