@@ -27,7 +27,8 @@ def test_r09_accepted_preview_is_semantic_and_touch_layout_uses_current_rcp03_to
         assert token in drawing, f"missing R09 responsive/semantic preview token: {token}"
 
     assert "self._pendingStrokes[sequence] = copyPoints(previewPixels)" not in drawing
-    assert "points = copySemanticPoints(rawSemanticPoints)" in drawing
+    assert "local serializedRawPoints = vector2ToSemanticPoints(rawSemanticPoints)" in drawing
+    assert "points = copySemanticPoints(serializedRawPoints)" in drawing
     assert "copySemanticPoints(result.acceptedPoints)" in drawing
     assert "_presentationAnchors" in drawing
 
