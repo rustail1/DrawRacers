@@ -90,7 +90,7 @@ def test_status_docs_record_reference_feel_autodev_without_fabricating_tuning_wi
 
     for token in [
         "stable two-axis dead-zone",
-        "collision-safe redraw phase",
+        "hub-to-tip",
         "body density",
         "leg density",
         "motor speed",
@@ -100,6 +100,12 @@ def test_status_docs_record_reference_feel_autodev_without_fabricating_tuning_wi
         "r17final",
     ]:
         assert token in merged, f"status docs missing reference-feel autodev token: {token}"
+
+    current_session = session.split("## R17 CURRENT OVERRIDE", 1)[1].split("## Product state", 1)[0].lower()
+    current_features = features.split("## Current milestone / canonical override", 1)[1].split("## Bootstrap", 1)[0].lower()
+    for section in [current_session, current_features]:
+        assert "collision-safe redraw phase" not in section
+        assert "hub-to-tip" in section
 
     assert "human body feel choice pending" in merged
     assert "human review pass" not in merged
