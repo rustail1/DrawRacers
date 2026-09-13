@@ -32,10 +32,12 @@ def test_r01_geometry_has_one_authoritative_plan_owner():
     assert "local function mapPoint" not in leg
     assert "distanceFromOriginToSegment" not in leg
 
-    # Runtime still owns its legacy internal test/apply path until MR-04. It must
-    # not become a second network-authoritative canonical owner in MR-01.
+    # MR-04 routes internal/test ApplyShape through the same canonical owner
+    # instead of keeping a second StrokeMath/GeometryMath construction path.
     runtime = read("src/server/Runtime/RacerRuntime.lua")
-    assert "GeometryMath.BuildSegmentPlan" in runtime
+    assert "CanonicalLegShape.Build" in runtime
+    assert "GeometryMath.BuildSegmentPlan" not in runtime
+    assert "StrokeMath.AnchorToFirstPoint" not in runtime
     assert "ApplyValidatedShape(shapeSpec" in runtime
 
 
