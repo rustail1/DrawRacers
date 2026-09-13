@@ -8,11 +8,8 @@ local Workspace = game:GetService("Workspace")
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
 )
-local StrokeMath = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("StrokeMath")
-)
-local GeometryMath = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("GeometryMath")
+local CanonicalLegShape = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("CanonicalLegShape")
 )
 local StrokeTypes = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
@@ -57,7 +54,7 @@ local function hubOffset(sideSign: number): Vector3
 	)
 end
 
-local function makeHub(name: string, offset: Vector3, body: Part, parent: Model): Part
+local function makeCompatibilityHub(name: string, offset: Vector3, body: Part, parent: Model): Part
 	local hub = Instance.new("Part")
 	hub.Name = name
 	hub.Size = Vector3.new(0.25, 0.25, 0.25)
@@ -84,6 +81,62 @@ local function makeHub(name: string, offset: Vector3, body: Part, parent: Model)
 	bodyWeld.Parent = hub
 
 	return hub
+end
+
+local function ensureRuntimeFolder(model: Model, name: string): Folder
+	local existing = model:FindFirstChild(name)
+	if existing and existing:IsA("Folder") then
+		return existing
+	end
+
+	local folder = Instance.new("Folder")
+	folder.Name = name
+	folder.Parent = model
+	return folder
+end
+
+local function publishSpawnAttributes(model: Model, params: SpawnParams, laneCenterZ: number)
+	model:SetAttribute("RaceId", params.raceId)
+	model:SetAttribute("SlotIndex", params.slotIndex)
+	model:SetAttribute("LaneIndex", params.laneIndex)
+	model:SetAttribute("IsBot", params.isBot)
+	model:SetAttribute("ShapeVersion", 0)
+	model:SetAttribute("DebugRawPoints", 0)
+	model:SetAttribute("DebugSimplifiedPoints", 0)
+	model:SetAttribute("DebugPhysicsPoints", 0)
+	model:SetAttribute("DebugRedrawSafetyFallback", false)
+	model:SetAttribute("DebugRedrawPenetrationScore", 0)
+	model:SetAttribute("TrackId", params.trackId)
+	model:SetAttribute("Finished", false)
+	model:SetAttribute("LaneCenterZ", laneCenterZ)
+end
+
+local function makeInternalShapeSpec(normalizedPoints: { Vector2 }): ShapeSpec
+	local canonical, canonicalError = CanonicalLegShape.Build(
+		normalizedPoints,
+		PhysicsConfig.StrokeProcessing,
+		PhysicsConfig.LegGeometry
+	)
+	assert(canonical ~= nil, canonicalError or "internal shape rejected")
+	return {
+		version = 0,
+		normalizedPoints = canonical.normalizedPoints,
+		mappedPoints = canonical.mappedPoints,
+		bounds = canonical.bounds,
+		extent = canonical.extent,
+		segmentPlan = canonical.segmentPlan,
+		debugRawPointCount = canonical.debugRawPointCount,
+		debugPhysicsPointCount = canonical.debugPhysicsPointCount,
+		debugId = string.format("internal-shape-p%d", #normalizedPoints),
+	}
+end
+
+local function publishValidatedShapeState(self: any, shapeSpec: ShapeSpec)
+	self.currentShapeSpec = shapeSpec
+	self.model:SetAttribute("ShapeVersion", shapeSpec.version)
+	self.model:SetAttribute("DebugRawPoints", shapeSpec.debugRawPointCount or #shapeSpec.normalizedPoints)
+	self.model:SetAttribute("DebugSimplifiedPoints", #shapeSpec.normalizedPoints)
+	self.model:SetAttribute("DebugPhysicsPoints", shapeSpec.debugPhysicsPointCount or #shapeSpec.mappedPoints)
 end
 
 function RacerRuntime.EnsureTemplate(): Model
@@ -114,8 +167,10 @@ function RacerRuntime.EnsureTemplate(): Model
 	visualRoot.Name = "VisualRoot"
 	visualRoot.Parent = template
 
-	makeHub("LeftHub", hubOffset(-1), body, template)
-	makeHub("RightHub", hubOffset(1), body, template)
+	-- Compatibility markers are intentionally retained until MR-06. They are
+	-- body-welded markers only; LegPairAssembly owns the real shared axle/motor.
+	makeCompatibilityHub("LeftHub", hubOffset(-1), body, template)
+	makeCompatibilityHub("RightHub", hubOffset(1), body, template)
 
 	local runtimeAttachments = Instance.new("Folder")
 	runtimeAttachments.Name = "RuntimeAttachments"
@@ -134,37 +189,6 @@ function RacerRuntime.EnsureTemplate(): Model
 	return template
 end
 
-local function ensureRuntimeFolder(model: Model, name: string): Folder
-	local existing = model:FindFirstChild(name)
-	if existing and existing:IsA("Folder") then
-		return existing
-	end
-
-	local folder = Instance.new("Folder")
-	folder.Name = name
-	folder.Parent = model
-	return folder
-end
-
-local function makeInternalShapeSpec(normalizedPoints: { Vector2 }): ShapeSpec
-	local anchoredPoints = StrokeMath.AnchorToFirstPoint(normalizedPoints)
-	local plan = GeometryMath.BuildSegmentPlan(anchoredPoints, PhysicsConfig.LegGeometry)
-	assert(#plan.segmentPlan > 0, "internal shape produced no legal physical segments")
-	local bounds = StrokeMath.ComputeBounds(anchoredPoints)
-	assert(bounds ~= nil, "internal shape requires bounds")
-	return {
-		version = 0,
-		normalizedPoints = anchoredPoints,
-		mappedPoints = plan.mappedPoints,
-		bounds = bounds,
-		segmentPlan = plan.segmentPlan,
-		extent = plan.extent,
-		debugRawPointCount = #normalizedPoints,
-		debugPhysicsPointCount = #plan.mappedPoints,
-		debugId = string.format("internal-shape-p%d", #normalizedPoints),
-	}
-end
-
 function RacerRuntime.new(params: SpawnParams)
 	assert(params.slotIndex >= 1 and params.slotIndex <= 8, "slotIndex must be 1..8")
 	assert(params.laneIndex >= 1 and params.laneIndex <= 8, "laneIndex must be 1..8")
@@ -173,6 +197,7 @@ function RacerRuntime.new(params: SpawnParams)
 
 	local template = RacerRuntime.EnsureTemplate()
 	local racersRoot = Workspace:WaitForChild("Runtime"):WaitForChild("Racers")
+	local laneCenterZ = params.laneCenterZ or params.spawnCFrame.Position.Z
 
 	local model = template:Clone()
 	model.Name = string.format("Racer_%s_%d", params.raceId, params.slotIndex)
@@ -186,20 +211,7 @@ function RacerRuntime.new(params: SpawnParams)
 	if debugEnvironmentAllowed() then
 		ensureRuntimeFolder(model, "Debug")
 	end
-
-	model:SetAttribute("RaceId", params.raceId)
-	model:SetAttribute("SlotIndex", params.slotIndex)
-	model:SetAttribute("LaneIndex", params.laneIndex)
-	model:SetAttribute("IsBot", params.isBot)
-	model:SetAttribute("ShapeVersion", 0)
-	model:SetAttribute("DebugRawPoints", 0)
-	model:SetAttribute("DebugSimplifiedPoints", 0)
-	model:SetAttribute("DebugPhysicsPoints", 0)
-	model:SetAttribute("DebugRedrawSafetyFallback", false)
-	model:SetAttribute("DebugRedrawPenetrationScore", 0)
-	model:SetAttribute("TrackId", params.trackId)
-	model:SetAttribute("Finished", false)
-	model:SetAttribute("LaneCenterZ", params.laneCenterZ or params.spawnCFrame.Position.Z)
+	publishSpawnAttributes(model, params, laneCenterZ)
 
 	model:PivotTo(params.spawnCFrame)
 	model.Parent = racersRoot
@@ -207,19 +219,17 @@ function RacerRuntime.new(params: SpawnParams)
 	local stabilizer = RacerStabilizer.new({
 		racerModel = model,
 		body = body,
-		laneCenterZ = params.laneCenterZ or params.spawnCFrame.Position.Z,
+		laneCenterZ = laneCenterZ,
 	})
 	local antiStall = RacerAntiStall.new({
 		racerModel = model,
 		body = body,
 	})
 
-	local self = setmetatable({
+	return setmetatable({
 		model = model,
 		body = body,
 		legPair = nil,
-		leftLeg = nil,
-		rightLeg = nil,
 		stabilizer = stabilizer,
 		antiStall = antiStall,
 		currentShapeSpec = nil :: ShapeSpec?,
@@ -227,8 +237,6 @@ function RacerRuntime.new(params: SpawnParams)
 		_reshapeGeneration = 0,
 		destroyed = false,
 	}, RacerRuntime)
-
-	return self
 end
 
 function RacerRuntime:GetModel(): Model
@@ -272,9 +280,6 @@ end
 
 function RacerRuntime:PrepareForRecovery()
 	assert(not self.destroyed and self.model ~= nil, "PrepareForRecovery requires live RacerRuntime")
-	-- BG-05: stop the transient driver first, then force the authoritative
-	-- current pair to its complete collider state. Teleport destination and
-	-- velocity reset stay owned by the caller/recovery policy.
 	self:_CancelReshape()
 	if self.legPair ~= nil then
 		self.legPair:CompleteReshapeForRecovery()
@@ -316,7 +321,6 @@ end
 
 function RacerRuntime:_CreateInitialLegPair(shapeSpec: ShapeSpec, motorEnabled: boolean?)
 	assert(self.legPair == nil, "initial leg pair already exists")
-	local model = self.model
 	local initialPhaseDegrees = 0
 	local selectedPhaseDegrees = initialPhaseDegrees
 	local redrawSafetyFallback = false
@@ -325,14 +329,14 @@ function RacerRuntime:_CreateInitialLegPair(shapeSpec: ShapeSpec, motorEnabled: 
 
 	local buildOk, buildError = pcall(function()
 		legPair = LegPairAssembly.new({
-			racerModel = model,
+			racerModel = self.model,
 			shapeSpec = shapeSpec,
 			motorEnabled = false,
 			initialPhaseDegrees = initialPhaseDegrees,
 		})
 
 		selectedPhaseDegrees, redrawSafetyFallback, redrawPenetrationScore = RedrawSpawnSafety.ChoosePhase(
-			model,
+			self.model,
 			legPair,
 			initialPhaseDegrees
 		)
@@ -349,10 +353,8 @@ function RacerRuntime:_CreateInitialLegPair(shapeSpec: ShapeSpec, motorEnabled: 
 	assert(legPair ~= nil, "initial leg pair construction produced no persistent pair")
 
 	self.legPair = legPair
-	self.leftLeg = legPair:GetLeftLeg()
-	self.rightLeg = legPair:GetRightLeg()
-	model:SetAttribute("DebugRedrawSafetyFallback", redrawSafetyFallback)
-	model:SetAttribute("DebugRedrawPenetrationScore", redrawPenetrationScore)
+	self.model:SetAttribute("DebugRedrawSafetyFallback", redrawSafetyFallback)
+	self.model:SetAttribute("DebugRedrawPenetrationScore", redrawPenetrationScore)
 
 	if redrawSafetyFallback then
 		warn(string.format(
@@ -362,7 +364,7 @@ function RacerRuntime:_CreateInitialLegPair(shapeSpec: ShapeSpec, motorEnabled: 
 		))
 	end
 
-	return self.leftLeg, self.rightLeg
+	return legPair:GetLeftLeg(), legPair:GetRightLeg()
 end
 
 function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolean?)
@@ -377,12 +379,10 @@ function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolea
 	self:_CancelReshape()
 	local leftLeg, rightLeg = self.legPair:BeginGeometryReshape(shapeSpec)
 	self.legPair:SetEnabled(motorEnabled == true)
-	self.leftLeg = leftLeg
-	self.rightLeg = rightLeg
 	self.model:SetAttribute("DebugRedrawSafetyFallback", false)
 	self.model:SetAttribute("DebugRedrawPenetrationScore", 0)
 	self:_StartReshape()
-	return self.leftLeg, self.rightLeg
+	return leftLeg, rightLeg
 end
 
 function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: boolean?)
@@ -399,11 +399,7 @@ function RacerRuntime:ApplyValidatedShape(shapeSpec: ShapeSpec, motorEnabled: bo
 	assert(shapeSpec.version == self:GetShapeVersion() + 1, "ShapeSpec version must increment by exactly one")
 
 	local leftLeg, rightLeg = self:_ApplyShapeSpec(shapeSpec, motorEnabled)
-	self.currentShapeSpec = shapeSpec
-	self.model:SetAttribute("ShapeVersion", shapeSpec.version)
-	self.model:SetAttribute("DebugRawPoints", shapeSpec.debugRawPointCount or #shapeSpec.normalizedPoints)
-	self.model:SetAttribute("DebugSimplifiedPoints", #shapeSpec.normalizedPoints)
-	self.model:SetAttribute("DebugPhysicsPoints", shapeSpec.debugPhysicsPointCount or #shapeSpec.mappedPoints)
+	publishValidatedShapeState(self, shapeSpec)
 	return leftLeg, rightLeg
 end
 
@@ -422,8 +418,6 @@ function RacerRuntime:Destroy()
 		self.legPair:Destroy()
 		self.legPair = nil
 	end
-	self.leftLeg = nil
-	self.rightLeg = nil
 	if self.antiStall then
 		self.antiStall:Destroy()
 		self.antiStall = nil
