@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
@@ -120,6 +121,23 @@ function LegPairAssembly.new(params: BuildParams)
 	joint.Enabled = if staged then false else params.motorEnabled == true
 	joint.Parent = axleRoot
 
+	-- BG-04: human Studio evidence showed a real support hole during the 0.08-0.15s
+	-- HUB->TIP transition: old colliders retire immediately while the new pair starts
+	-- at zero length. Counter only gravity during that short interval; do not anchor,
+	-- teleport, or apply horizontal propulsion.
+	local reshapeSupportAttachment = Instance.new("Attachment")
+	reshapeSupportAttachment.Name = "ReshapeSupportAttachment"
+	reshapeSupportAttachment.Parent = body
+
+	local reshapeSupportForce = Instance.new("VectorForce")
+	reshapeSupportForce.Name = "ReshapeSupportForce"
+	reshapeSupportForce.Attachment0 = reshapeSupportAttachment
+	reshapeSupportForce.ApplyAtCenterOfMass = true
+	reshapeSupportForce.RelativeTo = Enum.ActuatorRelativeTo.World
+	reshapeSupportForce.Force = Vector3.zero
+	reshapeSupportForce.Enabled = false
+	reshapeSupportForce.Parent = body
+
 	local leftLeg = nil
 	local rightLeg = nil
 	local sideBuildOk, sideBuildError = pcall(function()
@@ -145,6 +163,8 @@ function LegPairAssembly.new(params: BuildParams)
 	if not sideBuildOk then
 		if leftLeg ~= nil then leftLeg:Destroy() end
 		if rightLeg ~= nil then rightLeg:Destroy() end
+		reshapeSupportForce:Destroy()
+		reshapeSupportAttachment:Destroy()
 		axleRoot:Destroy()
 		error(sideBuildError)
 	end
@@ -158,6 +178,9 @@ function LegPairAssembly.new(params: BuildParams)
 		joint = joint,
 		leftLeg = leftLeg,
 		rightLeg = rightLeg,
+		reshapeSupportAttachment = reshapeSupportAttachment,
+		reshapeSupportForce = reshapeSupportForce,
+		reshapeForcedComplete = false,
 		initialPhaseDegrees = initialPhaseDegrees,
 		committed = not staged,
 		destroyed = false,
@@ -207,6 +230,27 @@ function LegPairAssembly:Commit()
 	self.committed = true
 end
 
+function LegPairAssembly:_SetReshapeSupportEnabled(enabled: boolean)
+	assert(not self.destroyed, "LegPairAssembly is destroyed")
+	local force = self.reshapeSupportForce
+	if not enabled then
+		force.Force = Vector3.zero
+		force.Enabled = false
+		return
+	end
+
+	local fraction = math.clamp(PhysicsConfig.LegReshape.GravityCompensationFraction or 0, 0, 1)
+	if fraction <= 0 then
+		force.Force = Vector3.zero
+		force.Enabled = false
+		return
+	end
+
+	local supportedMass = self.body.AssemblyMass + self.axleRoot.AssemblyMass
+	force.Force = Vector3.new(0, supportedMass * Workspace.Gravity * fraction, 0)
+	force.Enabled = true
+end
+
 local function buildStagedSides(self: any, shapeSpec: ShapeSpec)
 	local geometry = PhysicsConfig.LegGeometry
 	local motor = PhysicsConfig.Motor
@@ -252,6 +296,8 @@ function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
 	assert(self.committed, "ReplaceGeometry requires a committed stable axle")
 	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
 
+	self.reshapeForcedComplete = false
+	self:_SetReshapeSupportEnabled(false)
 	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec)
 	local oldLeft = self.leftLeg
 	local oldRight = self.rightLeg
@@ -285,6 +331,8 @@ function LegPairAssembly:BeginGeometryReshape(shapeSpec: ShapeSpec)
 	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec)
 	stagedLeft:SetReshapeProgress(0)
 	stagedRight:SetReshapeProgress(0)
+	self.reshapeForcedComplete = false
+	self:_SetReshapeSupportEnabled(true)
 
 	local oldLeft = self.leftLeg
 	local oldRight = self.rightLeg
@@ -296,6 +344,7 @@ function LegPairAssembly:BeginGeometryReshape(shapeSpec: ShapeSpec)
 		stagedRight:Commit()
 	end)
 	if not commitOk then
+		self:_SetReshapeSupportEnabled(false)
 		stagedLeft:Destroy()
 		stagedRight:Destroy()
 		oldLeft:SetRetiring(false)
@@ -312,8 +361,21 @@ end
 
 function LegPairAssembly:SetReshapeProgress(progress: number)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	self.leftLeg:SetReshapeProgress(progress)
-	self.rightLeg:SetReshapeProgress(progress)
+	local effectiveProgress = if self.reshapeForcedComplete then 1 else math.clamp(progress, 0, 1)
+	if self.reshapeSupportForce.Enabled then
+		self:_SetReshapeSupportEnabled(true)
+	end
+	self.leftLeg:SetReshapeProgress(effectiveProgress)
+	self.rightLeg:SetReshapeProgress(effectiveProgress)
+	if effectiveProgress >= 1 then
+		self:_SetReshapeSupportEnabled(false)
+	end
+end
+
+function LegPairAssembly:CompleteReshapeForRecovery()
+	assert(not self.destroyed, "LegPairAssembly is destroyed")
+	self.reshapeForcedComplete = true
+	self:SetReshapeProgress(1)
 end
 
 function LegPairAssembly:SetEnabled(enabled: boolean)
@@ -330,12 +392,17 @@ end
 
 function LegPairAssembly:Destroy()
 	if self.destroyed then return end
+	self:_SetReshapeSupportEnabled(false)
 	self.destroyed = true
 	if self.leftLeg then self.leftLeg:Destroy() end
 	if self.rightLeg then self.rightLeg:Destroy() end
+	if self.reshapeSupportForce then self.reshapeSupportForce:Destroy() end
+	if self.reshapeSupportAttachment then self.reshapeSupportAttachment:Destroy() end
 	if self.axleRoot then self.axleRoot:Destroy() end
 	self.leftLeg = nil
 	self.rightLeg = nil
+	self.reshapeSupportForce = nil
+	self.reshapeSupportAttachment = nil
 	self.axleRoot = nil
 	self.joint = nil
 	self.body = nil
