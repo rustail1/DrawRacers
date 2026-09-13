@@ -15,6 +15,7 @@ LegDriveAssembly.__index = LegDriveAssembly
 
 export type BuildParams = {
 	body: Part,
+	bodyMount: Attachment,
 	container: Instance,
 	side: string,
 	initialPhaseDegrees: number,
@@ -38,30 +39,23 @@ end
 function LegDriveAssembly.new(params: BuildParams)
 	assert(params.side == "Left" or params.side == "Right", "LegDriveAssembly side must be Left or Right")
 	assert(params.body:IsA("Part"), "LegDriveAssembly requires BodyCollider Part")
+	assert(params.bodyMount:IsA("Attachment"), "LegDriveAssembly requires explicit body mount")
+	assert(params.bodyMount.Parent == params.body, "LegDriveAssembly body mount must belong to BodyCollider")
 	assert(type(params.initialPhaseDegrees) == "number" and isFinite(params.initialPhaseDegrees), "initial phase must be finite")
 	CollisionGroups.ensure()
 
 	local body = params.body
+	local bodyMount = params.bodyMount
 	local side = params.side
 	local model = Instance.new("Model")
 	model.Name = side .. "Drive"
 	model:SetAttribute("Side", side)
 	model.Parent = params.container
 
-	local pivotX = if side == "Left" then -body.Size.X / 2 else body.Size.X / 2
-	local bodyAttachment = Instance.new("Attachment")
-	bodyAttachment.Name = side .. "BodyDriveAttachment"
-	bodyAttachment.Position = Vector3.new(pivotX, 0, 0)
-	bodyAttachment.Axis = Vector3.zAxis
-	bodyAttachment.SecondaryAxis = Vector3.xAxis
-	bodyAttachment.Parent = body
-
 	local driveRoot = Instance.new("Part")
 	driveRoot.Name = "DriveRoot"
 	configureRoot(driveRoot)
-	driveRoot.CFrame = body.CFrame
-		* CFrame.new(pivotX, 0, 0)
-		* CFrame.Angles(0, 0, math.rad(params.initialPhaseDegrees))
+	driveRoot.CFrame = bodyMount.WorldCFrame * CFrame.Angles(0, 0, math.rad(params.initialPhaseDegrees))
 	driveRoot.Parent = model
 
 	local driveAttachment = Instance.new("Attachment")
@@ -73,7 +67,7 @@ function LegDriveAssembly.new(params: BuildParams)
 	local motor = PhysicsConfig.Motor
 	local joint = Instance.new("HingeConstraint")
 	joint.Name = "DriveJoint"
-	joint.Attachment0 = bodyAttachment
+	joint.Attachment0 = bodyMount
 	joint.Attachment1 = driveAttachment
 	joint.ActuatorType = Enum.ActuatorType.Motor
 	joint.AngularVelocity = 0
@@ -91,9 +85,8 @@ function LegDriveAssembly.new(params: BuildParams)
 	return setmetatable({
 		model = model,
 		body = body,
+		bodyMount = bodyMount,
 		side = side,
-		pivotX = pivotX,
-		bodyAttachment = bodyAttachment,
 		driveRoot = driveRoot,
 		driveAttachment = driveAttachment,
 		joint = joint,
@@ -137,10 +130,9 @@ function LegDriveAssembly:Destroy()
 	if self.destroyed then return end
 	self.destroyed = true
 	if self.leg then self.leg:Destroy() end
-	if self.bodyAttachment then self.bodyAttachment:Destroy() end
 	if self.model then self.model:Destroy() end
 	self.leg = nil
-	self.bodyAttachment = nil
+	self.bodyMount = nil
 	self.driveAttachment = nil
 	self.driveRoot = nil
 	self.joint = nil
