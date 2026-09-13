@@ -114,12 +114,15 @@ def test_r16_3b_internal_apply_shape_cannot_bypass_first_point_origin() -> None:
     runtime = read("src/server/Runtime/RacerRuntime.lua")
 
     internal_shape = runtime.split("local function makeInternalShapeSpec", 1)[1].split(
-        "function RacerRuntime.new", 1
+        "local function publishValidatedShapeState", 1
     )[0]
-    assert "StrokeMath.AnchorToFirstPoint(normalizedPoints)" in internal_shape
-    assert "GeometryMath.BuildSegmentPlan(anchoredPoints, PhysicsConfig.LegGeometry)" in internal_shape
-    assert "normalizedPoints = anchoredPoints" in internal_shape
-    assert "StrokeMath.ComputeBounds(anchoredPoints)" in internal_shape
+    assert "CanonicalLegShape.Build" in internal_shape
+    assert "PhysicsConfig.StrokeProcessing" in internal_shape
+    assert "PhysicsConfig.LegGeometry" in internal_shape
+    assert "normalizedPoints = canonical.normalizedPoints" in internal_shape
+    assert "segmentPlan = canonical.segmentPlan" in internal_shape
+    assert "StrokeMath." not in internal_shape
+    assert "GeometryMath." not in internal_shape
     assert "CenterOnBounds" not in internal_shape
 
 
