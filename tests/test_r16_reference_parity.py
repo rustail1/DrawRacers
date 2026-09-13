@@ -72,7 +72,11 @@ def test_r16_3_one_shape_builds_two_same_xy_legs_about_fixed_pivot() -> None:
 
     assert "local mapped = point * geometry.LegCanvasHalfSpan" in geometry
     assert "MaxLegExtentFromHub" in geometry
-    assert "stagedLegPair = LegPairAssembly.new" in runtime
+    initial = runtime.split("function RacerRuntime:_CreateInitialLegPair", 1)[1].split(
+        "function RacerRuntime:_ApplyShapeSpec", 1
+    )[0]
+    assert initial.count("LegPairAssembly.new") == 1
+    assert "legPair:SetInitialPhaseDegrees(selectedPhaseDegrees)" in initial
     assert "shapeSpec = shapeSpec" in runtime
     assert 'side = "Left"' in pair and 'side = "Right"' in pair
     assert "shapeSpec = params.shapeSpec" in pair
