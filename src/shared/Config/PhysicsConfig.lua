@@ -38,8 +38,11 @@ return {
 		InnerHubNoCollisionRadius = 0.65,
 		MinimumMappedSegmentLength = 0.08,
 		SegmentOverlapAllowance = 0.06,
+		-- BG-03: the stable axle is centered on the cube side plane. The previous
+		-- -0.35 Y offset made otherwise-canonical shapes look detached/low relative
+		-- to the visible 3-stud cube even though the Z sockets were correct.
 		HubOffsetX = 0.0,
-		HubOffsetY = -0.35,
+		HubOffsetY = 0.0,
 		-- Legacy/debug hub markers remain slightly outside the visible cube. The
 		-- production R17 shared pair mounts its rigid side roots exactly on the
 		-- canonical 3-stud cube surfaces using LegSocketZAbs.
