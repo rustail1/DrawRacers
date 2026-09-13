@@ -10,12 +10,13 @@ def read(path: str) -> str:
 def test_r16_3b_history_is_superseded_by_cr2_fixed_visible_pivot() -> None:
     decision = read("docs/DECISION_LOG_R16_3B_STROKE_ORIGIN_REFERENCE_PARITY_2026-09-10.md")
     cr2 = read("docs/superpowers/specs/2026-09-14-core-repair-v2-twin-pivot-design.md")
-    shape = read("docs/73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md")
+    current = read("docs/CR2_CURRENT_SOURCE_OF_TRUTH.md")
     assert "R16.3B" in decision
     assert "supersed" in cr2.lower()
     assert "fixed pivot" in cr2.lower()
-    assert "CORE REPAIR v2" in shape
-    assert "fixed pivot" in shape.lower()
+    assert "CORE REPAIR v2" in current
+    assert "fixed pivot" in current.lower()
+    assert "`73`" in current
 
 
 def test_r16_3b_shared_math_keeps_wide_isotropic_surface_but_no_longer_translates_shape() -> None:
@@ -40,7 +41,7 @@ def test_r16_3b_authoritative_shape_uses_fixed_pivot_without_network_schema_expa
     service = read("src/server/Services/LegShapeService.lua")
     builder = read("src/shared/Math/CanonicalLegShape.lua")
     types = read("src/shared/Types/StrokeTypes.lua")
-    network = read("docs/22_NETWORK_DATA_CONTRACTS.md")
+    current = read("docs/CR2_CURRENT_SOURCE_OF_TRUTH.md")
     assert "CanonicalLegShape.Build" in service
     assert "START_OFF_PIVOT" in builder
     assert "GeometryMath.BuildSegmentPlan" in builder
@@ -49,8 +50,8 @@ def test_r16_3b_authoritative_shape_uses_fixed_pivot_without_network_schema_expa
     submit = types.split("export type SubmitStrokePayload", 1)[1].split("export type StrokeResultPayload", 1)[0]
     assert "sequence" in submit and "points" in submit
     assert "pivot" not in submit.lower()
-    assert "CORE REPAIR v2" in network
-    assert "payload schema unchanged" in network.lower()
+    assert "CORE REPAIR v2" in current
+    assert "payload schema unchanged" in current.lower()
 
 
 def test_r16_3b_draw_ui_uses_full_wide_surface_and_visible_fixed_pivot() -> None:

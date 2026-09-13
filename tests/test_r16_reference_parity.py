@@ -7,6 +7,10 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def current_cr2() -> str:
+    return read("docs/CR2_CURRENT_SOURCE_OF_TRUTH.md")
+
+
 def test_r16_1_body_orientation_is_arcade_upright() -> None:
     stabilizer = read("src/server/Runtime/RacerStabilizer.lua")
     assert "Enum.AlignType.AllAxes" in stabilizer
@@ -34,13 +38,14 @@ def test_r16_2_cr2_horizontal_drive_pivots_have_one_owner() -> None:
     assert "LeftHub" not in runtime and "RightHub" not in runtime
 
 
-def test_r16_2_studio_instance_contract_is_superseded_by_cr2_twin_drive_layout() -> None:
-    studio = read("docs/65_STUDIO_DATAMODEL_INSTANCE_PROPERTY_SPEC.md")
-    assert "CORE REPAIR v2" in studio
-    assert "LeftDrive" in studio
-    assert "RightDrive" in studio
-    assert "DriveJoint" in studio
-    assert "AxleRoot" not in studio.split("CORE REPAIR v2", 1)[1]
+def test_r16_2_current_source_records_cr2_twin_drive_layout() -> None:
+    current = current_cr2()
+    assert "CORE REPAIR v2" in current
+    assert "LeftDrive" in current
+    assert "RightDrive" in current
+    assert "DriveJoint" in current
+    section = current.split("Twin-pivot / twin-drive topology", 1)[1]
+    assert "AxleRoot" in section and "no current" in section
 
 
 def test_r16_3_one_shape_builds_two_same_xy_legs_about_two_horizontal_pivots() -> None:
@@ -83,68 +88,65 @@ def test_r16_3b_internal_apply_shape_cannot_bypass_fixed_pivot() -> None:
     assert "GeometryMath." not in internal_shape
 
 
-def test_cr2_docs_supersede_r16_first_point_translation_and_shared_axle() -> None:
-    shape_doc = read("docs/73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md")
-    core = read("docs/03_CORE_MECHANICS_SPEC.md")
-    architecture = read("docs/21_SYSTEM_CLASS_ARCHITECTURE.md")
-    for doc in [shape_doc, core, architecture]:
-        assert "CORE REPAIR v2" in doc
-        assert "fixed pivot" in doc.lower()
-        assert "LegDriveAssembly" in doc
-        assert "twin" in doc.lower() or "two" in doc.lower()
+def test_cr2_current_source_supersedes_r16_first_point_translation_and_shared_axle() -> None:
+    current = current_cr2()
+    design = read("docs/superpowers/specs/2026-09-14-core-repair-v2-twin-pivot-design.md")
+    assert "CORE REPAIR v2" in current
+    assert "fixed pivot" in current.lower()
+    assert "LegDriveAssembly" in current
+    assert "twin" in current.lower()
+    assert "shared axle" in current.lower() and "retired" in current.lower()
+    assert "fixed pivot" in design.lower()
 
 
 def test_cr2_network_contract_returns_fixed_pivot_authoritative_points() -> None:
-    network = read("docs/22_NETWORK_DATA_CONTRACTS.md")
-    stroke_result = network.split("### `StrokeResult`", 1)[1].split("### `CosmeticResult`", 1)[0]
-    assert "acceptedPoints?" in stroke_result
-    assert "fixed pivot" in stroke_result.lower()
-    assert "client renders" in stroke_result.lower()
-    assert "payload schema unchanged" in network.lower()
+    current = current_cr2()
+    assert "StrokeResult.acceptedPoints" in current
+    assert "fixed-pivot" in current.lower() or "fixed pivot" in current.lower()
+    assert "client renders" in current.lower()
+    assert "payload schema unchanged" in current.lower()
 
 
-def test_cr2_status_docs_keep_human_g0_pending() -> None:
-    session = read("docs/SESSION.md")
-    features = read("docs/FEATURE_LIST.md")
-    for doc in [session, features]:
-        assert "CORE REPAIR v2" in doc
-        assert "G0" in doc
-        assert "HUMAN" in doc.upper()
-        assert "PASS" not in doc.split("CORE REPAIR v2", 1)[-1][:250].upper() or "PENDING" in doc.upper()
+def test_cr2_status_keeps_human_g0_pending() -> None:
+    current = current_cr2()
+    assert "CORE REPAIR v2" in current
+    assert "G0" in current
+    assert "HUMAN STUDIO PENDING" in current
+    assert "B17/G0 HUMAN_GATE PENDING" in current
 
 
-def test_cr2_owner_docs_match_upright_and_fixed_pivot_contract() -> None:
-    core = read("docs/03_CORE_MECHANICS_SPEC.md")
-    tuning = read("docs/16_BALANCE_TUNING.md")
-    assert "fixed pivot" in core.lower()
-    assert "twin" in core.lower() or "two drive" in core.lower()
-    assert "upright" in core.lower()
-    assert "LegCanvasHalfSpan = 3.2" in tuning
-    assert "MaxLegExtentFromHub = 4.5" in tuning
-    assert "TargetTipSpeed" in tuning
+def test_cr2_owner_contract_matches_upright_fixed_pivot_and_current_tuning() -> None:
+    current = current_cr2()
+    assert "fixed pivot" in current.lower()
+    assert "twin" in current.lower()
+    assert "upright" in current.lower()
+    assert "LegCanvasHalfSpan = 3.2" in current
+    assert "MaxLegExtentFromHub = 4.5" in current
+    assert "TargetTipSpeed = 10.5" in current
 
 
-def test_r16_technical_design_does_not_reintroduce_free_body_roll() -> None:
-    tech = read("docs/11_TECH_DESIGN_ROBLOX.md")
-    stabilization = tech.split("## 10. Body stabilization", 1)[1].split("## 11. Network model", 1)[0]
-    assert "upright" in stabilization.lower()
-    assert "RigidityEnabled" in stabilization
-    assert "prevent endless roll" not in stabilization
+def test_r16_technical_contract_does_not_reintroduce_free_body_roll() -> None:
+    current = current_cr2()
+    assert "upright" in current.lower()
+    assert "RigidityEnabled = true" in current
+    assert "no intentional" in current.lower() or "adds no intentional" in current.lower()
 
 
 def test_r16_readme_entrypoint_tracks_cr2_and_human_pending() -> None:
     readme = read("README.md")
-    assert "CORE REPAIR v2" in readme
-    assert "G0" in readme
-    assert "HUMAN" in readme.upper()
+    current = current_cr2()
+    assert "CR2_CURRENT_SOURCE_OF_TRUTH.md" in readme
+    assert "CORE REPAIR v2" in current
+    assert "G0" in current
+    assert "HUMAN" in current.upper()
 
 
-def test_r16_qa_matrix_keeps_exact_upright_and_cr2_redraw_acceptance() -> None:
-    qa = read("docs/24_TESTING_QA_MATRIX.md")
-    assert "upright" in qa.lower()
-    assert "twin" in qa.lower() or "DriveJoint" in qa
-    assert "old physical" in qa.lower()
-    assert "commit" in qa.lower()
+def test_r16_qa_contract_keeps_upright_and_cr2_redraw_acceptance() -> None:
+    current = current_cr2()
+    assert "upright" in current.lower()
+    assert "twin" in current.lower() or "DriveJoint" in current
+    assert "old physical" in current.lower()
+    assert "commit" in current.lower()
 
 
 def test_latest_phase_decision_is_180_with_bounded_twin_drive_correction() -> None:

@@ -7,6 +7,10 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def current_cr2() -> str:
+    return read("docs/CR2_CURRENT_SOURCE_OF_TRUTH.md")
+
+
 def test_r17_9_camera_uses_full_yaw_target_and_smoothed_rendered_orbit() -> None:
     camera = read("src/client/Controllers/RaceCameraController.lua")
     math = read("src/shared/Math/CameraMath.lua")
@@ -72,43 +76,29 @@ def test_r17_14_redraw_replaces_only_geometry_and_preserves_twin_drive_identity(
         assert obsolete not in stage
 
 
-def test_r17_contract_docs_are_superseded_by_cr2_twin_pivot_without_passing_human_gate() -> None:
-    cr2 = read("docs/superpowers/specs/2026-09-14-core-repair-v2-twin-pivot-design.md")
-    architecture = read("docs/21_SYSTEM_CLASS_ARCHITECTURE.md")
-    qa = read("docs/24_TESTING_QA_MATRIX.md")
-    assert "shared axle" in cr2.lower() and "retire" in cr2.lower()
-    for doc in [architecture, qa]:
-        assert "CORE REPAIR v2" in doc
-        assert "LegDriveAssembly" in doc or "DriveJoint" in doc
-    assert "HUMAN" in qa.upper()
+def test_r17_contract_is_superseded_by_cr2_twin_pivot_without_passing_human_gate() -> None:
+    current = current_cr2()
+    design = read("docs/superpowers/specs/2026-09-14-core-repair-v2-twin-pivot-design.md")
+    assert "shared axle" in current.lower() and "retired" in current.lower()
+    assert "LegDriveAssembly" in current and "DriveJoint" in current
+    assert "HUMAN STUDIO PENDING" in current
+    assert "fixed pivot" in design.lower()
 
 
-def test_r17_navigation_map_routes_current_twin_drive_and_full_yaw_owners() -> None:
-    navigation = read("docs/ARCHITECTURE_MAP.md")
-    for token in ["LegDriveAssembly.lua", "LegPairAssembly.lua", "DriveJoint", "full 360", "G0"]:
-        assert token.lower() in navigation.lower()
-    assert "one shared axle" not in navigation.lower().split("CORE REPAIR v2", 1)[-1]
+def test_r17_current_source_routes_twin_drive_and_full_yaw_owners() -> None:
+    current = current_cr2()
+    for token in ["LegDriveAssembly", "LegPairAssembly", "DriveJoint", "full 360", "G0"]:
+        assert token.lower() in current.lower()
+    assert "no current `AxleRoot`/`AxleJoint` shared-motor owner" in current
 
 
-def test_r17_exact_geometry_and_instance_docs_use_twin_drive_contract() -> None:
-    geometry = read("docs/73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md")
-    studio = read("docs/65_STUDIO_DATAMODEL_INSTANCE_PROPERTY_SPEC.md")
-    for doc in [geometry, studio]:
-        assert "CORE REPAIR v2" in doc
-        assert "LeftDrive" in doc
-        assert "RightDrive" in doc
-        assert "DriveJoint" in doc
-        assert "fixed pivot" in doc.lower()
-        assert "HUMAN" in doc.upper()
+def test_r17_exact_geometry_and_instance_contract_uses_twin_drive() -> None:
+    current = current_cr2()
+    for token in ["CORE REPAIR v2", "LeftDrive", "RightDrive", "DriveJoint", "fixed pivot", "HUMAN"]:
+        assert token.lower() in current.lower()
 
 
-def test_r17_core_tuning_and_technical_docs_match_twin_drive_and_camera() -> None:
-    core = read("docs/03_CORE_MECHANICS_SPEC.md")
-    tuning = read("docs/16_BALANCE_TUNING.md")
-    tech = read("docs/11_TECH_DESIGN_ROBLOX.md")
-    for doc in [core, tuning, tech]:
-        assert "CORE REPAIR v2" in doc
-        assert "LegDriveAssembly" in doc or "twin" in doc.lower()
-    assert "TargetTipSpeed" in tuning
-    assert "RightPhaseOffsetDegrees = 180" in tuning
-    assert "full 360" in tuning.lower()
+def test_r17_core_tuning_and_camera_contract_match_twin_drive() -> None:
+    current = current_cr2()
+    for token in ["CORE REPAIR v2", "LegDriveAssembly", "TargetTipSpeed", "RightPhaseOffsetDegrees = 180", "full 360"]:
+        assert token.lower() in current.lower()

@@ -1,3 +1,9 @@
+# CORE REPAIR v2 — CURRENT ENTRYPOINT
+
+**Current mechanical source of truth:** `docs/CR2_CURRENT_SOURCE_OF_TRUTH.md`. Read it before the historical R16/R17 sections below. It supersedes old first-point anchoring, shared-axle/Z-socket, and destructive physical-redraw wording. Normal Studio mode is `G0`; live physics/product acceptance remains **HUMAN STUDIO PENDING**.
+
+---
+
 # Draw Racers
 
 Roblox production repository for **Draw Racers**.
