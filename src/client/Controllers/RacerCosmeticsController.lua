@@ -20,6 +20,7 @@ type Style = {
 }
 
 type SignatureMap = { [Model]: string }
+type RiderInstanceMap = { [Model]: Model }
 
 local function styleParts(root: Instance?, style: Style, tintOnly: boolean?)
 	if root == nil then
@@ -91,6 +92,7 @@ function RacerCosmeticsController.new()
 		_started = false,
 		_connection = nil :: RBXScriptConnection?,
 		_signatures = {} :: SignatureMap,
+		_riderInstances = {} :: RiderInstanceMap,
 	}, RacerCosmeticsController)
 end
 
@@ -117,9 +119,8 @@ function RacerCosmeticsController:_applyRacer(racer: Model)
 		cubeId,
 		riderId,
 		tostring(shapeVersion),
-		tostring(rider),
 	}, "|")
-	if self._signatures[racer] == signature then
+	if self._signatures[racer] == signature and self._riderInstances[racer] == rider then
 		return
 	end
 
@@ -127,6 +128,7 @@ function RacerCosmeticsController:_applyRacer(racer: Model)
 	applyCubeStyle(racer, cubeStyle)
 	applyRiderStyle(rider, riderStyle)
 	self._signatures[racer] = signature
+	self._riderInstances[racer] = rider
 end
 
 function RacerCosmeticsController:_step()
@@ -134,6 +136,7 @@ function RacerCosmeticsController:_step()
 	local racers = runtime and runtime:FindFirstChild("Racers")
 	if racers == nil then
 		table.clear(self._signatures)
+		table.clear(self._riderInstances)
 		return
 	end
 
@@ -147,6 +150,7 @@ function RacerCosmeticsController:_step()
 	for racer in self._signatures do
 		if active[racer] ~= true then
 			self._signatures[racer] = nil
+			self._riderInstances[racer] = nil
 		end
 	end
 end
@@ -172,6 +176,7 @@ function RacerCosmeticsController:Destroy()
 		self._connection = nil
 	end
 	table.clear(self._signatures)
+	table.clear(self._riderInstances)
 end
 
 return RacerCosmeticsController
