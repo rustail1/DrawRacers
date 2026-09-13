@@ -7,82 +7,111 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_r17_3_origin_experiment_contract() -> None:
+def test_r17_3_origin_experiment_is_historical_only_under_cr2() -> None:
     path = ROOT / "src/server/Tests/R17OriginExperiment.lua"
-    assert path.exists(), "R17.3 requires a Studio-only mechanical-origin comparison harness"
+    assert path.exists(), "R17.3 comparison harness must remain available for history/evidence"
     text = path.read_text(encoding="utf-8")
     for token in [
         'FIRST_POINT', 'BOUNDS_CENTER', 'GEOMETRY_CENTROID',
         'ROUND_01', 'LONG_BAR_01', 'SMALL_ROUND_01', 'HOOK_01', 'ASYM_01', 'SUBOPTIMAL_01',
         'R16ReferenceShapes', 'StrokeMath.AnchorToFirstPoint', 'StrokeMath.ComputeBounds',
-        'function R17OriginExperiment.RunEvidence()', '[DrawRacers][R17.3]', 'HUMAN ORIGIN CHOICE PENDING',
+        'function R17OriginExperiment.RunEvidence()', '[DrawRacers][R17.3]',
+        'HISTORICAL ORIGIN COMPARISON',
     ]:
-        assert token in text, f"missing R17.3 origin evidence token: {token}"
+        assert token in text, f"missing R17.3 historical evidence token: {token}"
+    assert 'production first-point ShapeSpec path' not in text
     assert 'LegShapeService' not in text
     assert 'RemoteEvent' not in text
     assert 'FireServer' not in text
 
 
-def test_r17_5_live_phase_evidence_contract() -> None:
+def test_r17_5_live_phase_evidence_uses_cr2_twin_drives() -> None:
     path = ROOT / "src/server/Tests/R17PhaseEvidence.lua"
-    assert path.exists(), "R17.5 requires live shared-axle opposed-phase evidence"
+    assert path.exists(), "R17.5 requires live CR2 twin-drive phase evidence"
     text = path.read_text(encoding="utf-8")
     for token in [
         'RacerRuntime', 'R16ReferenceShapes', 'RunService.Heartbeat:Wait()',
-        'PHASE_TARGET_DEGREES = 180', 'STRUCTURAL_ERROR_LIMIT = 0.15', 'MEASURE_SECONDS = 1.25',
-        'structuralPhaseErrorDegrees', 'countHinges', 'GetLegPair', 'GetPhaseDegrees',
-        'AxleJoint', 'redrawDelta <= 1.0', 'singleMotorSafe', 'axleTravel',
-        'shared-axle opposed-phase evidence starting', '[DrawRacers][R17.5]',
+        'PHASE_TARGET_DEGREES = 180', 'PHASE_ERROR_LIMIT_DEGREES', 'MEASURE_SECONDS = 1.25',
+        'GetLeftDrive()', 'GetRightDrive()', 'GetPhaseErrorDegrees()',
+        'leftDrive:GetJoint()', 'rightDrive:GetJoint()', 'DriveJoint',
+        'countHinges(racer:GetModel()) == 2',
+        'pairAfter == pairBefore', 'leftAfter == leftBefore', 'rightAfter == rightBefore',
+        'CR2 twin-drive opposed-phase evidence starting', '[DrawRacers][R17.5]',
         'function R17PhaseEvidence.RunEvidence()',
     ]:
-        assert token in text, f"missing R17.5 opposed-phase evidence token: {token}"
-    for obsolete in ['injectDrift', '_StepLegPhaseSync', 'PhaseLockRecoveryTime', 'averageMotorVelocity']:
-        assert obsolete not in text
-    assert 'AngularVelocity = -PhysicsConfig.Motor.AngularVelocity' not in text
+        assert token in text, f"missing R17.5 CR2 phase evidence token: {token}"
+    for obsolete in [
+        'pair:GetRoot()', 'pair:GetJoint()', 'AxleJoint', 'singleMotorSafe',
+        'shared-axle opposed-phase evidence starting', '_StepLegPhaseSync', 'PhaseLockRecoveryTime',
+    ]:
+        assert obsolete not in text, f"R17.5 still uses retired shared-axle token: {obsolete}"
     assert 'FireServer' not in text
 
 
-def test_r17_6_body_feel_evidence_contract() -> None:
+def test_r17_6_body_feel_evidence_retires_obsolete_absolute_motor_sweep() -> None:
     path = ROOT / "src/server/Tests/R17BodyFeelExperiment.lua"
-    assert path.exists(), "R17.6 requires isolated reference-feel candidate sweeps"
+    assert path.exists(), "R17.6 reference-feel evidence must remain selectable"
     text = path.read_text(encoding="utf-8")
     runner = read("src/server/Tests/R16TrialRunner.lua")
 
     for token in [
         'BODY_DENSITY_CANDIDATES = { 1.00, 0.60, 0.45, 0.35 }',
         'LEG_DENSITY_CANDIDATES = { 1.00, 0.60, 0.40 }',
-        'MOTOR_SPEED_CANDIDATES = { -8.0, -10.0, -11.5, -12.5 }',
         'FRICTION_CANDIDATES = { 0.45, 0.25, 0.10 }',
-        'R16TrialRunner.RunFlatTelemetry',
-        'R16TrialRunner.RunPiece',
+        'R16TrialRunner.RunFlatTelemetry', 'R16TrialRunner.RunPiece',
         'SmallSteps', 'SingleWallLow',
         'bodyContactTime', 'legContactTime', 'airTime', 'forwardDistance', 'averageSpeed', 'stuckTime',
         'maxBounceHeight', 'solverInstability',
-        'bodyDensity', 'legDensity', 'motorAngularVelocity', 'bodyFriction',
-        'PhysicsConfig.Motor.MotorMaxTorque', 'PhysicsConfig.Motor.MotorMaxAcceleration',
+        'bodyDensity', 'legDensity', 'bodyFriction',
+        'CR2 extent-aware motor sweep is retired',
         '[DrawRacers][R17.6]', 'HUMAN BODY FEEL CHOICE PENDING',
         'function R17BodyFeelExperiment.RunEvidence()',
     ]:
-        assert token in text, f"missing R17.6 reference-feel token: {token}"
+        assert token in text, f"missing R17.6 CR2 evidence token: {token}"
+
+    for obsolete in [
+        'MOTOR_SPEED_CANDIDATES', 'motorAngularVelocity', 'PhysicsConfig.Motor.AngularVelocity',
+        'pair:GetJoint()', 'AxleRoot', 'AxleJoint',
+    ]:
+        assert obsolete not in text, f"R17.6 still uses retired motor contract: {obsolete}"
+        assert obsolete not in runner, f"R16TrialRunner still uses retired motor contract: {obsolete}"
 
     for token in [
-        'function R16TrialRunner.RunFlatTelemetry',
-        'function applyTemporaryTuning',
-        'bodyDensity', 'bodyFriction', 'legDensity', 'motorAngularVelocity',
-        'GetLegPair', 'GetSegments', 'GetJoint',
-        'maxBounceHeight', 'solverInstability',
-        'options.tuning',
+        'function R16TrialRunner.RunFlatTelemetry', 'function applyTemporaryTuning',
+        'bodyDensity', 'bodyFriction', 'legDensity',
+        'LeftDrive', 'RightDrive', 'DriveJoint',
+        'maxBounceHeight', 'solverInstability', 'options.tuning',
     ]:
-        assert token in runner, f"R16TrialRunner missing temporary tuning support: {token}"
+        assert token in runner, f"R16TrialRunner missing CR2 temporary evidence support: {token}"
 
-    # Evidence must tune only temporary trial instances, never global config.
     for forbidden in [
-        'PhysicsConfig.Motor.AngularVelocity =',
+        'PhysicsConfig.Motor.TargetTipSpeed =',
         'PhysicsConfig.Motor.MotorMaxTorque =',
         'PhysicsConfig.PhysicalMaterials.LegSegment.Density =',
         'AssemblyLinearVelocity =',
     ]:
         assert forbidden not in text
+
+
+def test_cr2_studio_evidence_harnesses_do_not_call_retired_pair_api() -> None:
+    runner = read("src/server/Tests/R16TrialRunner.lua")
+    phase = read("src/server/Tests/R17PhaseEvidence.lua")
+    body = read("src/server/Tests/R17BodyFeelExperiment.lua")
+    final = read("src/server/Tests/R17FinalHarness.lua")
+
+    for path, text in [
+        ("R16TrialRunner", runner),
+        ("R17PhaseEvidence", phase),
+        ("R17BodyFeelExperiment", body),
+        ("R17FinalHarness", final),
+    ]:
+        for obsolete in ['pair:GetJoint()', 'pair:GetRoot()', 'AxleJoint']:
+            assert obsolete not in text, f"{path} still calls retired CR2 pair API: {obsolete}"
+
+    assert 'AxleRoot' not in runner
+    assert 'PhysicsConfig.Motor.AngularVelocity' not in body
+    assert 'one-axle/co-phase' not in final
+    assert 'live one-axle' not in final
 
 
 def test_r17_7_reference_course_contract() -> None:
@@ -127,7 +156,7 @@ def test_r17_8_final_harness_contract() -> None:
     for token in [
         'R16StageCHarness', 'R17OriginExperiment', 'R17PhaseEvidence',
         'R17BodyFeelExperiment', 'R17ReferenceCourseHarness', 'M0HumanHarness',
-        'function R17FinalHarness.start()',
+        'function R17FinalHarness.start()', 'CR2 twin-drive structural evidence',
     ]:
         assert token in text, f"missing R17FINAL token: {token}"
 
