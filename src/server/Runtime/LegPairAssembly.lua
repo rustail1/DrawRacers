@@ -207,10 +207,15 @@ function LegPairAssembly:Commit()
 	self.committed = true
 end
 
-local function buildStagedSides(self: any, shapeSpec: ShapeSpec, redrawBasePhaseDegrees: number?)
+local function buildStagedSides(self: any, shapeSpec: ShapeSpec)
 	local geometry = PhysicsConfig.LegGeometry
 	local motor = PhysicsConfig.Motor
-	local basePhaseDegrees = redrawBasePhaseDegrees or 0
+	-- BG-01: the shared axle keeps its live phase, but a freshly drawn shape is
+	-- mounted with the inverse live phase so its first rendered world frame has
+	-- the same orientation the player just saw on the canonical canvas. The
+	-- Right copy retains the fixed 180-degree structural opposition.
+	local currentAxlePhaseDegrees = self:GetPhaseDegrees()
+	local redrawBasePhaseDegrees = -currentAxlePhaseDegrees
 	local stagedLeft = nil
 	local stagedRight = nil
 	local buildOk, buildError = pcall(function()
@@ -220,7 +225,7 @@ local function buildStagedSides(self: any, shapeSpec: ShapeSpec, redrawBasePhase
 			shapeSpec = shapeSpec,
 			side = "Left",
 			socketZ = -geometry.LegSocketZAbs,
-			phaseDegrees = basePhaseDegrees,
+			phaseDegrees = redrawBasePhaseDegrees,
 			staged = true,
 		})
 		stagedRight = buildLeg({
@@ -229,7 +234,7 @@ local function buildStagedSides(self: any, shapeSpec: ShapeSpec, redrawBasePhase
 			shapeSpec = shapeSpec,
 			side = "Right",
 			socketZ = geometry.LegSocketZAbs,
-			phaseDegrees = basePhaseDegrees + motor.RightPhaseOffsetDegrees,
+			phaseDegrees = redrawBasePhaseDegrees + motor.RightPhaseOffsetDegrees,
 			staged = true,
 		})
 	end)
@@ -247,9 +252,7 @@ function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
 	assert(self.committed, "ReplaceGeometry requires a committed stable axle")
 	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
 
-	local currentAxlePhaseDegrees = self:GetPhaseDegrees()
-	local redrawBasePhaseDegrees = -currentAxlePhaseDegrees
-	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec, redrawBasePhaseDegrees)
+	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec)
 	local oldLeft = self.leftLeg
 	local oldRight = self.rightLeg
 	oldLeft:SetRetiring(true)
@@ -279,9 +282,7 @@ function LegPairAssembly:BeginGeometryReshape(shapeSpec: ShapeSpec)
 	assert(self.committed, "BeginGeometryReshape requires a committed stable axle")
 	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
 
-	local currentAxlePhaseDegrees = self:GetPhaseDegrees()
-	local redrawBasePhaseDegrees = -currentAxlePhaseDegrees
-	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec, redrawBasePhaseDegrees)
+	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec)
 	stagedLeft:SetReshapeProgress(0)
 	stagedRight:SetReshapeProgress(0)
 
