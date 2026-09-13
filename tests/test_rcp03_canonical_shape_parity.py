@@ -69,7 +69,8 @@ def test_rcp03_client_submits_raw_semantic_samples_and_uses_fixed_main_canvas_ma
     client = (ROOT / "src/client/Controllers/DrawingController.lua").read_text(encoding="utf-8")
 
     assert "rawSemanticPoints" in client
-    assert "points = rawSemanticPoints" in client
+    assert "local serializedRawPoints = vector2ToSemanticPoints(rawSemanticPoints)" in client
+    assert "points = serializedRawPoints" in client
     assert "semanticPointsToPixels" in client
     assert "fitSemanticPointsToPixels(self._acceptedSemanticPoints" in client, (
         "auto-fit remains allowed only for the thumbnail"
