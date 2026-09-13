@@ -154,10 +154,14 @@ def test_p6_status_records_pre_studio_closure_without_passing_human_gates() -> N
     assert decision_path.exists(), "P6 requires a dedicated pre-Studio closure decision log"
     decision = decision_path.read_text(encoding="utf-8")
 
-    for doc in [session, features, decision]:
+    # CR3 keeps detailed R16 pre-Studio history in SESSION + its dedicated decision log.
+    # FEATURE_LIST owns current scope/gates and is not required to duplicate the whole P0–P6 narrative.
+    for doc in [session, decision]:
         assert "R16 PRE-STUDIO CLOSURE P0–P6" in doc
         assert "P0" in doc and "P1" in doc and "P2" in doc
         assert "P3" in doc and "P4" in doc and "P5" in doc and "P6" in doc
+
+    for doc in [session, features, decision]:
         assert "Studio Gate A — HUMAN STUDIO PENDING" in doc
         assert "Studio Gate B — HUMAN STUDIO PENDING" in doc
         assert "Studio Gate C — HUMAN STUDIO PENDING" in doc
