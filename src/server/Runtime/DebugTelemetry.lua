@@ -29,38 +29,44 @@ local function countColliderSegments(model: Model): number
 		return count
 	end
 
-	for _, leg in legs:GetChildren() do
-		if leg:IsA("Model") then
-			local segments = leg:FindFirstChild("Segments")
-			if segments and segments:IsA("Folder") then
-				for _, child in segments:GetChildren() do
-					-- Count only canonical ShapeSpec colliders. RCP-04 keeps one
-					-- transient ReshapeTipCollider in this folder while growing the
-					-- current segment; it must not inflate gameplay/debug segment count.
-					if child:IsA("BasePart") and string.match(child.Name, "^Segment_%d+$") then
-						count += 1
-					end
-				end
-			end
+	-- CR2: physical segments now live below LeftDrive/RightDrive -> side Leg model.
+	-- Count canonical colliders recursively so telemetry follows the runtime ownership
+	-- hierarchy without owning or reconstructing geometry itself.
+	for _, descendant in legs:GetDescendants() do
+		if descendant:IsA("BasePart") and string.match(descendant.Name, "^Segment_%d+$") then
+			count += 1
 		end
 	end
 	return count
 end
 
+local function findDriveJoint(legs: Instance, driveName: string): HingeConstraint?
+	local drive = legs:FindFirstChild(driveName)
+	if not (drive and drive:IsA("Model")) then
+		return nil
+	end
+	local joint = drive:FindFirstChild("DriveJoint", true)
+	if joint and joint:IsA("HingeConstraint") then
+		return joint
+	end
+	return nil
+end
+
 local function getMotorState(model: Model): (boolean, number)
 	local legs = model:FindFirstChild("Legs")
 	if not legs then
-		return false, PhysicsConfig.Motor.AngularVelocity
+		return false, 0
 	end
-	local axleRoot = legs:FindFirstChild("AxleRoot")
-	if not (axleRoot and axleRoot:IsA("BasePart")) then
-		return false, PhysicsConfig.Motor.AngularVelocity
+
+	local leftJoint = findDriveJoint(legs, "LeftDrive")
+	local rightJoint = findDriveJoint(legs, "RightDrive")
+	if leftJoint == nil or rightJoint == nil then
+		return false, 0
 	end
-	local joint = axleRoot:FindFirstChild("AxleJoint")
-	if not (joint and joint:IsA("HingeConstraint")) then
-		return false, PhysicsConfig.Motor.AngularVelocity
-	end
-	return joint.Enabled, joint.AngularVelocity
+
+	local enabled = leftJoint.Enabled and rightJoint.Enabled
+	local meanAngularVelocity = (leftJoint.AngularVelocity + rightJoint.AngularVelocity) * 0.5
+	return enabled, meanAngularVelocity
 end
 
 local function getNumberAttribute(model: Model, name: string, fallback: number): number

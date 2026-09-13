@@ -11,11 +11,12 @@ local LegShapeService = require(script.Parent.Parent.Services:WaitForChild("LegS
 
 local B16DebugTuningSpec = {}
 
+-- CR2 fixed-pivot shape: the first semantic sample is the visible pivot.
 local SHAPE = {
-	Vector2.new(-0.8, -0.3),
-	Vector2.new(-0.35, 0.75),
-	Vector2.new(0.35, 0.75),
-	Vector2.new(0.8, -0.3),
+	Vector2.zero,
+	Vector2.new(0.35, 0.70),
+	Vector2.new(0.80, 0.40),
+	Vector2.new(1.05, -0.20),
 }
 
 local function isFiniteNumber(value: any): boolean
@@ -34,7 +35,7 @@ function B16DebugTuningSpec.run()
 	})
 
 	local result = LegShapeService.ValidateAndBuild(racer, SHAPE, false)
-	assert(result.accepted == true, "B16 setup shape must build")
+	assert(result.accepted == true, "B16 fixed-pivot setup shape must build")
 
 	local model = racer:GetModel()
 	local body = racer:GetBody()
@@ -53,7 +54,7 @@ function B16DebugTuningSpec.run()
 	assert(model:GetAttribute("DebugPhysicsPoints") == #currentShape.mappedPoints, "physics point metric mismatch")
 	assert((model:GetAttribute("DebugColliderSegments") :: number) > 0, "collider segment metric missing")
 	assert((model:GetAttribute("DebugBodySpeed") :: number) >= 0, "body speed metric missing")
-	assert(model:GetAttribute("DebugMotorEnabled") == false, "disabled setup motor must report false")
+	assert(model:GetAttribute("DebugMotorEnabled") == false, "disabled twin drives must report false")
 	assert(isFiniteNumber(model:GetAttribute("DebugMotorAngularVelocity")), "motor angular velocity metric missing")
 	assert(model:GetAttribute("DebugStuckState") == false, "stuck must wait for a full progress window")
 	assert(isFiniteNumber(model:GetAttribute("DebugLaneDeviation")), "lane deviation metric missing")
@@ -61,13 +62,23 @@ function B16DebugTuningSpec.run()
 	assert(model:GetAttribute("DebugProgress") == 0.375, "progress metric mismatch")
 
 	local pair = racer:GetLegPair()
-	assert(pair ~= nil, "B16 setup shared pair missing")
-	local joint = pair:GetJoint()
-	assert(joint.Name == "AxleJoint" and joint:IsA("HingeConstraint"), "B16 setup AxleJoint missing")
-	joint.Enabled = true
+	assert(pair ~= nil, "B16 setup twin-drive pair missing")
+	local leftDrive = pair:GetLeftDrive()
+	local rightDrive = pair:GetRightDrive()
+	assert(leftDrive:GetModel().Name == "LeftDrive", "B16 LeftDrive missing")
+	assert(rightDrive:GetModel().Name == "RightDrive", "B16 RightDrive missing")
+	local leftJoint = leftDrive:GetJoint()
+	local rightJoint = rightDrive:GetJoint()
+	assert(leftJoint.Name == "DriveJoint" and leftJoint:IsA("HingeConstraint"), "B16 left DriveJoint missing")
+	assert(rightJoint.Name == "DriveJoint" and rightJoint:IsA("HingeConstraint"), "B16 right DriveJoint missing")
+
+	pair:SetEnabled(true)
 	DebugTelemetry.sampleRacer(model, 0.1)
-	assert(model:GetAttribute("DebugMotorEnabled") == true, "enabled shared motor must report true")
-	assert(model:GetAttribute("DebugMotorAngularVelocity") == PhysicsConfig.Motor.AngularVelocity, "shared motor speed telemetry mismatch")
+	assert(model:GetAttribute("DebugMotorEnabled") == true, "enabled twin drives must report true")
+	local expectedMean = (leftJoint.AngularVelocity + rightJoint.AngularVelocity) * 0.5
+	local reportedMean = model:GetAttribute("DebugMotorAngularVelocity")
+	assert(isFiniteNumber(reportedMean), "enabled twin motor angular velocity missing")
+	assert(math.abs((reportedMean :: number) - expectedMean) < 1e-6, "twin motor speed telemetry mismatch")
 
 	body.Position = body.Position + Vector3.new(PhysicsConfig.Recovery.MeaningfulHorizontalProgress - 0.1, 0, 0)
 	DebugTelemetry.sampleRacer(model, PhysicsConfig.Recovery.ProgressSampleWindow)
@@ -78,7 +89,7 @@ function B16DebugTuningSpec.run()
 	assert(model:GetAttribute("DebugStuckState") == false, "meaningful X progress must clear stuck")
 
 	racer:Destroy()
-	print("[DrawRacers][B16] debug tuning panel tests PASS")
+	print("[DrawRacers][B16] CR2 debug tuning panel tests PASS")
 end
 
 return B16DebugTuningSpec

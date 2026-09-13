@@ -10,14 +10,14 @@ local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRun
 local B09TwoLegPhaseSpec = {}
 
 local SHAPE_A = {
-	Vector2.new(0, 0),
+	Vector2.zero,
 	Vector2.new(0.45, 0.75),
 	Vector2.new(0.92, 0.10),
 	Vector2.new(0.30, -0.82),
 }
 
 local SHAPE_B = {
-	Vector2.new(0, 0),
+	Vector2.zero,
 	Vector2.new(0.20, 0.92),
 	Vector2.new(0.88, 0.40),
 	Vector2.new(0.72, -0.60),
@@ -27,12 +27,6 @@ local SHAPE_B = {
 local function angularDistanceDegrees(a: number, b: number): number
 	local delta = (a - b + 180) % 360 - 180
 	return math.abs(delta)
-end
-
-local function localZDegrees(parent: CFrame, child: CFrame): number
-	local relative = parent:ToObjectSpace(child)
-	local _, _, z = relative:ToOrientation()
-	return math.deg(z)
 end
 
 local function assertSamePoints(left: { Vector2 }, right: { Vector2 })
@@ -45,40 +39,39 @@ end
 local function countHinges(model: Model): number
 	local count = 0
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("HingeConstraint") then
-			count += 1
-		end
+		if descendant:IsA("HingeConstraint") then count += 1 end
 	end
 	return count
 end
 
 local function assertStructuralPair(racer: any)
 	local pair = racer:GetLegPair()
-	assert(pair ~= nil, "B09 shared leg pair missing")
-	local left = pair:GetLeftLeg()
-	local right = pair:GetRightLeg()
+	assert(pair ~= nil, "B09 CR2 pair missing")
+	local leftDrive = pair:GetLeftDrive()
+	local rightDrive = pair:GetRightDrive()
+	local left = leftDrive:GetLeg()
+	local right = rightDrive:GetLeg()
 	assertSamePoints(left:GetMappedPoints(), right:GetMappedPoints())
 
-	local axleRoot = pair:GetRoot()
-	local leftPhase = localZDegrees(axleRoot.CFrame, left:GetRoot().CFrame)
-	local rightPhase = localZDegrees(axleRoot.CFrame, right:GetRoot().CFrame)
-	local structuralDifference = (rightPhase - leftPhase + 360) % 360
+	local body = racer:GetBody()
+	local leftLocal = body.CFrame:PointToObjectSpace(leftDrive:GetRoot().Position)
+	local rightLocal = body.CFrame:PointToObjectSpace(rightDrive:GetRoot().Position)
+	local halfWidth = body.Size.X * 0.5
+	assert(math.abs(leftLocal.X + halfWidth) <= 1e-3, "left drive pivot must be on negative horizontal cube edge")
+	assert(math.abs(rightLocal.X - halfWidth) <= 1e-3, "right drive pivot must be on positive horizontal cube edge")
+	assert(math.abs(leftLocal.Z) <= 1e-3 and math.abs(rightLocal.Z) <= 1e-3, "CR2 drives must not use depth-separated Z sockets")
+
+	local structuralDifference = (rightDrive:GetPhaseDegrees() - leftDrive:GetPhaseDegrees() + 360) % 360
 	assert(
-		angularDistanceDegrees(structuralDifference, PhysicsConfig.Motor.RightPhaseOffsetDegrees) <= 0.1,
-		string.format("opposed structural difference expected 180 got %.4f", structuralDifference)
+		angularDistanceDegrees(structuralDifference, PhysicsConfig.Motor.RightPhaseOffsetDegrees) <= 0.5,
+		string.format("CR2 opposed drive phase expected 180 got %.4f", structuralDifference)
 	)
 
-	local geometry = PhysicsConfig.LegGeometry
-	local leftSocketLocal = axleRoot.CFrame:PointToObjectSpace(left:GetRoot().Position)
-	local rightSocketLocal = axleRoot.CFrame:PointToObjectSpace(right:GetRoot().Position)
-	assert(math.abs(leftSocketLocal.Z + geometry.LegSocketZAbs) <= 1e-4, "left side must mount on negative cube socket")
-	assert(math.abs(rightSocketLocal.Z - geometry.LegSocketZAbs) <= 1e-4, "right side must mount on positive cube socket")
-
-	local joint = pair:GetJoint()
-	assert(joint.Name == "AxleJoint", "shared motor must be AxleJoint")
-	assert(joint.ActuatorType == Enum.ActuatorType.Motor)
-	assert(joint.AngularVelocity == PhysicsConfig.Motor.AngularVelocity)
-	assert(countHinges(racer:GetModel()) == 1, "two opposed rigid sides must share exactly one HingeConstraint")
+	local leftJoint = leftDrive:GetJoint()
+	local rightJoint = rightDrive:GetJoint()
+	assert(leftJoint.Name == "DriveJoint" and rightJoint.Name == "DriveJoint", "CR2 drive joints missing")
+	assert(leftJoint.ActuatorType == Enum.ActuatorType.Motor and rightJoint.ActuatorType == Enum.ActuatorType.Motor)
+	assert(countHinges(racer:GetModel()) == 2, "CR2 pair must own exactly two HingeConstraints")
 end
 
 function B09TwoLegPhaseSpec.run()
@@ -99,25 +92,26 @@ function B09TwoLegPhaseSpec.run()
 	assert(right:GetModel().Name == "RightLeg")
 	assertStructuralPair(racer)
 
-	-- Redraw preserves the one live pair and axle phase. Both depth-separated
-	-- sides keep their fixed 180-degree relation; there is no pair handoff.
 	local pairBefore = racer:GetLegPair()
-	local axleBefore = pairBefore:GetRoot()
-	local geometry = PhysicsConfig.LegGeometry
-	local base = body.CFrame * CFrame.new(geometry.HubOffsetX, geometry.HubOffsetY, 0)
-	axleBefore.CFrame = base * CFrame.Angles(0, 0, math.rad(37))
-	local phaseBefore = pairBefore:GetPhaseDegrees()
-	assert(angularDistanceDegrees(phaseBefore, 37) <= 0.1, "B09 fixture failed to set axle phase")
+	local leftDriveBefore = pairBefore:GetLeftDrive()
+	local rightDriveBefore = pairBefore:GetRightDrive()
+	local leftJointBefore = leftDriveBefore:GetJoint()
+	local rightJointBefore = rightDriveBefore:GetJoint()
+	local leftLegBefore = leftDriveBefore:GetLeg()
+	local rightLegBefore = rightDriveBefore:GetLeg()
 
 	racer:ApplyShape(SHAPE_B, false)
 	local pairAfter = racer:GetLegPair()
-	assert(pairAfter == pairBefore, "redraw must preserve shared pair")
-	local phaseAfter = pairAfter:GetPhaseDegrees()
-	assert(angularDistanceDegrees(phaseAfter, phaseBefore) <= 0.1, "redraw must preserve the single axle phase")
+	assert(pairAfter == pairBefore, "redraw must preserve CR2 pair")
+	assert(pairAfter:GetLeftDrive() == leftDriveBefore, "redraw replaced LeftDrive")
+	assert(pairAfter:GetRightDrive() == rightDriveBefore, "redraw replaced RightDrive")
+	assert(pairAfter:GetLeftDrive():GetJoint() == leftJointBefore, "redraw replaced left DriveJoint")
+	assert(pairAfter:GetRightDrive():GetJoint() == rightJointBefore, "redraw replaced right DriveJoint")
+	assert(pairAfter:GetLeftLeg() == leftLegBefore and pairAfter:GetRightLeg() == rightLegBefore, "redraw replaced persistent leg owners")
 	assertStructuralPair(racer)
 
 	racer:Destroy()
-	print("[DrawRacers][B09] two-leg same-XY/opposed-phase tests PASS")
+	print("[DrawRacers][B09] CR2 twin-drive same-shape/opposed-phase tests PASS")
 end
 
 return B09TwoLegPhaseSpec

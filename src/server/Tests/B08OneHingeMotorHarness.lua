@@ -7,12 +7,10 @@ local B08OneHingeMotorHarness = {}
 local activeRacer: any = nil
 
 function B08OneHingeMotorHarness.start()
-	if activeRacer ~= nil then
-		return
-	end
+	if activeRacer ~= nil then return end
 
 	local racer = RacerRuntime.new({
-		raceId = "B08_ONE_HINGE",
+		raceId = "B08_TWIN_HINGE",
 		slotIndex = 1,
 		laneIndex = 1,
 		isBot = true,
@@ -24,27 +22,25 @@ function B08OneHingeMotorHarness.start()
 	racer:ApplyShape(R16ReferenceShapes.Get("ROUND_01"), true)
 
 	local pair = racer:GetLegPair()
-	assert(pair ~= nil, "B08 shared pair missing")
-	local joint = pair:GetJoint()
-	assert(joint.Name == "AxleJoint" and joint:IsA("HingeConstraint"), "B08 requires one AxleJoint")
-	assert(joint.Enabled == true, "B08 AxleJoint motor must be enabled")
+	assert(pair ~= nil, "B08 twin-drive pair missing")
+	local leftJoint = pair:GetLeftDrive():GetJoint()
+	local rightJoint = pair:GetRightDrive():GetJoint()
+	assert(leftJoint.Name == "DriveJoint" and leftJoint:IsA("HingeConstraint"), "B08 left DriveJoint missing")
+	assert(rightJoint.Name == "DriveJoint" and rightJoint:IsA("HingeConstraint"), "B08 right DriveJoint missing")
+	assert(leftJoint.Enabled == true and rightJoint.Enabled == true, "B08 twin motors must be enabled")
 
 	local hingeCount = 0
 	for _, descendant in racer:GetModel():GetDescendants() do
-		if descendant:IsA("HingeConstraint") then
-			hingeCount += 1
-		end
+		if descendant:IsA("HingeConstraint") then hingeCount += 1 end
 	end
-	assert(hingeCount == 1, string.format("B08 expected one shared hinge, got %d", hingeCount))
+	assert(hingeCount == 2, string.format("B08 expected two CR2 drive hinges, got %d", hingeCount))
 
 	local body = racer:GetBody()
 	local startX = body.Position.X
-	print("[DrawRacers][B08] one-hinge flat harness ready")
+	print("[DrawRacers][B08] CR2 twin-hinge flat harness ready")
 
 	task.delay(2, function()
-		if activeRacer ~= racer or racer:IsDestroyed() then
-			return
-		end
+		if activeRacer ~= racer or racer:IsDestroyed() then return end
 		local deltaX = body.Position.X - startX
 		print(string.format("[DrawRacers][B08] deltaX=%.3f", deltaX))
 	end)

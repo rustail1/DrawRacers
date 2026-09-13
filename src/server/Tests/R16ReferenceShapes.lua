@@ -1,9 +1,13 @@
 --!strict
 
+-- CORE REPAIR v2 reference strokes. Every production/reference stroke begins at
+-- the visible fixed pivot Vector2.zero. The remaining samples preserve the
+-- intended shape family around that pivot; no hidden first-point translation.
 local R16ReferenceShapes = {}
 
 local SHAPES: { [string]: { Vector2 } } = {
 	ROUND_01 = {
+		Vector2.zero,
 		Vector2.new(0.72, 0),
 		Vector2.new(0.624, 0.36),
 		Vector2.new(0.36, 0.624),
@@ -16,15 +20,19 @@ local SHAPES: { [string]: { Vector2 } } = {
 		Vector2.new(0, -0.72),
 		Vector2.new(0.36, -0.624),
 		Vector2.new(0.624, -0.36),
+		Vector2.new(0.72, 0),
 	},
 	LONG_BAR_01 = {
+		Vector2.zero,
+		Vector2.new(-0.46, 0),
 		Vector2.new(-0.92, 0),
 		Vector2.new(-0.46, 0),
-		Vector2.new(0, 0),
+		Vector2.zero,
 		Vector2.new(0.46, 0),
 		Vector2.new(0.92, 0),
 	},
 	SMALL_ROUND_01 = {
+		Vector2.zero,
 		Vector2.new(0.4, 0),
 		Vector2.new(0.3464, 0.2),
 		Vector2.new(0.2, 0.3464),
@@ -37,8 +45,10 @@ local SHAPES: { [string]: { Vector2 } } = {
 		Vector2.new(0, -0.4),
 		Vector2.new(0.2, -0.3464),
 		Vector2.new(0.3464, -0.2),
+		Vector2.new(0.4, 0),
 	},
 	HOOK_01 = {
+		Vector2.zero,
 		Vector2.new(-0.20, -0.20),
 		Vector2.new(0.10, -0.10),
 		Vector2.new(0.45, 0.05),
@@ -48,6 +58,7 @@ local SHAPES: { [string]: { Vector2 } } = {
 		Vector2.new(0.12, 0.72),
 	},
 	ASYM_01 = {
+		Vector2.zero,
 		Vector2.new(-0.82, -0.18),
 		Vector2.new(-0.30, -0.52),
 		Vector2.new(0.18, -0.26),
@@ -57,6 +68,7 @@ local SHAPES: { [string]: { Vector2 } } = {
 		Vector2.new(-0.52, 0.30),
 	},
 	SUBOPTIMAL_01 = {
+		Vector2.zero,
 		Vector2.new(-0.42, -0.25),
 		Vector2.new(-0.15, -0.05),
 		Vector2.new(0.08, 0.22),

@@ -1,23 +1,9 @@
 --!strict
 
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
+local R16ReferenceShapes = require(script.Parent:WaitForChild("R16ReferenceShapes"))
 
 local B09TwoLegPhaseHarness = {}
-
-local ROUND_01 = {
-	Vector2.new(0.72, 0),
-	Vector2.new(0.624, 0.36),
-	Vector2.new(0.36, 0.624),
-	Vector2.new(0, 0.72),
-	Vector2.new(-0.36, 0.624),
-	Vector2.new(-0.624, 0.36),
-	Vector2.new(-0.72, 0),
-	Vector2.new(-0.624, -0.36),
-	Vector2.new(-0.36, -0.624),
-	Vector2.new(0, -0.72),
-	Vector2.new(0.36, -0.624),
-	Vector2.new(0.624, -0.36),
-}
 
 function B09TwoLegPhaseHarness.start()
 	local racer = RacerRuntime.new({
@@ -27,6 +13,7 @@ function B09TwoLegPhaseHarness.start()
 		isBot = true,
 		trackId = "B09_FLAT",
 		spawnCFrame = CFrame.new(52, 3.30, 0),
+		laneCenterZ = 0,
 	})
 
 	local body = racer:GetBody()
@@ -34,26 +21,28 @@ function B09TwoLegPhaseHarness.start()
 	body.Color = Color3.fromRGB(255, 120, 45)
 	body.Material = Enum.Material.SmoothPlastic
 
-	local leftLeg, rightLeg = racer:ApplyShape(ROUND_01, true)
+	racer:ApplyShape(R16ReferenceShapes.Get("ROUND_01"), true)
+	local pair = racer:GetLegPair()
+	assert(pair ~= nil, "B09 CR2 pair missing")
+	local leftDrive = pair:GetLeftDrive()
+	local rightDrive = pair:GetRightDrive()
 	local startX = body.Position.X
 	print(string.format(
-		"[DrawRacers][B09] two-leg harness ready leftPhase=%.0f rightPhase=%.0f",
-		leftLeg:GetInitialPhaseDegrees(),
-		rightLeg:GetInitialPhaseDegrees()
+		"[DrawRacers][B09] CR2 twin-drive harness ready leftPhase=%.1f rightPhase=%.1f",
+		leftDrive:GetPhaseDegrees(),
+		rightDrive:GetPhaseDegrees()
 	))
 
 	task.spawn(function()
 		for second = 1, 6 do
 			task.wait(1)
-			if body.Parent == nil then
-				return
-			end
-
+			if body.Parent == nil then return end
 			print(string.format(
-				"[DrawRacers][B09] t=%ds deltaX=%.3f speedX=%.3f",
+				"[DrawRacers][B09] t=%ds deltaX=%.3f speedX=%.3f phaseDelta=%.1f",
 				second,
 				body.Position.X - startX,
-				body.AssemblyLinearVelocity.X
+				body.AssemblyLinearVelocity.X,
+				(rightDrive:GetPhaseDegrees() - leftDrive:GetPhaseDegrees() + 360) % 360
 			))
 		end
 	end)

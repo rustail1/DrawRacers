@@ -25,10 +25,10 @@ def test_r09_accepted_preview_is_fixed_pivot_semantic_and_touch_layout_uses_curr
     assert "_acceptedPresentationAnchor" not in drawing
 
     apply_layout = drawing[drawing.index("function DrawingController:_applyLayout"):drawing.index("function DrawingController:_applyPendingLayout")]
-    assert "validationToast.Position" in apply_layout
-    assert "validationToast.Size" in apply_layout
-    assert "drawHint.Position" in apply_layout
-    assert "drawHint.Size" in apply_layout
+    assert "local toast = self._ui.validationToast" in apply_layout
+    assert "local hint = self._ui.drawHint" in apply_layout
+    assert "toast.Position, toast.Size = TOUCH_VALIDATION_POSITION, TOUCH_VALIDATION_SIZE" in apply_layout
+    assert "hint.Position, hint.Size = TOUCH_HINT_POSITION, TOUCH_HINT_SIZE" in apply_layout
     assert "_renderAcceptedStroke" in apply_layout
 
 
