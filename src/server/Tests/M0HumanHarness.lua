@@ -148,13 +148,9 @@ local function respawnActiveRacer()
 	local recoveryCount = if type(recoveryCountValue) == "number" then recoveryCountValue + 1 else 1
 	model:SetAttribute("RecoveryCount", recoveryCount)
 
-	-- BG-05: a real fall can race the 0.10s redraw transition. Finish that
-	-- transient pair before teleporting so recovery never respawns a half-built
-	-- collider set; the authoritative ShapeSpec/version remain unchanged.
-	local pair = racer:GetLegPair()
-	if pair ~= nil then
-		pair:CompleteReshapeForRecovery()
-	end
+	-- BG-05: the runtime owns transition cleanup so every future recovery path
+	-- can reuse the same safe contract without reaching into leg internals.
+	racer:PrepareForRecovery()
 
 	model:PivotTo(CFrame.new(spawn.X, spawn.Y, spawn.Z))
 	for _, descendant in model:GetDescendants() do
