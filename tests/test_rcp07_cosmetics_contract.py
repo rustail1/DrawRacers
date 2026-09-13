@@ -82,6 +82,21 @@ def test_rcp07_default_leg_skin_preserves_intrinsic_front_back_readability() -> 
     )
 
 
+def test_rcp07_switching_back_to_default_restores_intrinsic_leg_style() -> None:
+    catalog = read("src/shared/Config/CosmeticsCatalog.lua")
+    controller = read("src/client/Controllers/RacerCosmeticsController.lua")
+    default_leg_block = catalog.split("LegSkins = {", 1)[1].split("CubeSkins = {", 1)[0]
+    assert "PreserveBase = true" in default_leg_block, (
+        "neutral Default needs explicit restore semantics; an empty style cannot undo a previously applied skin"
+    )
+    assert "_baseLegStyles" in controller, (
+        "controller must remember each visual part's intrinsic appearance before cosmetic overrides"
+    )
+    assert "restoreBaseStyle" in controller, (
+        "returning to Default must restore the intrinsic front/back appearance instead of leaving the prior skin stuck"
+    )
+
+
 def test_rcp07_bootstrap_starts_cosmetics_with_other_presentation_owners() -> None:
     bootstrap = read("src/client/Bootstrap.client.lua")
     assert 'WaitForChild("RacerCosmeticsController")' in bootstrap
