@@ -30,26 +30,27 @@ def test_r16_1_upright_attachment_uses_identity_basis_for_all_axes() -> None:
     assert "orientation attachment Y axis must stay canonical" in b10
 
 
-def test_r16_2_hub_offsets_have_one_numeric_owner() -> None:
+def test_r16_2_axle_and_side_offsets_have_one_numeric_owner() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
     b06 = read("src/server/Tests/B06RacerRuntimeSpec.lua")
 
     for token in [
         "HubOffsetX = 0.0",
         "HubOffsetY = 0.0",
-        "HubOffsetZAbs = 1.62",
+        "LegSocketZAbs = 1.5",
     ]:
         assert token in config
 
-    assert "local geometry = PhysicsConfig.LegGeometry" in runtime
-    assert "geometry.HubOffsetX" in runtime
-    assert "geometry.HubOffsetY" in runtime
-    assert "geometry.HubOffsetZAbs" in runtime
-    assert "Vector3.new(0, -0.75, -1.62)" not in runtime
-    assert "Vector3.new(0, -0.75, 1.62)" not in runtime
-    assert "local geometry = PhysicsConfig.LegGeometry" in b06
-    assert "geometry.HubOffsetY" in b06
+    assert "local geometry = PhysicsConfig.LegGeometry" in pair
+    assert "geometry.HubOffsetX" in pair
+    assert "geometry.HubOffsetY" in pair
+    assert "geometry.LegSocketZAbs" in pair
+    assert "Vector3.new(0, -0.75, -1.62)" not in pair
+    assert "Vector3.new(0, -0.75, 1.62)" not in pair
+    assert "LeftHub" not in runtime and "RightHub" not in runtime
+    assert "LeftHub" not in b06 and "RightHub" not in b06
 
 
 def test_r16_2_studio_instance_contract_uses_canonical_hub_offsets() -> None:
