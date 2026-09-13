@@ -24,15 +24,16 @@ return {
 		MaxPendingStrokes = 4,
 	},
 	LegGeometry = {
-		-- RCP-02: the reference-scale leg reaches roughly twice as far as the
-		-- previous 3.15/4.5 mapping while retaining the same authoritative shape.
-		LegCanvasHalfSpan = 6.30,
-		MaxLegExtentFromHub = 9.0,
+		-- BG-02 human evidence supersedes the temporary 2x RCP-02 scale. This
+		-- bounded reference scale stays clearly larger than the old 3.15/4.5
+		-- baseline without overwhelming the current 3-stud body/obstacle lab.
+		LegCanvasHalfSpan = 4.8,
+		MaxLegExtentFromHub = 6.9,
 		MinUsefulLegExtent = 0.7,
 		-- Gameplay collision thickness stays materially smaller than presentation
 		-- thickness so larger-looking legs do not gain an oversized collider.
-		PhysicalLegSegmentThickness = 0.62,
-		VisualLegSegmentThickness = 0.90,
+		PhysicalLegSegmentThickness = 0.54,
+		VisualLegSegmentThickness = 0.78,
 		MaxColliderSegmentsPerLeg = 14,
 		InnerHubNoCollisionRadius = 0.65,
 		MinimumMappedSegmentLength = 0.08,
