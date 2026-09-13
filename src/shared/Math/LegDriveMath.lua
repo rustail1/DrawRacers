@@ -18,8 +18,7 @@ end
 function LegDriveMath.SignedShortestDeltaDegrees(fromDegrees: number, toDegrees: number): number
 	local from = LegDriveMath.NormalizeDegrees(fromDegrees)
 	local to = LegDriveMath.NormalizeDegrees(toDegrees)
-	local delta = (to - from + 180) % 360 - 180
-	return delta
+	return (to - from + 180) % 360 - 180
 end
 
 function LegDriveMath.PairPhaseErrorDegrees(
@@ -38,18 +37,6 @@ function LegDriveMath.ComputeAngularVelocity(extent: number, motorConfig: any): 
 	local omegaMagnitude = targetTipSpeed / radius
 	omegaMagnitude = math.clamp(omegaMagnitude, motorConfig.MinAngularVelocity, motorConfig.MaxAngularVelocity)
 	return motorConfig.RotationSign * omegaMagnitude
-end
-
-function LegDriveMath.ComputePhaseCorrection(errorDegrees: number, motorConfig: any): number
-	assert(type(errorDegrees) == "number" and finite(errorDegrees), "phase error must be finite")
-	if math.abs(errorDegrees) <= motorConfig.PhaseDeadbandDegrees then
-		return 0
-	end
-	return math.clamp(
-		errorDegrees * motorConfig.PhaseCorrectionGain,
-		-motorConfig.MaxPhaseCorrection,
-		motorConfig.MaxPhaseCorrection
-	)
 end
 
 return LegDriveMath
