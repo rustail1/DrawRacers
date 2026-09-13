@@ -11,7 +11,7 @@ Current production/reference-core facts:
 - R17 mechanical override is active in production M0 code: `LegPairAssembly` owns one shared axle, one `AxleRoot`, one `AxleJoint` and **one motor** for both rigid side `LegAssembly` objects.
 - Left/Right consume the same ShapeSpec and use the fixed opposed relation `RightPhaseOffsetDegrees = 180`. Both sides rotate with the same shared motor direction/speed; there is no independent side motor and no runtime phase-chasing correction loop.
 - R17 presentation override is active in M0: production `RaceCameraController` and `RiderPresentationController` are implemented owners. The camera follows Local Racer position rather than body rotation; normal follow uses a **stable two-axis dead-zone** anchor before smoothing, while hold-RMB yaw supports **full 360°** with bounded pitch and smoothed return. The rider remains client-only, normalized and nonphysical.
-- Instant redraw keeps the old pair active while the replacement remains staged. A bounded **collision-safe redraw phase** search scores candidate phases against Track geometry before retire/commit; body CFrame and linear/angular velocity are not reset by the swap.
+- Instant redraw preserves the existing `AxleRoot`/`AxleJoint`, motor and current phase. Replacement side geometry is committed on that stable axle and performs the bounded rapid **hub-to-tip** reshape; body CFrame and linear/angular velocity are not reset. Collision-safe phase search remains initial-spawn safety only.
 - R17.6 Studio evidence isolates **body density**, **leg density**, **motor speed** and optional **body friction** candidate families on temporary racers. **Production tuning remains unchanged** until live Studio evidence is reviewed; `HUMAN BODY FEEL CHOICE PENDING` is the current tuning state.
 - R17.7 reuses the canonical Flat/Steps/Wall/Gap/Tunnel course across the reference shape set. `R17FINAL` remains an explicit one-click ordered Studio evidence aggregator and exposes `[DrawRacers][R17FINAL] HUMAN REVIEW READY` only after its automated evidence sequence.
 - The committed `StudioHarnessConfig.Mode` is **`G0`**. Normal Roblox Studio `Play` is the fast manual CORE iteration loop and skips automatic B03–B16/R17 startup evidence. `R17FINAL`, `R16FINAL`, and focused evidence modes remain selectable when intentionally requested.
@@ -110,7 +110,7 @@ The Product Owner explicitly requested repository implementation continue throug
 **R16.8–R16.10 implementation remains present; historical implementation status: IMPLEMENTED/AUTOMATED GREEN. Studio Gate C — HUMAN STUDIO PENDING. Studio Gate A — HUMAN STUDIO PENDING. Studio Gate B — HUMAN STUDIO PENDING.**
 
 Repository-level implementation includes:
-- **R16.8 Redraw parity** — B14 performs 10 redraws while the racer has live motion state. R17 keeps one shared axle and now permits a bounded collision-safe replacement phase adjustment while preserving the body motion state.
+- **R16.8 Redraw parity** — B14 performs 10 redraws while the racer has live motion state. The current RCP override preserves the shared axle/current phase and uses rapid **hub-to-tip** geometry reshape while preserving body motion state.
 - **R16.9 Reference camera/presentation** — historical side-oriented Studio presentation baseline; R17 production `RaceCameraController` now owns the active camera behavior.
 - **R16.10 Canonical obstacle pass harness** — `R16C` reuses Stage-B evidence, verifies unchanged canonical pieces and performs 10 Heartbeat-spaced live redraws.
 
@@ -139,7 +139,7 @@ Automation may prove repository contracts/buildability only. No Studio gate is s
 Current repository-side reference-feel closure before Studio:
 - one shared `AxleJoint`/motor drives the same ShapeSpec on both sides with fixed **180°** Left↔Right structural opposition and no phase-chasing owner;
 - camera normal follow uses the stable two-axis dead-zone while RMB retains full-360 free-look;
-- redraw performs collision-safe redraw phase selection before retiring/committing the old pair and preserves body motion state;
+- redraw preserves the existing axle/motor/current phase and performs bounded rapid **hub-to-tip** side-geometry reshape without resetting body motion state;
 - R17.6 measures body density `{1.00, 0.60, 0.45, 0.35}`, leg density `{1.00, 0.60, 0.40}`, motor speed `{-8.0, -10.0, -11.5, -12.5}` and body friction `{0.45, 0.25, 0.10}` only on temporary racers; **production tuning remains unchanged** and `HUMAN BODY FEEL CHOICE PENDING`;
 - R17.7 retains the full canonical reference-course matrix and `R17FINAL` retains the ordered human evidence handoff when explicitly selected;
 - `StudioHarnessConfig.Mode = "G0"` is the committed normal Studio default so the developer can immediately run the live CORE without the automatic B03–B16/R17 startup suite. `R17FINAL` remains selectable for deliberate aggregate evidence collection.
@@ -199,7 +199,7 @@ Remote GitHub execution cannot assert that the user's local `C:\Dev\DrawRacers` 
 Decision owner: `DECISION_LOG_REMOTE_GITHUB_BUGFIX_WORKFLOW_2026-09-10.md`.
 
 ## Audit notes / remaining risk
-Current layering remains aligned with the architecture: Bootstrap is composition root; `LegShapeService` owns authoritative shape processing; `RacerRuntime` owns body/shared pair/stabilizer/anti-stall lifetime; `LegPairAssembly` owns the one shared axle/motor with fixed 180° side relation; `StrokeRemoteTransport` remains transport-only; no early D05 `RacerService` exists. Safe redraw phase scoring is pre-commit evidence/placement logic and does not transfer shape authority to the client.
+Current layering remains aligned with the architecture: Bootstrap is composition root; `LegShapeService` owns authoritative shape processing; `RacerRuntime` owns body/shared pair/stabilizer/anti-stall lifetime; `LegPairAssembly` owns the one shared axle/motor with fixed 180° side relation; `StrokeRemoteTransport` remains transport-only; no early D05 `RacerService` exists. Redraw keeps the shared axle/current phase and changes only side geometry through bounded rapid hub-to-tip reshape; collision-safe phase scoring remains initial-spawn safety and does not transfer shape authority to the client.
 
 The dominant unresolved risk is live Roblox Studio solver/feel evidence. CI and static contracts can prove ownership/buildability but cannot prove measured speed, obstacle niches, camera readability, rider pose or human acceptance.
 
