@@ -387,10 +387,8 @@ function LegAssembly:Destroy()
 	self.partialVisualWeld = nil
 	table.clear(self.segments)
 	table.clear(self.segmentCanCollide)
-	table.clear(self.segmentPlan)
 	table.clear(self.visualSegments)
 	table.clear(self.visualJoints)
-	table.clear(self.mappedPoints)
 end
 
 return LegAssembly
