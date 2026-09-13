@@ -52,9 +52,14 @@ def test_phase_safety_is_used_for_initial_pair_but_redraw_preserves_stable_axle_
         "RedrawSpawnSafety.ChoosePhase",
         "selectedPhaseDegrees",
         "redrawSafetyFallback",
-        "stagedLegPair:Commit()",
+        "legPair:SetInitialPhaseDegrees(selectedPhaseDegrees)",
+        "legPair:SetEnabled(motorEnabled == true)",
     ]:
         assert token in runtime if token.startswith("require") else token in initial
+
+    assert initial.count("LegPairAssembly.new") == 1
+    assert "stagedLegPair" not in initial
+    assert ":Commit()" not in initial
 
     apply_body = runtime.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split(
         "function RacerRuntime:ApplyShape", 1
