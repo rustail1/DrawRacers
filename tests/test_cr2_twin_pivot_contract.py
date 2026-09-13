@@ -117,5 +117,7 @@ def test_cr2_old_shared_axle_runtime_contract_is_retired() -> None:
 def test_cr2_staged_partial_visual_uses_one_mount_transform_only() -> None:
     leg = read("src/server/Runtime/LegAssembly.lua")
     stage = section(leg, "function LegAssembly:SetStageProgress", "function LegAssembly:CommitStagedGeometry")
-    assert "local plan = transformedPlan" in stage
+    assert "local plan = transformPlan(shapeSpec, self.stageOffsetDegrees)" in stage
+    assert "LegReshapeMath.Evaluate(plan" in stage
     assert "rotatePoint(state.partialEndpoint" not in stage
+    assert "buildVisualSegment(self, folder, entry.a, endpoint" in stage
