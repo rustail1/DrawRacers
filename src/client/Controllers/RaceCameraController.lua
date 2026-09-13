@@ -229,7 +229,21 @@ function RaceCameraController:_step(dt: number)
 	end
 	self:_captureCamera(camera)
 
-	local rawPosition = body.Position
+	-- CameraMinFollowY is presentation-only. The racer is still allowed to fall
+	-- physically; the side-view camera simply stops following it below the
+	-- configured floor so a failure remains readable until recovery occurs.
+	local racerModel = body.Parent
+	local cameraMinFollowYValue = if racerModel ~= nil then racerModel:GetAttribute("CameraMinFollowY") else nil
+	local cameraMinFollowY = if type(cameraMinFollowYValue) == "number" then cameraMinFollowYValue else nil
+	local presentationY = body.Position.Y
+	if cameraMinFollowY ~= nil
+		and cameraMinFollowY == cameraMinFollowY
+		and cameraMinFollowY ~= math.huge
+		and cameraMinFollowY ~= -math.huge
+	then
+		presentationY = math.max(body.Position.Y, cameraMinFollowY)
+	end
+	local rawPosition = Vector3.new(body.Position.X, presentationY, body.Position.Z)
 	if self._deadZoneAnchor == nil then
 		self._deadZoneAnchor = rawPosition
 		self._smoothedPosition = rawPosition
