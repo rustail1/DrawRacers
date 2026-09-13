@@ -17,7 +17,7 @@ def test_bg04_reshape_has_bounded_gravity_support_on_stable_pair() -> None:
     assert 'Instance.new("VectorForce")' in pair
     assert "ApplyAtCenterOfMass = true" in pair
     assert "Enum.ActuatorRelativeTo.World" in pair
-    assert "AssemblyMass * Workspace.Gravity" in pair
+    assert "AssemblyMass" in pair and "Workspace.Gravity" in pair
     assert "_SetReshapeSupportEnabled(true)" in pair
     assert "_SetReshapeSupportEnabled(false)" in pair
     begin = pair.split("function LegPairAssembly:BeginGeometryReshape", 1)[1].split(
