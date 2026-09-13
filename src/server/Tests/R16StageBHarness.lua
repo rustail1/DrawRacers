@@ -44,8 +44,14 @@ local function runProgressTrial(
 	return R16TrialRunner.RunPiece(pieceId, shapeId, measureSeconds, options)
 end
 
+local function safeResult(result: any): boolean
+	return result.valid == true
+		and result.solverInstability ~= true
+		and result.fellBelowRecovery ~= true
+end
+
 local function resultScore(result: any, completionBonus: boolean): number
-	if result.valid ~= true then
+	if not safeResult(result) then
 		return -math.huge
 	end
 	local score = result.progress
@@ -62,7 +68,7 @@ local function winnerSet(results: { [string]: any }, metric: string): { string }
 		local result = results[shapeId]
 		local score: number
 		if metric == "flat" then
-			score = if result.valid == true then result.speed else -math.huge
+			score = if safeResult(result) then result.speed else -math.huge
 		elseif metric == "gap" or metric == "tunnel" then
 			score = resultScore(result, true)
 		else
@@ -130,7 +136,7 @@ end
 local function runFlatRoundTrial(): boolean
 	local acceptance = M0SceneConfig.ReferenceAcceptance
 	local result = runFlatSpeedTrial("ROUND_01")
-	local passed = result.valid
+	local passed = safeResult(result)
 		and result.speed >= acceptance.FlatSpeedMin
 		and result.speed <= acceptance.FlatSpeedMax
 		and not result.antiStallSeen
@@ -152,11 +158,12 @@ local function runStepsVerticalTrial(): boolean
 	local acceptance = M0SceneConfig.ReferenceAcceptance
 	local result = runProgressTrial("SmallSteps", "HOOK_01", acceptance.StepsMeasureSeconds, nil, "Step")
 	local maxDeltaY = result.maxDeltaY
-	local passed = result.valid and maxDeltaY >= acceptance.StepsRiseMin
+	local passed = safeResult(result) and maxDeltaY >= acceptance.StepsRiseMin
 	print(string.format(
-		"[DrawRacers][R16.6] HOOK_01 SmallSteps maxDeltaY=%.3f target>=%.2f %s",
+		"[DrawRacers][R16.6] HOOK_01 SmallSteps maxDeltaY=%.3f target>=%.2f safe=%s %s",
 		maxDeltaY,
 		acceptance.StepsRiseMin,
+		tostring(safeResult(result)),
 		if passed then "PASS" else "FAIL"
 	))
 	return passed
@@ -167,15 +174,23 @@ local function runGapVerticalTrial(): boolean
 	local result = R16TrialRunner.RunPiece("GapSmall", "SMALL_ROUND_01", acceptance.GapMeasureSeconds, nil)
 	local minDeltaY = result.minDeltaY
 	local fallDistance = -minDeltaY
-	local passed = result.valid and fallDistance >= acceptance.GapFallMin
+	local passed = safeResult(result) and fallDistance >= acceptance.GapFallMin
 	print(string.format(
-		"[DrawRacers][R16.6] SMALL_ROUND_01 GapSmall minDeltaY=%.3f fall=%.3f target>=%.2f %s",
+		"[DrawRacers][R16.6] SMALL_ROUND_01 GapSmall minDeltaY=%.3f fall=%.3f target>=%.2f safe=%s %s",
 		minDeltaY,
 		fallDistance,
 		acceptance.GapFallMin,
+		tostring(safeResult(result)),
 		if passed then "PASS" else "FAIL"
 	))
 	return passed
+end
+
+local function safeMetric(result: any, field: string): number
+	if not safeResult(result) then
+		return -math.huge
+	end
+	return result[field]
 end
 
 local function runShapeMatrix(): boolean
@@ -186,7 +201,7 @@ local function runShapeMatrix(): boolean
 	local tunnelResults = measureAllPiece("LowTunnelWide", acceptance.TunnelMeasureSeconds, nil)
 
 	local roundFlat = flatResults.ROUND_01
-	local roundFlatPassed = roundFlat.valid
+	local roundFlatPassed = safeResult(roundFlat)
 		and roundFlat.speed >= acceptance.FlatSpeedMin
 		and roundFlat.speed <= acceptance.FlatSpeedMax
 		and not roundFlat.antiStallSeen
@@ -195,11 +210,11 @@ local function runShapeMatrix(): boolean
 	local stepsRound = stepsResults.ROUND_01
 	local stepsHook = stepsResults.HOOK_01
 	local stepsAsym = stepsResults.ASYM_01
-	local stepsBestProgress = math.max(stepsHook.progress, stepsAsym.progress)
-	local stepsBestRise = math.max(stepsHook.maxDeltaY, stepsAsym.maxDeltaY)
+	local stepsBestProgress = math.max(safeMetric(stepsHook, "progress"), safeMetric(stepsAsym, "progress"))
+	local stepsBestRise = math.max(safeMetric(stepsHook, "maxDeltaY"), safeMetric(stepsAsym, "maxDeltaY"))
 	local stepHeight = assert(R16TrialRunner.FindPiece("SmallSteps").Height, "SmallSteps missing Height")
-	local stepsNichePassed = stepsRound.valid
-		and (stepsHook.valid or stepsAsym.valid)
+	local stepsNichePassed = safeResult(stepsRound)
+		and (safeResult(stepsHook) or safeResult(stepsAsym))
 		and (
 			stepsBestProgress >= stepsRound.progress + acceptance.StepsProgressAdvantage
 			or stepsBestRise >= stepsRound.maxDeltaY + stepHeight - 0.1
@@ -207,8 +222,8 @@ local function runShapeMatrix(): boolean
 
 	local gapLong = gapResults.LONG_BAR_01
 	local gapSmall = gapResults.SMALL_ROUND_01
-	local gapNichePassed = gapLong.valid
-		and gapSmall.valid
+	local gapNichePassed = safeResult(gapLong)
+		and safeResult(gapSmall)
 		and (
 			(gapLong.landedAfterGap and not gapSmall.landedAfterGap)
 			or gapLong.progress >= gapSmall.progress + acceptance.GapProgressAdvantage
@@ -216,8 +231,8 @@ local function runShapeMatrix(): boolean
 
 	local tunnelSmall = tunnelResults.SMALL_ROUND_01
 	local tunnelLong = tunnelResults.LONG_BAR_01
-	local tunnelNichePassed = tunnelSmall.valid
-		and tunnelLong.valid
+	local tunnelNichePassed = safeResult(tunnelSmall)
+		and safeResult(tunnelLong)
 		and (
 			(tunnelSmall.completedPiece and not tunnelLong.completedPiece)
 			or tunnelSmall.progress >= tunnelLong.progress + acceptance.TunnelProgressAdvantage
@@ -228,21 +243,21 @@ local function runShapeMatrix(): boolean
 	for _, shapeId in ALL_SHAPES do
 		local flat = flatResults[shapeId]
 		local steps = stepsResults[shapeId]
-		if flat.valid then
+		if safeResult(flat) then
 			bestFlatSpeed = math.max(bestFlatSpeed, flat.speed)
 		end
-		if steps.valid then
+		if safeResult(steps) then
 			bestStepsProgress = math.max(bestStepsProgress, steps.progress)
 		end
 	end
 	local suboptimalFlat = flatResults.SUBOPTIMAL_01
 	local suboptimalSteps = stepsResults.SUBOPTIMAL_01
 	local suboptimalFlatPassed = bestFlatSpeed > 0
-		and suboptimalFlat.valid
+		and safeResult(suboptimalFlat)
 		and suboptimalFlat.speed <= bestFlatSpeed * (1 - acceptance.SuboptimalWorseRatio)
 	local suboptimalStepsPassed = bestStepsProgress > 0
 		and (
-			suboptimalSteps.valid ~= true
+			not safeResult(suboptimalSteps)
 			or suboptimalSteps.progress <= bestStepsProgress * (1 - acceptance.SuboptimalWorseRatio)
 		)
 	local suboptimalPassed = suboptimalFlatPassed or suboptimalStepsPassed
