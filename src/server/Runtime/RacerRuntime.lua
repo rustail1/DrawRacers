@@ -274,6 +274,17 @@ function RacerRuntime:GetCurrentShapeSpec(): ShapeSpec?
 	return self.currentShapeSpec
 end
 
+function RacerRuntime:PrepareForRecovery()
+	assert(not self.destroyed and self.model ~= nil, "PrepareForRecovery requires live RacerRuntime")
+	-- BG-05: stop the transient driver first, then force the authoritative
+	-- current pair to its complete collider state. Teleport destination and
+	-- velocity reset stay owned by the caller/recovery policy.
+	self:_CancelReshape()
+	if self.legPair ~= nil then
+		self.legPair:CompleteReshapeForRecovery()
+	end
+end
+
 function RacerRuntime:_CancelReshape()
 	self._reshapeGeneration += 1
 	if self._reshapeConnection ~= nil then
