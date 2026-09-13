@@ -67,6 +67,21 @@ def test_rcp07_rider_recreation_invalidates_cosmetic_cache_by_instance_identity(
     )
 
 
+def test_rcp07_default_leg_skin_preserves_intrinsic_front_back_readability() -> None:
+    catalog = read("src/shared/Config/CosmeticsCatalog.lua")
+    leg_assembly = read("src/server/Runtime/LegAssembly.lua")
+    assert "FRONT_VISUAL_COLOR" in leg_assembly and "BACK_VISUAL_COLOR" in leg_assembly, (
+        "base leg presentation intentionally owns distinct front/back colors"
+    )
+    default_leg_block = catalog.split("LegSkins = {", 1)[1].split("CubeSkins = {", 1)[0]
+    assert "Color =" not in default_leg_block, (
+        "Default leg cosmetics must not erase the intrinsic front/back color distinction"
+    )
+    assert "Material =" not in default_leg_block, (
+        "Default leg cosmetics should preserve the base leg material instead of restyling by default"
+    )
+
+
 def test_rcp07_bootstrap_starts_cosmetics_with_other_presentation_owners() -> None:
     bootstrap = read("src/client/Bootstrap.client.lua")
     assert 'WaitForChild("RacerCosmeticsController")' in bootstrap
