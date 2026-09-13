@@ -82,7 +82,7 @@ Hub Parts:
 - Transparency=1;
 - hub offsets are owned numerically by `PhysicsConfig.LegGeometry` / `16` and mapped mechanically by `73`:
   - `HubOffsetX = 0.0`;
-  - `HubOffsetY = -0.35`;
+  - `HubOffsetY = 0.0`;
   - `HubOffsetZAbs = 1.62`;
   - LeftHub = `(HubOffsetX, HubOffsetY, -HubOffsetZAbs)` relative to BodyCollider center;
   - RightHub = `(HubOffsetX, HubOffsetY, +HubOffsetZAbs)` relative to BodyCollider center;
