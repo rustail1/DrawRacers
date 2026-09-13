@@ -52,7 +52,7 @@ Static roots for remotes, GUI, ServerStorage and `Workspace.Runtime` remain decl
 
 ---
 
-## 2. Current implemented M0/R17 graph
+## 2. Current implemented M0/R17 system graph
 
 ```text
 CLIENT INPUT / PREDICTION
@@ -89,7 +89,7 @@ CanonicalLegShape
 LegAssembly
   -> LegReshapeMath (arc-length prefix + one partial tip)
 
-RACER PHYSICS
+RACER PHYSICS / LEG PRESENTATION
 RacerRuntime
   -> BodyCollider
   -> RacerStabilizer
@@ -99,7 +99,9 @@ RacerRuntime
        -> Left/Right LegAssembly at fixed 180-degree relation
             -> persistent LegRoot welded to AxleRoot
             -> current physical Segments
-            -> matching nonphysical Visual geometry
+            -> matching nonphysical Visual
+                 -> VisualSegment
+                 -> VisualJoint
 
 CLIENT CAMERA / RIDER PRESENTATION
 CameraMath
@@ -116,8 +118,8 @@ Bootstrap.server
   -> M0TestScene
   -> normal G0: direct manual CORE, no automatic long regression/evidence startup
   -> explicit evidence modes through StudioSpecRunner
-       -> R16FINAL
-       -> R17FINAL
+       -> R16FINAL: R16FinalHarness
+       -> R17FINAL: R17FinalHarness
 Bootstrap.client
   -> InputController + DrawingController
   -> DebugTuningPanel
@@ -149,7 +151,7 @@ Bootstrap.client
 | Stroke remote transport | `src/server/Services/StrokeRemoteTransport.lua` | SubmitStroke binding, safe processor call, StrokeResult | `LegShapeService`, `StrokeTypes` |
 | Racer lifecycle/orchestration | `src/server/Runtime/RacerRuntime.lua` | body/template lifetime, current ShapeSpec/version, one pair lifetime, reshape timeline, recovery preparation | `CanonicalLegShape` for internal/test ApplyShape, `LegPairAssembly`, stabilizer, anti-stall |
 | Shared rotating leg pair | `src/server/Runtime/LegPairAssembly.lua` | **one shared axle**, `AxleRoot`, single `AxleJoint` motor, persistent Left/Right owners, fixed **180°** relation, reshape support/progress | `PhysicsConfig`, `StrokeTypes`, `CollisionGroups`, `LegAssembly` |
-| One rigid leg side | `src/server/Runtime/LegAssembly.lua` | persistent `LegRoot`, current physical/visual canonical prefix, geometry replacement/progress/destroy; no motor/player/network owner | `LegReshapeMath`, `PhysicsConfig`, `StrokeTypes`, `CollisionGroups` |
+| One rigid leg side | `src/server/Runtime/LegAssembly.lua` | persistent `LegRoot`, current physical/visual canonical prefix, `VisualSegment`/`VisualJoint`, geometry replacement/progress/destroy; no motor/player/network owner | `LegReshapeMath`, `PhysicsConfig`, `StrokeTypes`, `CollisionGroups` |
 | Upright + lane plane | `src/server/Runtime/RacerStabilizer.lua` | Z plane + upright orientation; no forward propulsion | `PhysicsConfig` |
 | Bounded recovery assist | `src/server/Runtime/RacerAntiStall.lua` | eligible-contact bounded +X anti-stall only | `PhysicsConfig`, CollectionService |
 | Collision matrix | `src/server/Runtime/CollisionGroups.lua` | semantic collision group registration/policy | PhysicsService |
@@ -185,7 +187,7 @@ Exact current mechanical design: `docs/superpowers/specs/2026-09-13-core-module-
 - `M0HumanHarness.lua` — current manual G0 human racer/recovery path.
 - `R16TrialRunner.lua` — shared contact/traversal measurement; falling below `RecoveryKillY` or solver instability remains unsafe, never success.
 - `R16StageBHarness.lua` / `R16StageCHarness.lua` — reference matrix and moving-redraw evidence.
-- `R16FinalHarness.lua` — explicit `R16FINAL` aggregate.
+- `R16FinalHarness.lua` — **R16FINAL ordering/evidence** aggregate before human handoff.
 - R17 evidence modules + `R17FinalHarness.lua` — explicit `R17FINAL` aggregate; ends at human review handoff, not human PASS.
 - B08/B09/B10/B13/B14 — focused one-motor/phase/upright/redraw/stress evidence.
 - `tests/test_mr02_leg_assembly_boundary.py` through `tests/test_mr06_mechanical_rewrite_closure.py` — current rewrite architecture/closure contracts.
@@ -197,6 +199,8 @@ Exact current mechanical design: `docs/superpowers/specs/2026-09-13-core-module-
 | Symptom | Start here | Verify next |
 |---|---|---|
 | click/touch does not start/end drawing | `InputController.lua`, `DrawingController.lua` | camera input ownership, client bootstrap, DrawHUD |
+| live line/accepted line wrong or disappears | `DrawingController.lua`, `CanonicalLegShape.lua` | server accepted points, main-canvas mapping |
+| **visible leg/stroke visual** wrong | `DrawingController.lua`, `LegAssembly.lua` | `VisualSegment`/`VisualJoint`, `CanonicalLegShape.lua`, docs `73` |
 | preview/world leg mismatch | `DrawingController.lua`, `CanonicalLegShape.lua` | `LegShapeService.lua`, `GeometryMath.lua`, doc `73` |
 | server rejects/accepts wrong drawing | `LegShapeService.lua`, `CanonicalLegShape.lua` | `StrokeTypes.lua`, `PhysicsConfig.lua`, doc `22` |
 | wrong shape size/pivot/radial cap | `CanonicalLegShape.lua`, `GeometryMath.lua` | `PhysicsConfig.lua`, `LegAssembly.lua`, doc `73` |
@@ -208,6 +212,7 @@ Exact current mechanical design: `docs/superpowers/specs/2026-09-13-core-module-
 | fall/recovery behaves as success | `R16TrialRunner.lua`, `M0HumanHarness.lua` | `RecoveryKillY`, Stage B/C safety filters |
 | camera jitter/orbit issue | `RaceCameraController.lua`, `CameraMath.lua` | client bootstrap/input interaction; live Studio evidence |
 | rider pose/readability issue | `RiderPresentationController.lua` | presentation identity/seat reference; live Studio evidence |
+| **R16FINAL ordering/evidence** issue | `R16FinalHarness.lua`, `R16StageCHarness.lua` | `R16TrialRunner.lua`, selected Studio mode |
 | normal G0 unexpectedly runs tests | `StudioHarnessConfig.lua`, `Bootstrap.server.lua` | Studio mode decision/current local HEAD |
 | files do not update in Studio | `default.project.json` | local git HEAD/status, Rojo connection/output |
 
