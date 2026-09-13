@@ -235,7 +235,8 @@ def test_latest_phase_decision_restores_structural_180_on_shared_axle() -> None:
     assert "RightPhaseOffsetDegrees = 180" in config
     assert "phaseDegrees = motor.RightPhaseOffsetDegrees" in pair
     assert "opposed structural difference expected 180" in b09
-    assert "selected safe phase was not applied" in b13
+    assert "local phaseBefore = pair:GetPhaseDegrees()" in b13
+    assert "redraw changed live axle phase" in b13
     assert "function RedrawSpawnSafety.ChoosePhase" in safety
     assert "180" in decision and "supersed" in decision.lower() and "co-phase" in decision.lower()
     assert "_StepLegPhaseSync" not in read("src/server/Runtime/RacerRuntime.lua")

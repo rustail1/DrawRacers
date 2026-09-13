@@ -11,17 +11,19 @@ def test_r16_8_moving_redraw_parity_is_stress_verified() -> None:
     b13 = read("src/server/Tests/B13AtomicRedrawSpec.lua")
     b14 = read("src/server/Tests/B14RedrawStressSpec.lua")
 
-    # B13 now proves the bounded safety-selected phase can replace exact phase
-    # preservation when the new geometry would otherwise penetrate Track.
-    assert "newPair:GetPhaseDegrees()" in b13
-    assert "phaseBefore + 30" in b13
-    assert "selected safe phase was not applied" in b13
+    # B13 now verifies the production redraw invariant directly: the live pair,
+    # axle, side owners and current phase remain stable while geometry changes.
+    assert "local phaseBefore = pair:GetPhaseDegrees()" in b13
+    assert "racer:GetLegPair() == pair" in b13
+    assert "pair:GetRoot() == axle and pair:GetJoint() == joint" in b13
+    assert "pair:GetLeftLeg() == left and pair:GetRightLeg() == right" in b13
+    assert "redraw changed live axle phase" in b13
     assert "successful redraw teleported body CFrame" in b13
     assert "successful redraw reset AssemblyLinearVelocity" in b13
     assert "successful redraw reset AssemblyAngularVelocity" in b13
 
-    # The isolated high-Y B14 moving fixture has no Track overlap, so it still
-    # verifies exact phase continuity for the normal zero-penetration path.
+    # The isolated high-Y B14 moving fixture stress-verifies the same continuity
+    # across repeated redraws without relying on the retired side handoff.
     assert "runMovingRedrawParity" in b14
     assert "for redrawIndex = 1, 10 do" in b14
     assert "movingBody.AssemblyLinearVelocity" in b14

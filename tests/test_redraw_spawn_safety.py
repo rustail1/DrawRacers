@@ -73,8 +73,9 @@ def test_phase_safety_is_used_for_initial_pair_but_redraw_preserves_stable_axle_
         assert forbidden not in apply_body, f"stable-axle redraw must not teleport/reset body: {forbidden}"
 
 
-def test_b13_keeps_legacy_phase_safety_spec_available_for_initial_placement_evidence() -> None:
+def test_b13_redraw_spec_keeps_phase_safety_out_of_normal_redraw() -> None:
     spec = read("src/server/Tests/B13AtomicRedrawSpec.lua")
-    assert "RedrawSpawnSafety" in spec
-    assert "ChoosePhase" in spec
-    assert "safe phase" in spec.lower()
+    assert "RedrawSpawnSafety" not in spec
+    assert "local phaseBefore = pair:GetPhaseDegrees()" in spec
+    assert "redraw changed live axle phase" in spec
+    assert "racer:GetLegPair() == pair" in spec
