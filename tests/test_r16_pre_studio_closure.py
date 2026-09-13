@@ -128,8 +128,10 @@ def test_p5_wall_requires_suitable_success_and_suboptimal_failure() -> None:
     assert 'R16TrialRunner.RunPiece("SingleWallLow", "HOOK_01"' in stage_c
     assert 'R16TrialRunner.RunPiece("SingleWallLow", "LONG_BAR_01"' in stage_c
     assert 'R16TrialRunner.RunPiece("SingleWallLow", "SUBOPTIMAL_01"' in stage_c
-    assert "local wallGoodPassed = hook.completedPiece or longBar.completedPiece" in stage_c
-    assert "local wallBadPassed = suboptimal.valid and not suboptimal.completedPiece" in stage_c
+    assert "local function safeTraversalResult" in stage_c
+    assert "safeTraversalResult(hook) and hook.completedPiece" in stage_c
+    assert "safeTraversalResult(longBar) and longBar.completedPiece" in stage_c
+    assert "local wallBadPassed = safeTraversalResult(suboptimal) and not suboptimal.completedPiece" in stage_c
     assert "local wallPassed = wallGoodPassed and wallBadPassed" in stage_c
     assert "wallBadPassed" in stage_c
 
