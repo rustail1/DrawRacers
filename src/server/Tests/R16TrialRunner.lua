@@ -387,6 +387,7 @@ function R16TrialRunner.RunPiece(pieceId: string, shapeId: string, measureSecond
 		minDeltaY = 0,
 		maxBounceHeight = 0,
 		solverInstability = false,
+		fellBelowRecovery = false,
 		antiStallSeen = false,
 		motorsEnabled = false,
 		landedAfterGap = false,
@@ -428,6 +429,7 @@ function R16TrialRunner.RunPiece(pieceId: string, shapeId: string, measureSecond
 			result.landedAfterGap = true
 		end
 		if position.Y < M0SceneConfig.RecoveryKillY then
+			result.fellBelowRecovery = true
 			break
 		end
 	end
