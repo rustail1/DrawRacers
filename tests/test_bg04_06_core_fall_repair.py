@@ -7,33 +7,38 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_bg04_reshape_has_bounded_gravity_support_and_runs_before_physics() -> None:
+def test_bg04_reshape_has_bounded_gravity_support_on_stable_pair() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
-    runtime = read("src/server/Runtime/RacerRuntime.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
 
     assert "GravityCompensationFraction = 1.0" in config
-    assert 'ReshapeSupportAttachment' in runtime
-    assert 'ReshapeSupportForce' in runtime
-    assert 'Instance.new("VectorForce")' in runtime
-    assert "ApplyAtCenterOfMass = true" in runtime
-    assert "Enum.ActuatorRelativeTo.World" in runtime
-    assert "AssemblyMass * Workspace.Gravity" in runtime
-    assert "RunService.PreSimulation:Connect" in runtime
-    assert "_SetReshapeSupportEnabled(true)" in runtime
-    assert "_SetReshapeSupportEnabled(false)" in runtime
+    assert 'ReshapeSupportAttachment' in pair
+    assert 'ReshapeSupportForce' in pair
+    assert 'Instance.new("VectorForce")' in pair
+    assert "ApplyAtCenterOfMass = true" in pair
+    assert "Enum.ActuatorRelativeTo.World" in pair
+    assert "AssemblyMass * Workspace.Gravity" in pair
+    assert "_SetReshapeSupportEnabled(true)" in pair
+    assert "_SetReshapeSupportEnabled(false)" in pair
+    begin = pair.split("function LegPairAssembly:BeginGeometryReshape", 1)[1].split(
+        "function LegPairAssembly:SetReshapeProgress", 1
+    )[0]
+    assert begin.index("_SetReshapeSupportEnabled(true)") < begin.index("oldLeft:Destroy()")
 
 
 def test_bg05_recovery_finishes_transient_reshape_before_teleport() -> None:
-    runtime = read("src/server/Runtime/RacerRuntime.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
     harness = read("src/server/Tests/M0HumanHarness.lua")
     config = read("src/shared/Config/M0SceneConfig.lua")
 
-    assert "function RacerRuntime:PrepareForRecovery" in runtime
-    prepare = runtime.split("function RacerRuntime:PrepareForRecovery", 1)[1].split("function RacerRuntime:", 1)[0]
-    assert "self:_CancelReshape()" in prepare
-    assert "self.legPair:SetReshapeProgress(1)" in prepare
-    assert "racer:PrepareForRecovery()" in harness
-    assert harness.index("racer:PrepareForRecovery()") < harness.index("model:PivotTo")
+    assert "function LegPairAssembly:CompleteReshapeForRecovery" in pair
+    complete = pair.split("function LegPairAssembly:CompleteReshapeForRecovery", 1)[1].split(
+        "function LegPairAssembly:", 1
+    )[0]
+    assert "self.reshapeForcedComplete = true" in complete
+    assert "self:SetReshapeProgress(1)" in complete
+    assert "pair:CompleteReshapeForRecovery()" in harness
+    assert harness.index("pair:CompleteReshapeForRecovery()") < harness.index("model:PivotTo")
     assert "RecoveryKillY = -12" in config
 
 
