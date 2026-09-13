@@ -64,3 +64,16 @@ def test_rcp03_client_submits_raw_normalized_samples_and_uses_fixed_main_canvas_
     )
     assert "DESKTOP_CANVAS_SIZE = UDim2.fromScale(0.70, 0.40)" in client
     assert "TOUCH_CANVAS_SIZE = UDim2.fromScale(0.84, 0.48)" in client
+
+
+def test_rcp03_polyline_renderer_fills_sharp_corner_joints_without_changing_centerline() -> None:
+    client = (ROOT / "src/client/Controllers/DrawingController.lua").read_text(encoding="utf-8")
+
+    assert "local function drawJoint" in client, (
+        "sharp canonical corners need an explicit round joint; rounded segment caps alone can leave a visible notch"
+    )
+    assert 'joint.Name = "Joint"' in client
+    assert "UDim2.fromOffset(thickness, thickness)" in client
+    assert "for index = 2, #points - 1 do" in client
+    assert "drawJoint(layer, points[index], thickness, transparency)" in client
+    assert 'child.Name == "Segment" or child.Name == "Joint"' in client
