@@ -24,7 +24,6 @@ export type BuildParams = {
 	shapeSpec: ShapeSpec,
 	motorEnabled: boolean?,
 	initialPhaseDegrees: number?,
-	staged: boolean?,
 }
 
 type LegBuildParams = {
@@ -35,6 +34,10 @@ type LegBuildParams = {
 	socketZ: number,
 	phaseDegrees: number,
 }
+
+local function isFiniteNumber(value: number): boolean
+	return value == value and value ~= math.huge and value ~= -math.huge
+end
 
 local function ensureBodyAttachment(body: Part): Attachment
 	local existing = body:FindFirstChild("AxleMotorAttachment")
@@ -88,18 +91,9 @@ function LegPairAssembly.new(params: BuildParams)
 
 	local geometry = PhysicsConfig.LegGeometry
 	local motor = PhysicsConfig.Motor
-	local staged = params.staged == true
 	local initialPhaseDegrees = params.initialPhaseDegrees or 0
+	assert(type(initialPhaseDegrees) == "number" and isFiniteNumber(initialPhaseDegrees), "initial phase must be finite")
 	local bodyAttachment = ensureBodyAttachment(body)
-
-	local stagingContainer = nil
-	local sideContainer: Instance = legsFolder
-	if staged then
-		local detached = Instance.new("Folder")
-		detached.Name = "LegPairStaging"
-		stagingContainer = detached
-		sideContainer = detached
-	end
 
 	local axleRoot = Instance.new("Part")
 	axleRoot.Name = "AxleRoot"
@@ -112,9 +106,7 @@ function LegPairAssembly.new(params: BuildParams)
 	axleRoot.Transparency = 1
 	axleRoot.Massless = true
 	axleRoot.CollisionGroup = RACER_LEG_GROUP
-	if not staged then
-		axleRoot.Parent = legsFolder
-	end
+	axleRoot.Parent = legsFolder
 
 	local axleAttachment = Instance.new("Attachment")
 	axleAttachment.Name = "MotorAttachment"
@@ -130,7 +122,7 @@ function LegPairAssembly.new(params: BuildParams)
 	joint.AngularVelocity = motor.AngularVelocity
 	joint.MotorMaxTorque = motor.MotorMaxTorque
 	joint.MotorMaxAcceleration = motor.MotorMaxAcceleration
-	joint.Enabled = if staged then false else params.motorEnabled == true
+	joint.Enabled = false
 	joint.Parent = axleRoot
 
 	local reshapeSupportAttachment = Instance.new("Attachment")
@@ -150,7 +142,7 @@ function LegPairAssembly.new(params: BuildParams)
 	local rightLeg = nil
 	local sideBuildOk, sideBuildError = pcall(function()
 		leftLeg = buildLeg({
-			container = sideContainer,
+			container = legsFolder,
 			axleRoot = axleRoot,
 			shapeSpec = params.shapeSpec,
 			side = "Left",
@@ -158,7 +150,7 @@ function LegPairAssembly.new(params: BuildParams)
 			phaseDegrees = 0,
 		})
 		rightLeg = buildLeg({
-			container = sideContainer,
+			container = legsFolder,
 			axleRoot = axleRoot,
 			shapeSpec = params.shapeSpec,
 			side = "Right",
@@ -169,7 +161,6 @@ function LegPairAssembly.new(params: BuildParams)
 	if not sideBuildOk then
 		if leftLeg ~= nil then leftLeg:Destroy() end
 		if rightLeg ~= nil then rightLeg:Destroy() end
-		if stagingContainer ~= nil then stagingContainer:Destroy() end
 		reshapeSupportForce:Destroy()
 		reshapeSupportAttachment:Destroy()
 		axleRoot:Destroy()
@@ -177,11 +168,10 @@ function LegPairAssembly.new(params: BuildParams)
 	end
 	assert(leftLeg ~= nil and rightLeg ~= nil, "LegPairAssembly produced incomplete rigid sides")
 
-	return setmetatable({
+	local self = setmetatable({
 		racerModel = racerModel,
 		body = body,
 		legsFolder = legsFolder,
-		stagingContainer = stagingContainer,
 		axleRoot = axleRoot,
 		joint = joint,
 		leftLeg = leftLeg,
@@ -190,9 +180,14 @@ function LegPairAssembly.new(params: BuildParams)
 		reshapeSupportForce = reshapeSupportForce,
 		reshapeForcedComplete = false,
 		initialPhaseDegrees = initialPhaseDegrees,
-		committed = not staged,
+		motorEverEnabled = false,
 		destroyed = false,
 	}, LegPairAssembly)
+
+	if params.motorEnabled == true then
+		self:SetEnabled(true)
+	end
+	return self
 end
 
 function LegPairAssembly:GetRoot(): Part
@@ -222,25 +217,13 @@ function LegPairAssembly:GetPhaseDegrees(): number
 	return math.deg(z)
 end
 
-function LegPairAssembly:IsCommitted(): boolean
+function LegPairAssembly:SetInitialPhaseDegrees(phaseDegrees: number)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	return self.committed
-end
-
-function LegPairAssembly:Commit()
-	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	if self.committed then
-		return
-	end
-	assert(self.axleRoot.Parent == nil, "staged axle root already has a parent")
-	assert(self.stagingContainer ~= nil, "staged pair missing temporary side container")
-
-	self.axleRoot.Parent = self.legsFolder
-	self.leftLeg:GetModel().Parent = self.legsFolder
-	self.rightLeg:GetModel().Parent = self.legsFolder
-	self.stagingContainer:Destroy()
-	self.stagingContainer = nil
-	self.committed = true
+	assert(type(phaseDegrees) == "number" and isFiniteNumber(phaseDegrees), "initial phase must be finite")
+	assert(not self.motorEverEnabled, "initial phase is locked after motor activation")
+	assert(not self.joint.Enabled, "initial phase requires disabled motor")
+	self.initialPhaseDegrees = phaseDegrees
+	self.axleRoot.CFrame = axleBaseCFrame(self.body) * CFrame.Angles(0, 0, math.rad(phaseDegrees))
 end
 
 function LegPairAssembly:_SetReshapeSupportEnabled(enabled: boolean)
@@ -266,7 +249,6 @@ end
 
 function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	assert(self.committed, "ReplaceGeometry requires a committed stable axle")
 	assert(
 		type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0,
 		"shapeSpec missing physical segmentPlan"
@@ -283,7 +265,6 @@ end
 
 function LegPairAssembly:BeginGeometryReshape(shapeSpec: ShapeSpec)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	assert(self.committed, "BeginGeometryReshape requires a committed stable axle")
 	assert(
 		type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0,
 		"shapeSpec missing physical segmentPlan"
@@ -319,6 +300,9 @@ end
 
 function LegPairAssembly:SetEnabled(enabled: boolean)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
+	if enabled then
+		self.motorEverEnabled = true
+	end
 	self.joint.Enabled = enabled
 end
 
@@ -330,13 +314,11 @@ function LegPairAssembly:Destroy()
 	self.destroyed = true
 	if self.leftLeg then self.leftLeg:Destroy() end
 	if self.rightLeg then self.rightLeg:Destroy() end
-	if self.stagingContainer then self.stagingContainer:Destroy() end
 	if self.reshapeSupportForce then self.reshapeSupportForce:Destroy() end
 	if self.reshapeSupportAttachment then self.reshapeSupportAttachment:Destroy() end
 	if self.axleRoot then self.axleRoot:Destroy() end
 	self.leftLeg = nil
 	self.rightLeg = nil
-	self.stagingContainer = nil
 	self.reshapeSupportForce = nil
 	self.reshapeSupportAttachment = nil
 	self.axleRoot = nil
