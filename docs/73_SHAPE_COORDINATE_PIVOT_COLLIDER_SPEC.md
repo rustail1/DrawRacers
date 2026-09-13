@@ -1,11 +1,11 @@
 # 73 — SHAPE COORDINATE, PIVOT & COLLIDER SPEC
-Статус: **EXACT CORE GEOMETRY CONTRACT v1.5.0 / R16.3B + MR-06 PERSISTENT OPPOSED SHARED AXLE**.
+Статус: **EXACT CORE GEOMETRY CONTRACT v1.5.1 / R16.3B + R17 + MR-06 PERSISTENT OPPOSED SHARED AXLE**.
 
 Цель: убрать неоднозначность между экранным stroke и физической leg assembly. Этот файл владеет точным mapping `DrawCanvas → authoritative ShapeSpec → collider segments → persistent shared axle assembly`. `03` владеет игровым поведением, `16` — tuneable constants, `65` — Studio instance tree, `22` — network payload.
 
 > **R16.3B supersedes R16.3A bounds-center semantics.** Положение рисунка на широком DrawInputRect остаётся presentation input, но механический origin определяется первым cleaned point. Старое правило «bounds center / bounds-center → hub» больше не является текущим контрактом.
 >
-> **MR-01..MR-06 supersede the legacy duplicated/staged core.** `CanonicalLegShape` is the one canonical processing owner used by client prediction and server authority. Production rotation is owned by one persistent `LegPairAssembly`, one shared axle, one `AxleJoint` and **one motor**. Left/Right use the same canonical XY ShapeSpec and a fixed structural opposition `RightPhaseOffsetDegrees = 180`. Redraw reuses the same pair/axle/joint/side owners. Live solver/visual acceptance remains **HUMAN STUDIO PENDING**.
+> **R17 fixed the current shared-axle structural phase at 180°; MR-01..MR-06 supersede the legacy duplicated/staged core implementation.** `CanonicalLegShape` is the one canonical processing owner used by client prediction and server authority. Production rotation is owned by one persistent `LegPairAssembly`, one shared axle, one `AxleJoint` and **one motor**. Left/Right use the same canonical XY ShapeSpec and a fixed structural opposition `RightPhaseOffsetDegrees = 180`. Redraw reuses the same pair/axle/joint/side owners. Live solver/visual acceptance remains **HUMAN STUDIO PENDING**.
 
 ## 1. Canonical 2D coordinate system
 R16.3B uses one **wide semantic DrawInputRect**. Raw semantic coordinates are:
