@@ -39,13 +39,12 @@ local function createLaneReference(model: Model, body: Part, laneCenterZ: number
 	laneReference.Parent = racersRoot
 	laneReference:SetAttribute("RacerModelName", model.Name)
 
-	local laneReferenceAttachment = Instance.new("Attachment")
-	laneReferenceAttachment.Name = "LanePlaneReferenceAttachment"
-	laneReferenceAttachment.Axis = Vector3.zAxis
-	laneReferenceAttachment.SecondaryAxis = Vector3.yAxis
-	laneReferenceAttachment.Parent = laneReference
-
-	return laneReference, laneReferenceAttachment
+	local referenceAttachment = Instance.new("Attachment")
+	referenceAttachment.Name = "LanePlaneReferenceAttachment"
+	referenceAttachment.Axis = Vector3.zAxis
+	referenceAttachment.SecondaryAxis = Vector3.yAxis
+	referenceAttachment.Parent = laneReference
+	return laneReference, referenceAttachment
 end
 
 function RacerStabilizer.new(params: Params)
@@ -57,13 +56,8 @@ function RacerStabilizer.new(params: Params)
 
 	local laneAttachment = takeAttachment(runtimeAttachments, body, "LaneAlignAttachment")
 	local orientationAttachment = takeAttachment(runtimeAttachments, body, "OrientationAttachment")
-	-- AllAxes upright alignment requires the attachment itself to use the canonical
-	-- identity basis. The previous zAxis/yAxis basis belonged to the old
-	-- PrimaryAxisParallel contract and would rotate the goal frame relative to BodyCollider.
 	orientationAttachment.Axis = Vector3.xAxis
 	orientationAttachment.SecondaryAxis = Vector3.yAxis
-	-- RuntimeAttachments is a template staging container only. Once the attachments
-	-- are owned by BodyCollider, remove the empty helper so spawned racers match doc 65.
 	runtimeAttachments:Destroy()
 
 	local laneReference, laneReferenceAttachment = createLaneReference(model, body, params.laneCenterZ)
@@ -80,7 +74,8 @@ function RacerStabilizer.new(params: Params)
 	orientationAlign.Attachment0 = orientationAttachment
 	orientationAlign.AlignType = Enum.AlignType.AllAxes
 	orientationAlign.CFrame = CFrame.identity
-	orientationAlign.RigidityEnabled = false
+	-- CR2: the cube is an arcade-upright chassis. X/Y translation remains physics-driven.
+	orientationAlign.RigidityEnabled = true
 	orientationAlign.ReactionTorqueEnabled = false
 	orientationAlign.Responsiveness = config.OrientationResponsiveness
 	orientationAlign.MaxTorque = config.OrientationMaxTorque
@@ -101,24 +96,17 @@ function RacerStabilizer.new(params: Params)
 		connection = nil,
 		destroyed = false,
 	}, RacerStabilizer)
-
 	self.connection = RunService.Heartbeat:Connect(function()
 		self:Step()
 	end)
-
 	return self
 end
 
 function RacerStabilizer:Step()
-	if self.destroyed or self.body == nil or self.body.Parent == nil then
-		return
-	end
-
+	if self.destroyed or self.body == nil or self.body.Parent == nil then return end
 	local config = PhysicsConfig.Stabilization
-	local body = self.body
-	local errorZ = body.Position.Z - self.laneCenterZ
+	local errorZ = self.body.Position.Z - self.laneCenterZ
 	local absoluteError = math.abs(errorZ)
-
 	self.lanePlane.Enabled = true
 	self.orientationAlign.Enabled = true
 	self.model:SetAttribute("LaneNormalBoundExceeded", absoluteError > config.LaneNormalError)
@@ -141,24 +129,13 @@ function RacerStabilizer:GetLaneCenterZ(): number
 end
 
 function RacerStabilizer:Destroy()
-	if self.destroyed then
-		return
-	end
-
+	if self.destroyed then return end
 	self.destroyed = true
-	if self.connection then
-		self.connection:Disconnect()
-		self.connection = nil
-	end
-	if self.lanePlane then
-		self.lanePlane:Destroy()
-	end
-	if self.orientationAlign then
-		self.orientationAlign:Destroy()
-	end
-	if self.laneReference then
-		self.laneReference:Destroy()
-	end
+	if self.connection then self.connection:Disconnect() end
+	if self.lanePlane then self.lanePlane:Destroy() end
+	if self.orientationAlign then self.orientationAlign:Destroy() end
+	if self.laneReference then self.laneReference:Destroy() end
+	self.connection = nil
 	self.lanePlane = nil
 	self.orientationAlign = nil
 	self.laneReference = nil

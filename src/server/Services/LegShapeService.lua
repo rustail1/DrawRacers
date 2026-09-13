@@ -25,63 +25,36 @@ local function isFiniteNumber(value: number): boolean
 end
 
 local function reject(reasonCode: string): LegShapeResult
-	return {
-		accepted = false,
-		rejectReasonCode = reasonCode,
-	}
+	return { accepted = false, rejectReasonCode = reasonCode }
 end
 
 local function networkReject(sequence: number, reasonCode: string): StrokeResultPayload
-	return {
-		sequence = sequence,
-		accepted = false,
-		rejectReasonCode = reasonCode,
-	}
+	return { sequence = sequence, accepted = false, rejectReasonCode = reasonCode }
 end
 
 local function serializeSemanticPoints(points: { Vector2 }): SemanticPoints
 	local result = table.create(#points)
-	for index, point in points do
-		result[index] = {
-			x = point.X,
-			y = point.Y,
-		}
-	end
+	for index, point in points do result[index] = { x = point.X, y = point.Y } end
 	return result
 end
 
 local function validateRawPointArray(rawPoints: any): ({ Vector2 }?, string?)
 	local config = PhysicsConfig.StrokeProcessing
-	if type(rawPoints) ~= "table" then
-		return nil, "MALFORMED_POINTS"
-	end
-
+	if type(rawPoints) ~= "table" then return nil, "MALFORMED_POINTS" end
 	local entryCount = 0
 	local maxIndex = 0
 	for key, _ in rawPoints do
-		if type(key) ~= "number" or key < 1 or math.floor(key) ~= key then
-			return nil, "MALFORMED_POINTS"
-		end
+		if type(key) ~= "number" or key < 1 or math.floor(key) ~= key then return nil, "MALFORMED_POINTS" end
 		entryCount += 1
-		if entryCount > config.MaxRawPoints or key > config.MaxRawPoints then
-			return nil, "TOO_MANY_POINTS"
-		end
+		if entryCount > config.MaxRawPoints or key > config.MaxRawPoints then return nil, "TOO_MANY_POINTS" end
 		maxIndex = math.max(maxIndex, key)
 	end
-
-	if entryCount < config.MinimumRawPoints then
-		return nil, "TOO_FEW_POINTS"
-	end
-	if maxIndex ~= entryCount then
-		return nil, "MALFORMED_POINTS"
-	end
-
+	if entryCount < config.MinimumRawPoints then return nil, "TOO_FEW_POINTS" end
+	if maxIndex ~= entryCount then return nil, "MALFORMED_POINTS" end
 	local points = table.create(entryCount)
 	for index = 1, entryCount do
 		local point = rawPoints[index]
-		if typeof(point) ~= "Vector2" then
-			return nil, "MALFORMED_POINTS"
-		end
+		if typeof(point) ~= "Vector2" then return nil, "MALFORMED_POINTS" end
 		points[index] = point
 	end
 	return points, nil
@@ -90,16 +63,7 @@ end
 local function buildDebugId(version: number, points: { Vector2 }, length: number): string
 	local first = points[1]
 	local last = points[#points]
-	return string.format(
-		"shape-v%d-p%d-l%.4f-f%.3f,%.3f-z%.3f,%.3f",
-		version,
-		#points,
-		length,
-		first.X,
-		first.Y,
-		last.X,
-		last.Y
-	)
+	return string.format("shape-v%d-p%d-l%.4f-f%.3f,%.3f-z%.3f,%.3f", version, #points, length, first.X, first.Y, last.X, last.Y)
 end
 
 function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, motorEnabled: boolean?): LegShapeResult
@@ -111,18 +75,9 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 	end
 
 	local points, arrayError = validateRawPointArray(rawPoints)
-	if points == nil then
-		return reject(arrayError or "MALFORMED_POINTS")
-	end
-
-	local canonical, canonicalError = CanonicalLegShape.Build(
-		points,
-		PhysicsConfig.StrokeProcessing,
-		PhysicsConfig.LegGeometry
-	)
-	if canonical == nil then
-		return reject(canonicalError or "INVALID_STROKE")
-	end
+	if points == nil then return reject(arrayError or "MALFORMED_POINTS") end
+	local canonical, canonicalError = CanonicalLegShape.Build(points, PhysicsConfig.StrokeProcessing, PhysicsConfig.LegGeometry)
+	if canonical == nil then return reject(canonicalError or "INVALID_STROKE") end
 
 	local nextVersion = racerRuntime:GetShapeVersion() + 1
 	local shapeSpec: ShapeSpec = {
@@ -137,31 +92,27 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 		debugId = buildDebugId(nextVersion, canonical.normalizedPoints, canonical.cleanedLength),
 	}
 
-	local applied, applyError = pcall(function()
-		racerRuntime:ApplyValidatedShape(shapeSpec, motorEnabled)
+	local callOk, applyResult = pcall(function()
+		return racerRuntime:ApplyValidatedShape(shapeSpec, motorEnabled)
 	end)
-	if not applied then
-		warn(string.format("[DrawRacers][LegShapeService] validated shape application failed: %s", tostring(applyError)))
+	if not callOk then
+		warn(string.format("[DrawRacers][LegShapeService] validated shape application failed: %s", tostring(applyResult)))
 		return reject("BUILD_FAILED")
 	end
+	if type(applyResult) ~= "table" or applyResult.accepted ~= true then
+		local reason = if type(applyResult) == "table" and type(applyResult.rejectReasonCode) == "string"
+			then applyResult.rejectReasonCode
+			else "BUILD_FAILED"
+		return reject(reason)
+	end
 
-	return {
-		accepted = true,
-		shapeVersion = nextVersion,
-		shapeSpec = shapeSpec,
-	}
+	return { accepted = true, shapeVersion = nextVersion, shapeSpec = shapeSpec }
 end
 
 local function extractSequence(payload: any): number?
-	if type(payload) ~= "table" then
-		return nil
-	end
+	if type(payload) ~= "table" then return nil end
 	local sequence = payload.sequence
-	if type(sequence) ~= "number"
-		or not isFiniteNumber(sequence)
-		or sequence < 1
-		or math.floor(sequence) ~= sequence
-	then
+	if type(sequence) ~= "number" or not isFiniteNumber(sequence) or sequence < 1 or math.floor(sequence) ~= sequence then
 		return nil
 	end
 	return sequence
@@ -172,83 +123,50 @@ function LegShapeService.ExtractSafeSequence(payload: any): number?
 end
 
 local function validateNetworkEnvelope(payload: any): string?
-	if type(payload) ~= "table" then
-		return "MALFORMED_PAYLOAD"
-	end
-
+	if type(payload) ~= "table" then return "MALFORMED_PAYLOAD" end
 	local fieldCount = 0
 	for key, _ in payload do
 		fieldCount += 1
-		if fieldCount > 2 or (key ~= "sequence" and key ~= "points") then
-			return "MALFORMED_PAYLOAD"
-		end
+		if fieldCount > 2 or (key ~= "sequence" and key ~= "points") then return "MALFORMED_PAYLOAD" end
 	end
-	if fieldCount ~= 2 or payload.points == nil then
-		return "MALFORMED_PAYLOAD"
-	end
+	if fieldCount ~= 2 or payload.points == nil then return "MALFORMED_PAYLOAD" end
 	return nil
 end
 
 local function validateSemanticPoint(point: any): (number?, number?, string?)
-	if type(point) ~= "table" then
-		return nil, nil, "MALFORMED_POINTS"
-	end
-
+	if type(point) ~= "table" then return nil, nil, "MALFORMED_POINTS" end
 	local fieldCount = 0
 	for key, _ in point do
 		fieldCount += 1
-		if fieldCount > 2 or (key ~= "x" and key ~= "y") then
-			return nil, nil, "MALFORMED_POINTS"
-		end
+		if fieldCount > 2 or (key ~= "x" and key ~= "y") then return nil, nil, "MALFORMED_POINTS" end
 	end
-	if fieldCount ~= 2 then
-		return nil, nil, "MALFORMED_POINTS"
-	end
-
+	if fieldCount ~= 2 then return nil, nil, "MALFORMED_POINTS" end
 	local x = point.x
 	local y = point.y
-	if type(x) ~= "number" or type(y) ~= "number" then
-		return nil, nil, "MALFORMED_POINTS"
-	end
-	if not isFiniteNumber(x) or not isFiniteNumber(y) then
-		return nil, nil, "NON_FINITE_POINT"
-	end
+	if type(x) ~= "number" or type(y) ~= "number" then return nil, nil, "MALFORMED_POINTS" end
+	if not isFiniteNumber(x) or not isFiniteNumber(y) then return nil, nil, "NON_FINITE_POINT" end
 	return x, y, nil
 end
 
 local function validateNetworkPoints(rawPoints: any): ({ Vector2 }?, SemanticPoints?, string?)
 	local config = PhysicsConfig.StrokeProcessing
-	if type(rawPoints) ~= "table" then
-		return nil, nil, "MALFORMED_POINTS"
-	end
-
+	if type(rawPoints) ~= "table" then return nil, nil, "MALFORMED_POINTS" end
 	local entryCount = 0
 	local maxIndex = 0
 	for key, _ in rawPoints do
-		if type(key) ~= "number" or key < 1 or math.floor(key) ~= key then
-			return nil, nil, "MALFORMED_POINTS"
-		end
+		if type(key) ~= "number" or key < 1 or math.floor(key) ~= key then return nil, nil, "MALFORMED_POINTS" end
 		entryCount += 1
-		if entryCount > config.MaxRawPoints or key > config.MaxRawPoints then
-			return nil, nil, "TOO_MANY_POINTS"
-		end
+		if entryCount > config.MaxRawPoints or key > config.MaxRawPoints then return nil, nil, "TOO_MANY_POINTS" end
 		maxIndex = math.max(maxIndex, key)
 	end
-
-	if entryCount < config.MinimumRawPoints then
-		return nil, nil, "TOO_FEW_POINTS"
-	end
-	if maxIndex ~= entryCount then
-		return nil, nil, "MALFORMED_POINTS"
-	end
+	if entryCount < config.MinimumRawPoints then return nil, nil, "TOO_FEW_POINTS" end
+	if maxIndex ~= entryCount then return nil, nil, "MALFORMED_POINTS" end
 
 	local vectors = table.create(entryCount)
 	local canonicalPoints: SemanticPoints = table.create(entryCount)
 	for index = 1, entryCount do
 		local x, y, pointError = validateSemanticPoint(rawPoints[index])
-		if pointError ~= nil or x == nil or y == nil then
-			return nil, nil, pointError or "MALFORMED_POINTS"
-		end
+		if pointError ~= nil or x == nil or y == nil then return nil, nil, pointError or "MALFORMED_POINTS" end
 		vectors[index] = Vector2.new(x, y)
 		canonicalPoints[index] = { x = x, y = y }
 	end
@@ -260,40 +178,27 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 	assert(type(deps.resolveRacer) == "function", "CreateSubmitProcessor requires resolveRacer")
 	local nowFn = deps.now or os.clock
 	assert(type(nowFn) == "function", "CreateSubmitProcessor now must be a function")
-
 	local states = setmetatable({}, { __mode = "k" })
 	local processor = {}
 
 	function processor:Handle(playerKey: any, payload: any): StrokeResultPayload?
 		local sequence = extractSequence(payload)
-		if sequence == nil then
-			return nil
-		end
-
+		if sequence == nil then return nil end
 		local envelopeError = validateNetworkEnvelope(payload)
-		if envelopeError ~= nil then
-			return networkReject(sequence, envelopeError)
-		end
-
+		if envelopeError ~= nil then return networkReject(sequence, envelopeError) end
 		local racerRuntime = deps.resolveRacer(playerKey)
-		if racerRuntime == nil then
-			return networkReject(sequence, "NO_RACER")
-		end
+		if racerRuntime == nil then return networkReject(sequence, "NO_RACER") end
 
 		local state = states[playerKey]
 		if state == nil then
-			state = {
-				lastAcceptedSequence = 0,
-				pendingSequence = nil,
-				lastRequestAt = -math.huge,
-			}
+			state = { lastAcceptedSequence = 0, pendingSequence = nil, lastRequestAt = -math.huge, mechanicalPending = false }
 			states[playerKey] = state
 		end
-
+		if state.mechanicalPending == true then
+			return networkReject(sequence, "REDRAW_PENDING")
+		end
 		local pendingSequence = state.pendingSequence
-		if sequence <= state.lastAcceptedSequence
-			or (pendingSequence ~= nil and sequence <= pendingSequence)
-		then
+		if sequence <= state.lastAcceptedSequence or (pendingSequence ~= nil and sequence <= pendingSequence) then
 			return networkReject(sequence, "STALE_SEQUENCE")
 		end
 		state.pendingSequence = sequence
@@ -314,7 +219,6 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 			state.pendingSequence = nil
 			return networkReject(sequence, pointsError or "MALFORMED_POINTS")
 		end
-
 		local encodedOk, encodedPayload = pcall(function()
 			return HttpService:JSONEncode({ sequence = sequence, points = canonicalPoints })
 		end)
@@ -327,7 +231,9 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 			return networkReject(sequence, "PAYLOAD_TOO_LARGE")
 		end
 
+		state.mechanicalPending = true
 		local buildResult = LegShapeService.ValidateAndBuild(racerRuntime, vectors, true)
+		state.mechanicalPending = false
 		state.pendingSequence = nil
 		if buildResult.accepted == true then
 			state.lastAcceptedSequence = sequence
@@ -342,7 +248,6 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 		end
 		return networkReject(sequence, buildResult.rejectReasonCode or "INVALID_STROKE")
 	end
-
 	return processor
 end
 

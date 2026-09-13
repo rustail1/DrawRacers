@@ -1,18 +1,19 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
 local PhysicsConfig = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
 )
+local LegDriveMath = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("LegDriveMath")
+)
 local StrokeTypes = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
 )
-local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
-local LegAssembly = require(script.Parent:WaitForChild("LegAssembly"))
-
-local RACER_LEG_GROUP = "RacerLeg"
+local LegCollisionSafety = require(script.Parent:WaitForChild("LegCollisionSafety"))
+local LegDriveAssembly = require(script.Parent:WaitForChild("LegDriveAssembly"))
 
 local LegPairAssembly = {}
 LegPairAssembly.__index = LegPairAssembly
@@ -26,290 +27,211 @@ export type BuildParams = {
 	initialPhaseDegrees: number?,
 }
 
-type LegBuildParams = {
-	container: Instance,
-	axleRoot: Part,
-	shapeSpec: ShapeSpec,
-	side: string,
-	socketZ: number,
-	phaseDegrees: number,
-}
-
-local function isFiniteNumber(value: number): boolean
-	return value == value and value ~= math.huge and value ~= -math.huge
-end
-
-local function ensureBodyAttachment(body: Part): Attachment
-	local existing = body:FindFirstChild("AxleMotorAttachment")
-	if existing and existing:IsA("Attachment") then
-		return existing
-	end
-	if existing then
-		existing:Destroy()
-	end
-	local geometry = PhysicsConfig.LegGeometry
-	local attachment = Instance.new("Attachment")
-	attachment.Name = "AxleMotorAttachment"
-	attachment.Position = Vector3.new(geometry.HubOffsetX, geometry.HubOffsetY, 0)
-	attachment.Axis = Vector3.zAxis
-	attachment.SecondaryAxis = Vector3.yAxis
-	attachment.Parent = body
-	return attachment
-end
-
-local function axleBaseCFrame(body: Part): CFrame
-	local geometry = PhysicsConfig.LegGeometry
-	return body.CFrame * CFrame.new(geometry.HubOffsetX, geometry.HubOffsetY, 0)
-end
-
-local function buildLeg(params: LegBuildParams)
-	local leg = LegAssembly.new({
-		container = params.container,
-		side = params.side,
-		axleRoot = params.axleRoot,
-		socketZ = params.socketZ,
-		phaseDegrees = params.phaseDegrees,
-	})
-	leg:ReplaceGeometry(params.shapeSpec)
-	leg:CompleteReshape()
-	return leg
+local function validateShapeSpec(shapeSpec: ShapeSpec)
+	assert(type(shapeSpec) == "table", "LegPairAssembly requires authoritative shapeSpec")
+	assert(type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
 end
 
 function LegPairAssembly.new(params: BuildParams)
-	assert(type(params.shapeSpec) == "table", "LegPairAssembly requires authoritative shapeSpec")
-	assert(
-		type(params.shapeSpec.segmentPlan) == "table" and #params.shapeSpec.segmentPlan > 0,
-		"shapeSpec missing physical segmentPlan"
-	)
-	CollisionGroups.ensure()
-
+	validateShapeSpec(params.shapeSpec)
 	local racerModel = params.racerModel
 	local body = racerModel:FindFirstChild("BodyCollider")
 	local legsFolder = racerModel:FindFirstChild("Legs")
 	assert(body and body:IsA("Part"), "racerModel missing BodyCollider")
 	assert(legsFolder and legsFolder:IsA("Folder"), "racerModel missing Legs folder")
 
-	local geometry = PhysicsConfig.LegGeometry
-	local motor = PhysicsConfig.Motor
-	local initialPhaseDegrees = params.initialPhaseDegrees or 0
-	assert(type(initialPhaseDegrees) == "number" and isFiniteNumber(initialPhaseDegrees), "initial phase must be finite")
-	local bodyAttachment = ensureBodyAttachment(body)
-
-	local axleRoot = Instance.new("Part")
-	axleRoot.Name = "AxleRoot"
-	axleRoot.Size = Vector3.new(0.2, 0.2, 0.2)
-	axleRoot.CFrame = axleBaseCFrame(body) * CFrame.Angles(0, 0, math.rad(initialPhaseDegrees))
-	axleRoot.Anchored = false
-	axleRoot.CanCollide = false
-	axleRoot.CanTouch = false
-	axleRoot.CanQuery = false
-	axleRoot.Transparency = 1
-	axleRoot.Massless = true
-	axleRoot.CollisionGroup = RACER_LEG_GROUP
-	axleRoot.Parent = legsFolder
-
-	local axleAttachment = Instance.new("Attachment")
-	axleAttachment.Name = "MotorAttachment"
-	axleAttachment.Axis = Vector3.zAxis
-	axleAttachment.SecondaryAxis = Vector3.yAxis
-	axleAttachment.Parent = axleRoot
-
-	local joint = Instance.new("HingeConstraint")
-	joint.Name = "AxleJoint"
-	joint.Attachment0 = bodyAttachment
-	joint.Attachment1 = axleAttachment
-	joint.ActuatorType = Enum.ActuatorType.Motor
-	joint.AngularVelocity = motor.AngularVelocity
-	joint.MotorMaxTorque = motor.MotorMaxTorque
-	joint.MotorMaxAcceleration = motor.MotorMaxAcceleration
-	joint.Enabled = false
-	joint.Parent = axleRoot
-
-	local reshapeSupportAttachment = Instance.new("Attachment")
-	reshapeSupportAttachment.Name = "ReshapeSupportAttachment"
-	reshapeSupportAttachment.Parent = body
-
-	local reshapeSupportForce = Instance.new("VectorForce")
-	reshapeSupportForce.Name = "ReshapeSupportForce"
-	reshapeSupportForce.Attachment0 = reshapeSupportAttachment
-	reshapeSupportForce.ApplyAtCenterOfMass = true
-	reshapeSupportForce.RelativeTo = Enum.ActuatorRelativeTo.World
-	reshapeSupportForce.Force = Vector3.zero
-	reshapeSupportForce.Enabled = false
-	reshapeSupportForce.Parent = body
-
-	local leftLeg = nil
-	local rightLeg = nil
-	local sideBuildOk, sideBuildError = pcall(function()
-		leftLeg = buildLeg({
-			container = legsFolder,
-			axleRoot = axleRoot,
-			shapeSpec = params.shapeSpec,
-			side = "Left",
-			socketZ = -geometry.LegSocketZAbs,
-			phaseDegrees = 0,
-		})
-		rightLeg = buildLeg({
-			container = legsFolder,
-			axleRoot = axleRoot,
-			shapeSpec = params.shapeSpec,
-			side = "Right",
-			socketZ = geometry.LegSocketZAbs,
-			phaseDegrees = motor.RightPhaseOffsetDegrees,
-		})
-	end)
-	if not sideBuildOk then
-		if leftLeg ~= nil then leftLeg:Destroy() end
-		if rightLeg ~= nil then rightLeg:Destroy() end
-		reshapeSupportForce:Destroy()
-		reshapeSupportAttachment:Destroy()
-		axleRoot:Destroy()
-		error(sideBuildError)
-	end
-	assert(leftLeg ~= nil and rightLeg ~= nil, "LegPairAssembly produced incomplete rigid sides")
+	local leftDrive = LegDriveAssembly.new({
+		body = body,
+		container = legsFolder,
+		side = "Left",
+		initialPhaseDegrees = params.initialPhaseDegrees or 0,
+	})
+	local rightDrive = LegDriveAssembly.new({
+		body = body,
+		container = legsFolder,
+		side = "Right",
+		initialPhaseDegrees = (params.initialPhaseDegrees or 0) + PhysicsConfig.Motor.RightPhaseOffsetDegrees,
+	})
 
 	local self = setmetatable({
 		racerModel = racerModel,
 		body = body,
-		legsFolder = legsFolder,
-		axleRoot = axleRoot,
-		joint = joint,
-		leftLeg = leftLeg,
-		rightLeg = rightLeg,
-		reshapeSupportAttachment = reshapeSupportAttachment,
-		reshapeSupportForce = reshapeSupportForce,
-		reshapeForcedComplete = false,
-		initialPhaseDegrees = initialPhaseDegrees,
-		motorEverEnabled = false,
+		leftDrive = leftDrive,
+		rightDrive = rightDrive,
+		currentShapeSpec = params.shapeSpec,
+		currentMountOffsetDegrees = 0,
+		stagedShapeSpec = nil :: ShapeSpec?,
+		stagedMountOffsetDegrees = nil :: number?,
+		motorEnabled = false,
+		stepConnection = nil :: RBXScriptConnection?,
 		destroyed = false,
 	}, LegPairAssembly)
 
-	if params.motorEnabled == true then
-		self:SetEnabled(true)
+	local initialOffset, safetyError = LegCollisionSafety.FindSafeMountOffset(
+		params.shapeSpec,
+		leftDrive:GetRoot(),
+		rightDrive:GetRoot()
+	)
+	if initialOffset == nil then
+		leftDrive:Destroy()
+		rightDrive:Destroy()
+		error(safetyError or "NO_SAFE_REDRAW_PHASE")
 	end
+	self.currentMountOffsetDegrees = initialOffset
+	leftDrive:GetLeg():InstallGeometry(params.shapeSpec, initialOffset)
+	rightDrive:GetLeg():InstallGeometry(params.shapeSpec, initialOffset)
+
+	self.stepConnection = RunService.Heartbeat:Connect(function()
+		self:Step()
+	end)
+	self:SetEnabled(params.motorEnabled == true)
 	return self
 end
 
-function LegPairAssembly:GetRoot(): Part
+function LegPairAssembly:GetLeftDrive()
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	return self.axleRoot
+	return self.leftDrive
 end
 
-function LegPairAssembly:GetJoint(): HingeConstraint
+function LegPairAssembly:GetRightDrive()
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	return self.joint
+	return self.rightDrive
 end
 
 function LegPairAssembly:GetLeftLeg()
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	return self.leftLeg
+	return self.leftDrive:GetLeg()
 end
 
 function LegPairAssembly:GetRightLeg()
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	return self.rightLeg
+	return self.rightDrive:GetLeg()
 end
 
-function LegPairAssembly:GetPhaseDegrees(): number
+function LegPairAssembly:GetPhaseErrorDegrees(): number
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	local relative = axleBaseCFrame(self.body):ToObjectSpace(self.axleRoot.CFrame)
-	local _, _, z = relative:ToOrientation()
-	return math.deg(z)
-end
-
-function LegPairAssembly:SetInitialPhaseDegrees(phaseDegrees: number)
-	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	assert(type(phaseDegrees) == "number" and isFiniteNumber(phaseDegrees), "initial phase must be finite")
-	assert(not self.motorEverEnabled, "initial phase is locked after motor activation")
-	assert(not self.joint.Enabled, "initial phase requires disabled motor")
-	self.initialPhaseDegrees = phaseDegrees
-	self.axleRoot.CFrame = axleBaseCFrame(self.body) * CFrame.Angles(0, 0, math.rad(phaseDegrees))
-end
-
-function LegPairAssembly:_SetReshapeSupportEnabled(enabled: boolean)
-	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	local force = self.reshapeSupportForce
-	if not enabled then
-		force.Force = Vector3.zero
-		force.Enabled = false
-		return
-	end
-
-	local fraction = math.clamp(PhysicsConfig.LegReshape.GravityCompensationFraction or 0, 0, 1)
-	if fraction <= 0 then
-		force.Force = Vector3.zero
-		force.Enabled = false
-		return
-	end
-
-	local supportedMass = self.body.AssemblyMass + self.axleRoot.AssemblyMass
-	force.Force = Vector3.new(0, supportedMass * Workspace.Gravity * fraction, 0)
-	force.Enabled = true
-end
-
-function LegPairAssembly:BeginGeometryReshape(shapeSpec: ShapeSpec)
-	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	assert(
-		type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0,
-		"shapeSpec missing physical segmentPlan"
+	return LegDriveMath.PairPhaseErrorDegrees(
+		self.leftDrive:GetPhaseDegrees(),
+		self.rightDrive:GetPhaseDegrees(),
+		PhysicsConfig.Motor.RightPhaseOffsetDegrees
 	)
-
-	self.reshapeForcedComplete = false
-	self:_SetReshapeSupportEnabled(true)
-	self.leftLeg:ReplaceGeometry(shapeSpec)
-	self.rightLeg:ReplaceGeometry(shapeSpec)
-	self.leftLeg:SetReshapeProgress(0)
-	self.rightLeg:SetReshapeProgress(0)
-	return self.leftLeg, self.rightLeg
 end
 
-function LegPairAssembly:SetReshapeProgress(progress: number)
-	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	local effectiveProgress = if self.reshapeForcedComplete then 1 else math.clamp(progress, 0, 1)
-	if self.reshapeSupportForce.Enabled then
-		self:_SetReshapeSupportEnabled(true)
-	end
-	self.leftLeg:SetReshapeProgress(effectiveProgress)
-	self.rightLeg:SetReshapeProgress(effectiveProgress)
-	if effectiveProgress >= 1 then
-		self:_SetReshapeSupportEnabled(false)
-	end
+function LegPairAssembly:Step()
+	if self.destroyed or self.currentShapeSpec == nil then return end
+	local motor = PhysicsConfig.Motor
+	local baseOmega = LegDriveMath.ComputeAngularVelocity(self.currentShapeSpec.extent, motor)
+	local phaseError = LegDriveMath.PairPhaseErrorDegrees(
+		self.leftDrive:GetPhaseDegrees(),
+		self.rightDrive:GetPhaseDegrees(),
+		motor.RightPhaseOffsetDegrees
+	)
+	local correction = LegDriveMath.ComputePhaseCorrection(phaseError, motor)
+	self.leftDrive:SetMotorVelocity(baseOmega + correction * 0.5)
+	self.rightDrive:SetMotorVelocity(baseOmega - correction * 0.5)
+	self.racerModel:SetAttribute("DebugPairPhaseErrorDegrees", phaseError)
+	self.racerModel:SetAttribute("DebugDriveAngularVelocity", baseOmega)
 end
 
-function LegPairAssembly:CompleteReshapeForRecovery()
+function LegPairAssembly:StageRedraw(shapeSpec: ShapeSpec): (boolean, string?)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	self.reshapeForcedComplete = true
-	self:SetReshapeProgress(1)
+	validateShapeSpec(shapeSpec)
+	if self.stagedShapeSpec ~= nil then
+		return false, "REDRAW_PENDING"
+	end
+	local offset, safetyError = LegCollisionSafety.FindSafeMountOffset(
+		shapeSpec,
+		self.leftDrive:GetRoot(),
+		self.rightDrive:GetRoot()
+	)
+	if offset == nil then
+		return false, safetyError or "NO_SAFE_REDRAW_PHASE"
+	end
+	self.stagedShapeSpec = shapeSpec
+	self.stagedMountOffsetDegrees = offset
+	self.leftDrive:GetLeg():StageGeometry(shapeSpec, offset)
+	self.rightDrive:GetLeg():StageGeometry(shapeSpec, offset)
+	return true, nil
+end
+
+function LegPairAssembly:SetStageProgress(progress: number)
+	assert(not self.destroyed, "LegPairAssembly is destroyed")
+	if self.stagedShapeSpec == nil then return end
+	self.leftDrive:GetLeg():SetStageProgress(progress)
+	self.rightDrive:GetLeg():SetStageProgress(progress)
+end
+
+function LegPairAssembly:CommitStagedRedraw(): (boolean, string?)
+	assert(not self.destroyed, "LegPairAssembly is destroyed")
+	local shapeSpec = self.stagedShapeSpec
+	if shapeSpec == nil then
+		return false, "NO_PENDING_REDRAW"
+	end
+
+	local offset, safetyError = LegCollisionSafety.FindSafeMountOffset(
+		shapeSpec,
+		self.leftDrive:GetRoot(),
+		self.rightDrive:GetRoot()
+	)
+	if offset == nil then
+		self:CancelStagedRedraw()
+		return false, safetyError or "NO_SAFE_REDRAW_PHASE"
+	end
+	if self.stagedMountOffsetDegrees ~= offset then
+		self.stagedMountOffsetDegrees = offset
+		self.leftDrive:GetLeg():StageGeometry(shapeSpec, offset)
+		self.rightDrive:GetLeg():StageGeometry(shapeSpec, offset)
+		self:SetStageProgress(1)
+	end
+
+	local leftCommitted = self.leftDrive:GetLeg():CommitStagedGeometry()
+	local rightCommitted = self.rightDrive:GetLeg():CommitStagedGeometry()
+	if not leftCommitted or not rightCommitted then
+		-- Commit methods are prepared and non-yielding; reaching this means an internal contract violation.
+		self:CancelStagedRedraw()
+		return false, "BUILD_FAILED"
+	end
+	self.currentShapeSpec = shapeSpec
+	self.currentMountOffsetDegrees = offset
+	self.stagedShapeSpec = nil
+	self.stagedMountOffsetDegrees = nil
+	return true, nil
+end
+
+function LegPairAssembly:CancelStagedRedraw()
+	if self.destroyed then return end
+	self.leftDrive:GetLeg():CancelStagedGeometry()
+	self.rightDrive:GetLeg():CancelStagedGeometry()
+	self.stagedShapeSpec = nil
+	self.stagedMountOffsetDegrees = nil
+end
+
+function LegPairAssembly:PrepareForRecovery()
+	assert(not self.destroyed, "LegPairAssembly is destroyed")
+	self:CancelStagedRedraw()
 end
 
 function LegPairAssembly:SetEnabled(enabled: boolean)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	if enabled then
-		self.motorEverEnabled = true
-	end
-	self.joint.Enabled = enabled
+	self.motorEnabled = enabled
+	self.leftDrive:SetEnabled(enabled)
+	self.rightDrive:SetEnabled(enabled)
+	if enabled then self:Step() end
 end
 
 function LegPairAssembly:Destroy()
-	if self.destroyed then
-		return
-	end
-	self:_SetReshapeSupportEnabled(false)
+	if self.destroyed then return end
+	self:CancelStagedRedraw()
 	self.destroyed = true
-	if self.leftLeg then self.leftLeg:Destroy() end
-	if self.rightLeg then self.rightLeg:Destroy() end
-	if self.reshapeSupportForce then self.reshapeSupportForce:Destroy() end
-	if self.reshapeSupportAttachment then self.reshapeSupportAttachment:Destroy() end
-	if self.axleRoot then self.axleRoot:Destroy() end
-	self.leftLeg = nil
-	self.rightLeg = nil
-	self.reshapeSupportForce = nil
-	self.reshapeSupportAttachment = nil
-	self.axleRoot = nil
-	self.joint = nil
+	if self.stepConnection then self.stepConnection:Disconnect() end
+	if self.leftDrive then self.leftDrive:Destroy() end
+	if self.rightDrive then self.rightDrive:Destroy() end
+	self.stepConnection = nil
+	self.leftDrive = nil
+	self.rightDrive = nil
 	self.body = nil
-	self.legsFolder = nil
 	self.racerModel = nil
+	self.currentShapeSpec = nil
 end
 
 return LegPairAssembly

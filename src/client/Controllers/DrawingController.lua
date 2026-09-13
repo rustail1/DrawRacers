@@ -22,7 +22,6 @@ DrawingController.__index = DrawingController
 local DESKTOP_CANVAS_SIZE = UDim2.fromScale(0.70, 0.40)
 local TOUCH_CANVAS_SIZE = UDim2.fromScale(0.84, 0.48)
 local DRAW_INPUT_SIZE = UDim2.fromScale(1, 1)
-
 local DESKTOP_VALIDATION_POSITION = UDim2.fromScale(0.5, 0.565)
 local DESKTOP_VALIDATION_SIZE = UDim2.fromScale(0.32, 0.052)
 local TOUCH_VALIDATION_POSITION = UDim2.fromScale(0.5, 0.475)
@@ -31,13 +30,12 @@ local DESKTOP_HINT_POSITION = UDim2.fromScale(0.5, 0.565)
 local DESKTOP_HINT_SIZE = UDim2.fromScale(0.38, 0.06)
 local TOUCH_HINT_POSITION = UDim2.fromScale(0.5, 0.475)
 local TOUCH_HINT_SIZE = UDim2.fromScale(0.50, 0.064)
-
 local DESKTOP_THICKNESS = 6
 local TOUCH_THICKNESS = 8
 local VALIDATION_TOAST_DURATION = 2.0
-local PRESENTATION_ANCHOR_HISTORY_MULTIPLIER = 4
 local DEFAULT_GRAPHITE_COLOR = Color3.fromRGB(23, 32, 51)
 local DRAW_SURFACE_COLOR = Color3.fromRGB(243, 240, 232)
+local PIVOT_COLOR = Color3.fromRGB(240, 102, 76)
 
 type SemanticPoint = StrokeTypes.SemanticPoint
 type SubmitStrokePayload = StrokeTypes.SubmitStrokePayload
@@ -52,19 +50,15 @@ local function isFiniteNumber(value: any): boolean
 end
 
 local function validationMessageForReason(reasonCode: string): string
-	if reasonCode == "TOO_FEW_POINTS"
-		or reasonCode == "TOO_SHORT"
-		or reasonCode == "INVALID_STROKE"
-	then
+	if reasonCode == "START_OFF_PIVOT" then return "START FROM THE DOT" end
+	if reasonCode == "TOO_FEW_POINTS" or reasonCode == "TOO_SHORT" or reasonCode == "INVALID_STROKE" then
 		return "DRAW A DIFFERENT SHAPE"
 	end
 	return "TRY AGAIN"
 end
 
 local function inputTypeFamily(inputType: Enum.UserInputType): string?
-	if inputType == Enum.UserInputType.Touch then
-		return "touch"
-	end
+	if inputType == Enum.UserInputType.Touch then return "touch" end
 	if inputType == Enum.UserInputType.Keyboard
 		or inputType == Enum.UserInputType.MouseMovement
 		or inputType == Enum.UserInputType.MouseButton1
@@ -78,16 +72,10 @@ local function inputTypeFamily(inputType: Enum.UserInputType): string?
 end
 
 local function initialLayoutFamily(): string
-	if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
-		return "touch"
-	end
+	if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then return "touch" end
 	local family = inputTypeFamily(UserInputService:GetLastInputType())
-	if family ~= nil then
-		return family
-	end
-	if UserInputService.MouseEnabled or UserInputService.KeyboardEnabled then
-		return "mouse"
-	end
+	if family ~= nil then return family end
+	if UserInputService.MouseEnabled or UserInputService.KeyboardEnabled then return "mouse" end
 	return if UserInputService.TouchEnabled then "touch" else "mouse"
 end
 
@@ -102,19 +90,14 @@ end
 
 local function clearSegments(layer: Instance)
 	for _, child in layer:GetChildren() do
-		if child.Name == "Segment" or child.Name == "Joint" then
-			child:Destroy()
-		end
+		if child.Name == "Segment" or child.Name == "Joint" then child:Destroy() end
 	end
 end
 
 local function drawSegment(parent: Instance, a: Vector2, b: Vector2, thickness: number, transparency: number?)
 	local delta = b - a
 	local length = delta.Magnitude
-	if length <= 0 then
-		return
-	end
-
+	if length <= 0 then return end
 	local segment = Instance.new("Frame")
 	segment.Name = "Segment"
 	segment.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -126,7 +109,6 @@ local function drawSegment(parent: Instance, a: Vector2, b: Vector2, thickness: 
 	segment.BorderSizePixel = 0
 	segment.ZIndex = 24
 	segment.Parent = parent
-
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(1, 0)
 	corner.Parent = segment
@@ -143,7 +125,6 @@ local function drawJoint(parent: Instance, point: Vector2, thickness: number, tr
 	joint.BorderSizePixel = 0
 	joint.ZIndex = 25
 	joint.Parent = parent
-
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(1, 0)
 	corner.Parent = joint
@@ -151,70 +132,44 @@ end
 
 local function renderPolyline(layer: Frame, points: { Vector2 }, thickness: number, transparency: number?)
 	clearSegments(layer)
-	for index = 2, #points do
-		drawSegment(layer, points[index - 1], points[index], thickness, transparency)
-	end
-	for index = 2, #points - 1 do
-		drawJoint(layer, points[index], thickness, transparency)
-	end
+	for index = 2, #points do drawSegment(layer, points[index - 1], points[index], thickness, transparency) end
+	for index = 2, #points - 1 do drawJoint(layer, points[index], thickness, transparency) end
 end
 
 local function copyPoints(points: { Vector2 }): { Vector2 }
 	local result = table.create(#points)
-	for index, point in points do
-		result[index] = point
-	end
+	for index, point in points do result[index] = point end
 	return result
 end
 
 local function copySemanticPoints(points: { SemanticPoint }): { SemanticPoint }
 	local result = table.create(#points)
-	for index, point in points do
-		result[index] = { x = point.x, y = point.y }
-	end
+	for index, point in points do result[index] = { x = point.x, y = point.y } end
 	return result
-end
-
-local function copySemanticPoint(point: SemanticPoint): SemanticPoint
-	return { x = point.x, y = point.y }
 end
 
 local function vector2ToSemanticPoints(points: { Vector2 }): { SemanticPoint }
 	local result = table.create(#points)
-	for index, point in points do
-		result[index] = { x = point.X, y = point.Y }
-	end
+	for index, point in points do result[index] = { x = point.X, y = point.Y } end
 	return result
 end
 
 local function validServerSemanticPoints(points: any): boolean
-	if type(points) ~= "table" then
-		return false
-	end
+	if type(points) ~= "table" then return false end
 	local config = PhysicsConfig.StrokeProcessing
 	local count = 0
 	local maxIndex = 0
 	for key, _ in points do
-		if type(key) ~= "number" or key < 1 or math.floor(key) ~= key then
-			return false
-		end
+		if type(key) ~= "number" or key < 1 or math.floor(key) ~= key then return false end
 		count += 1
-		if count > config.MaxCleanedPoints or key > config.MaxCleanedPoints then
-			return false
-		end
+		if count > config.MaxCleanedPoints or key > config.MaxCleanedPoints then return false end
 		maxIndex = math.max(maxIndex, key)
 	end
-	if count < 2 or maxIndex ~= count then
-		return false
-	end
+	if count < 2 or maxIndex ~= count then return false end
 	for index = 1, count do
 		local point = points[index]
-		if type(point) ~= "table" or not isFiniteNumber(point.x) or not isFiniteNumber(point.y) then
-			return false
-		end
-		if math.abs(point.x) > config.RawSemanticHalfWidth * 2 + 1e-6
-			or math.abs(point.y) > config.RawSemanticHalfHeight * 2 + 1e-6
-		then
+		if type(point) ~= "table" or not isFiniteNumber(point.x) or not isFiniteNumber(point.y) then return false end
+		if math.abs(point.x) > config.RawSemanticHalfWidth + 1e-6 or math.abs(point.y) > config.RawSemanticHalfHeight + 1e-6 then
 			return false
 		end
 	end
@@ -222,50 +177,35 @@ local function validServerSemanticPoints(points: any): boolean
 	return math.abs(first.x) <= 1e-6 and math.abs(first.y) <= 1e-6
 end
 
--- Fixed isotropic gameplay mapping. No per-shape fit is allowed here.
-local function semanticPointsToPixels(
-	points: { SemanticPoint },
-	size: Vector2,
-	presentationAnchor: SemanticPoint?
-): { Vector2 }
-	local result = table.create(#points)
-	local unit = size.Y * 0.5
-	local center = size * 0.5
-	local anchor = presentationAnchor or { x = 0, y = 0 }
-	for index, point in points do
-		local x = point.x + anchor.x
-		local y = point.y + anchor.y
-		result[index] = Vector2.new(center.X + x * unit, center.Y - y * unit)
-	end
-	return result
-end
-
-local function vectorPointsToPixels(points: { Vector2 }, size: Vector2, presentationAnchor: Vector2): { Vector2 }
+-- Fixed gameplay mapping: semantic (0,0) is the exact visible/mechanical pivot.
+local function semanticPointsToPixels(points: { SemanticPoint }, size: Vector2): { Vector2 }
 	local result = table.create(#points)
 	local unit = size.Y * 0.5
 	local center = size * 0.5
 	for index, point in points do
-		local positioned = point + presentationAnchor
-		result[index] = Vector2.new(center.X + positioned.X * unit, center.Y - positioned.Y * unit)
+		result[index] = Vector2.new(center.X + point.x * unit, center.Y - point.y * unit)
 	end
 	return result
 end
 
--- Auto-fit is thumbnail-only and never used by the gameplay preview.
+local function vectorPointsToPixels(points: { Vector2 }, size: Vector2): { Vector2 }
+	local result = table.create(#points)
+	local unit = size.Y * 0.5
+	local center = size * 0.5
+	for index, point in points do
+		result[index] = Vector2.new(center.X + point.X * unit, center.Y - point.Y * unit)
+	end
+	return result
+end
+
 local function fitSemanticPointsToPixels(points: { SemanticPoint }, size: Vector2): { Vector2 }
-	if #points == 0 then
-		return {}
-	end
-	local minX = points[1].x
-	local maxX = points[1].x
-	local minY = points[1].y
-	local maxY = points[1].y
+	if #points == 0 then return {} end
+	local minX, maxX = points[1].x, points[1].x
+	local minY, maxY = points[1].y, points[1].y
 	for index = 2, #points do
 		local point = points[index]
-		minX = math.min(minX, point.x)
-		maxX = math.max(maxX, point.x)
-		minY = math.min(minY, point.y)
-		maxY = math.max(maxY, point.y)
+		minX, maxX = math.min(minX, point.x), math.max(maxX, point.x)
+		minY, maxY = math.min(minY, point.y), math.max(maxY, point.y)
 	end
 	local spanX = math.max(maxX - minX, 1e-4)
 	local spanY = math.max(maxY - minY, 1e-4)
@@ -282,10 +222,7 @@ end
 
 local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	local oldSafeRoot = drawHud:FindFirstChild("SafeRoot")
-	if oldSafeRoot then
-		oldSafeRoot:Destroy()
-	end
-
+	if oldSafeRoot then oldSafeRoot:Destroy() end
 	local touchLayout = layoutFamily == "touch"
 	drawHud.Enabled = true
 	drawHud.DisplayOrder = 20
@@ -294,7 +231,6 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	local safeRoot = Instance.new("Frame")
 	safeRoot.Name = "SafeRoot"
 	safeRoot.BackgroundTransparency = 1
-	safeRoot.AnchorPoint = Vector2.zero
 	safeRoot.Position = UDim2.fromScale(0.025, 0.02)
 	safeRoot.Size = UDim2.fromScale(0.95, 0.96)
 	safeRoot.Parent = drawHud
@@ -309,22 +245,14 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	drawCanvas.BorderSizePixel = 0
 	drawCanvas.ZIndex = 20
 	drawCanvas.Parent = safeRoot
-
 	local canvasAspect = Instance.new("UIAspectRatioConstraint")
-	canvasAspect.Name = "R16WideDrawSurfaceConstraint"
-	canvasAspect.AspectRatio = PhysicsConfig.StrokeProcessing.RawSemanticHalfWidth
-		/ PhysicsConfig.StrokeProcessing.RawSemanticHalfHeight
+	canvasAspect.Name = "WideDrawSurfaceConstraint"
+	canvasAspect.AspectRatio = PhysicsConfig.StrokeProcessing.RawSemanticHalfWidth / PhysicsConfig.StrokeProcessing.RawSemanticHalfHeight
 	canvasAspect.DominantAxis = Enum.DominantAxis.Height
 	canvasAspect.Parent = drawCanvas
-
 	local canvasCorner = Instance.new("UICorner")
 	canvasCorner.CornerRadius = UDim.new(0, 22)
 	canvasCorner.Parent = drawCanvas
-
-	local canvasStroke = Instance.new("UIStroke")
-	canvasStroke.Thickness = 2
-	canvasStroke.Transparency = 0.25
-	canvasStroke.Parent = drawCanvas
 
 	local drawInputRect = makeFrame("DrawInputRect", drawCanvas)
 	drawInputRect.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -336,43 +264,42 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	drawInputRect.ClipsDescendants = true
 	drawInputRect.ZIndex = 21
 
-	local drawInputSurfaceStroke = Instance.new("UIStroke")
-	drawInputSurfaceStroke.Name = "DrawInputSurfaceStroke"
-	drawInputSurfaceStroke.Thickness = 1
-	drawInputSurfaceStroke.Transparency = 0.45
-	drawInputSurfaceStroke.Parent = drawInputRect
+	local pivotMarker = Instance.new("Frame")
+	pivotMarker.Name = "PivotMarker"
+	pivotMarker.AnchorPoint = Vector2.new(0.5, 0.5)
+	pivotMarker.Position = UDim2.fromScale(0.5, 0.5)
+	pivotMarker.Size = UDim2.fromOffset(if touchLayout then 18 else 14, if touchLayout then 18 else 14)
+	pivotMarker.BackgroundColor3 = PIVOT_COLOR
+	pivotMarker.BorderSizePixel = 0
+	pivotMarker.ZIndex = 29
+	pivotMarker.Parent = drawInputRect
+	local pivotCorner = Instance.new("UICorner")
+	pivotCorner.CornerRadius = UDim.new(1, 0)
+	pivotCorner.Parent = pivotMarker
 
 	local strokePreview = makeFrame("StrokePreview", drawInputRect)
-	strokePreview.AnchorPoint = Vector2.new(0, 0)
-	strokePreview.Position = UDim2.fromScale(0, 0)
 	strokePreview.Size = UDim2.fromScale(1, 1)
 	strokePreview.ClipsDescendants = true
 	strokePreview.ZIndex = 23
-
 	local acceptedLayer = makeFrame("AcceptedLayer", strokePreview)
 	acceptedLayer.Size = UDim2.fromScale(1, 1)
-	acceptedLayer.ZIndex = 23
-
 	local liveLayer = makeFrame("LiveLayer", strokePreview)
 	liveLayer.Size = UDim2.fromScale(1, 1)
-	liveLayer.ZIndex = 24
 
-	local acceptedShapeThumbnail = Instance.new("Frame")
-	acceptedShapeThumbnail.Name = "AcceptedShapeThumbnail"
-	acceptedShapeThumbnail.AnchorPoint = Vector2.new(1, 0)
-	acceptedShapeThumbnail.Position = UDim2.fromScale(0.975, 0.025)
-	acceptedShapeThumbnail.Size = UDim2.fromScale(0.14, 0.25)
-	acceptedShapeThumbnail.BackgroundColor3 = DRAW_SURFACE_COLOR
-	acceptedShapeThumbnail.BackgroundTransparency = 0.08
-	acceptedShapeThumbnail.BorderSizePixel = 0
-	acceptedShapeThumbnail.ClipsDescendants = true
-	acceptedShapeThumbnail.ZIndex = 26
-	acceptedShapeThumbnail.Parent = drawCanvas
-
+	local thumbnail = Instance.new("Frame")
+	thumbnail.Name = "AcceptedShapeThumbnail"
+	thumbnail.AnchorPoint = Vector2.new(1, 0)
+	thumbnail.Position = UDim2.fromScale(0.975, 0.025)
+	thumbnail.Size = UDim2.fromScale(0.14, 0.25)
+	thumbnail.BackgroundColor3 = DRAW_SURFACE_COLOR
+	thumbnail.BackgroundTransparency = 0.08
+	thumbnail.BorderSizePixel = 0
+	thumbnail.ClipsDescendants = true
+	thumbnail.ZIndex = 26
+	thumbnail.Parent = drawCanvas
 	local thumbnailAspect = Instance.new("UIAspectRatioConstraint")
 	thumbnailAspect.AspectRatio = 1
-	thumbnailAspect.DominantAxis = Enum.DominantAxis.Width
-	thumbnailAspect.Parent = acceptedShapeThumbnail
+	thumbnailAspect.Parent = thumbnail
 
 	local emptyGhost = Instance.new("TextLabel")
 	emptyGhost.Name = "EmptyGhost"
@@ -397,7 +324,6 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	validationToast.Visible = false
 	validationToast.ZIndex = 30
 	validationToast.Parent = safeRoot
-
 	local drawHint = Instance.new("TextLabel")
 	drawHint.Name = "DrawHint"
 	drawHint.AnchorPoint = Vector2.new(0.5, 1)
@@ -410,36 +336,26 @@ local function createUi(drawHud: ScreenGui, layoutFamily: string)
 	drawHint.Parent = safeRoot
 
 	return {
-		safeRoot = safeRoot,
-		drawCanvas = drawCanvas,
-		drawInputRect = drawInputRect,
-		strokePreview = strokePreview,
-		acceptedLayer = acceptedLayer,
-		liveLayer = liveLayer,
-		acceptedShapeThumbnail = acceptedShapeThumbnail,
-		emptyGhost = emptyGhost,
-		validationToast = validationToast,
-		drawHint = drawHint,
+		safeRoot = safeRoot, drawCanvas = drawCanvas, drawInputRect = drawInputRect,
+		pivotMarker = pivotMarker, strokePreview = strokePreview, acceptedLayer = acceptedLayer,
+		liveLayer = liveLayer, acceptedShapeThumbnail = thumbnail, emptyGhost = emptyGhost,
+		validationToast = validationToast, drawHint = drawHint,
 	}
 end
 
 function DrawingController.new(inputController: any, drawHud: ScreenGui, submitStroke: any?, strokeResult: any?)
 	local layoutFamily = initialLayoutFamily()
-	local ui = createUi(drawHud, layoutFamily)
-
 	local self = setmetatable({
 		_inputController = inputController,
 		_submitStroke = submitStroke,
 		_strokeResult = strokeResult,
-		_ui = ui,
+		_ui = createUi(drawHud, layoutFamily),
 		_connection = nil,
 		_resultConnection = nil,
 		_layoutConnection = nil,
 		_livePoints = {} :: { Vector2 },
 		_rawSemanticPoints = {} :: { Vector2 },
 		_acceptedSemanticPoints = {} :: { SemanticPoint },
-		_acceptedPresentationAnchor = nil :: SemanticPoint?,
-		_presentationAnchors = {} :: { [number]: SemanticPoint },
 		acceptedPoints = {} :: { Vector2 },
 		livePoints = {} :: { Vector2 },
 		_drawing = false,
@@ -454,7 +370,6 @@ function DrawingController.new(inputController: any, drawHud: ScreenGui, submitS
 		_lastAcceptedSequence = 0,
 		_pendingStrokes = {} :: { [number]: PendingStroke },
 	}, DrawingController)
-
 	self.livePoints = self._livePoints
 	return self
 end
@@ -465,71 +380,48 @@ function DrawingController:_strokeThickness(): number
 end
 
 function DrawingController:_renderAcceptedStroke()
-	local inputSize = self._ui.drawInputRect.AbsoluteSize
-	if inputSize.X <= 0 or inputSize.Y <= 0 then
-		table.clear(self.acceptedPoints)
-		clearSegments(self._ui.acceptedLayer)
-		return
-	end
-
-	self.acceptedPoints = semanticPointsToPixels(
-		self._acceptedSemanticPoints,
-		inputSize,
-		self._acceptedPresentationAnchor
-	)
+	local size = self._ui.drawInputRect.AbsoluteSize
+	if size.X <= 0 or size.Y <= 0 then clearSegments(self._ui.acceptedLayer); return end
+	self.acceptedPoints = semanticPointsToPixels(self._acceptedSemanticPoints, size)
 	renderPolyline(self._ui.acceptedLayer, self.acceptedPoints, self:_strokeThickness(), 0.35)
 end
 
 function DrawingController:_renderThumbnail()
 	local thumbnail = self._ui.acceptedShapeThumbnail
 	clearSegments(thumbnail)
-	local thumbSize = thumbnail.AbsoluteSize
-	if thumbSize.X <= 0 or thumbSize.Y <= 0 then
-		return
-	end
-	local mapped = fitSemanticPointsToPixels(self._acceptedSemanticPoints, thumbSize)
-	renderPolyline(thumbnail, mapped, math.max(2, self:_strokeThickness() * 0.45), 0.1)
+	local size = thumbnail.AbsoluteSize
+	if size.X <= 0 or size.Y <= 0 then return end
+	renderPolyline(thumbnail, fitSemanticPointsToPixels(self._acceptedSemanticPoints, size), math.max(2, self:_strokeThickness() * 0.45), 0.1)
 end
 
 function DrawingController:_applyLayout(family: string)
-	if self._drawing then
-		self._pendingLayoutFamily = family
-		return
-	end
-
+	if self._drawing then self._pendingLayoutFamily = family; return end
 	self._layoutFamily = family
 	self._pendingLayoutFamily = nil
-	local validationToast = self._ui.validationToast
-	local drawHint = self._ui.drawHint
+	local toast = self._ui.validationToast
+	local hint = self._ui.drawHint
 	if family == "touch" then
 		self._ui.drawCanvas.Size = TOUCH_CANVAS_SIZE
-		validationToast.Position = TOUCH_VALIDATION_POSITION
-		validationToast.Size = TOUCH_VALIDATION_SIZE
-		drawHint.Position = TOUCH_HINT_POSITION
-		drawHint.Size = TOUCH_HINT_SIZE
+		self._ui.pivotMarker.Size = UDim2.fromOffset(18, 18)
+		toast.Position, toast.Size = TOUCH_VALIDATION_POSITION, TOUCH_VALIDATION_SIZE
+		hint.Position, hint.Size = TOUCH_HINT_POSITION, TOUCH_HINT_SIZE
 	else
 		self._ui.drawCanvas.Size = DESKTOP_CANVAS_SIZE
-		validationToast.Position = DESKTOP_VALIDATION_POSITION
-		validationToast.Size = DESKTOP_VALIDATION_SIZE
-		drawHint.Position = DESKTOP_HINT_POSITION
-		drawHint.Size = DESKTOP_HINT_SIZE
+		self._ui.pivotMarker.Size = UDim2.fromOffset(14, 14)
+		toast.Position, toast.Size = DESKTOP_VALIDATION_POSITION, DESKTOP_VALIDATION_SIZE
+		hint.Position, hint.Size = DESKTOP_HINT_POSITION, DESKTOP_HINT_SIZE
 	end
-
 	task.defer(function()
-		if self._ui.safeRoot.Parent ~= nil and not self._drawing then
-			self:_renderAcceptedStroke()
-			self:_renderThumbnail()
-		end
+		if self._ui.safeRoot.Parent ~= nil and not self._drawing then self:_renderAcceptedStroke(); self:_renderThumbnail() end
 	end)
 end
 
 function DrawingController:_applyPendingLayout()
-	local family = self._pendingLayoutFamily
-	if family == nil then
-		return
+	if self._pendingLayoutFamily ~= nil then
+		local family = self._pendingLayoutFamily
+		self._pendingLayoutFamily = nil
+		self:_applyLayout(family)
 	end
-	self._pendingLayoutFamily = nil
-	self:_applyLayout(family)
 end
 
 function DrawingController:_toLocal(screenPoint: Vector2): Vector2
@@ -537,11 +429,9 @@ function DrawingController:_toLocal(screenPoint: Vector2): Vector2
 end
 
 function DrawingController:_toSemantic(localPoint: Vector2): Vector2?
-	local inputSize = self._ui.drawInputRect.AbsoluteSize
-	if inputSize.X <= 0 or inputSize.Y <= 0 then
-		return nil
-	end
-	return StrokeMath.Normalize({ localPoint }, inputSize)[1]
+	local size = self._ui.drawInputRect.AbsoluteSize
+	if size.X <= 0 or size.Y <= 0 then return nil end
+	return StrokeMath.Normalize({ localPoint }, size)[1]
 end
 
 function DrawingController:_clearLiveStroke()
@@ -554,20 +444,12 @@ function DrawingController:_setValidation(message: string?)
 	self._validationGeneration += 1
 	local generation = self._validationGeneration
 	local toast = self._ui.validationToast
-	if message == nil or message == "" then
-		toast.Text = ""
-		toast.Visible = false
-		return
-	end
-
+	if message == nil or message == "" then toast.Text = ""; toast.Visible = false; return end
 	self._ui.drawHint.Visible = false
 	toast.Text = message
 	toast.Visible = true
 	task.delay(VALIDATION_TOAST_DURATION, function()
-		if generation == self._validationGeneration and self._ui.safeRoot.Parent ~= nil then
-			toast.Text = ""
-			toast.Visible = false
-		end
+		if generation == self._validationGeneration and self._ui.safeRoot.Parent ~= nil then toast.Text = ""; toast.Visible = false end
 	end)
 end
 
@@ -577,343 +459,178 @@ function DrawingController:_setValidationReason(reasonCode: string)
 end
 
 local function compactEveryOther(points: { Vector2 })
-	if #points <= 2 then
-		return
-	end
+	if #points <= 2 then return end
 	local compacted = table.create(math.ceil(#points / 2) + 1)
 	table.insert(compacted, points[1])
-	for index = 3, #points - 1, 2 do
-		table.insert(compacted, points[index])
-	end
-	local finalPoint = points[#points]
-	if compacted[#compacted] ~= finalPoint then
-		table.insert(compacted, finalPoint)
-	end
+	for index = 3, #points - 1, 2 do table.insert(compacted, points[index]) end
+	if compacted[#compacted] ~= points[#points] then table.insert(compacted, points[#points]) end
 	table.clear(points)
-	for _, point in compacted do
-		table.insert(points, point)
-	end
-end
-
-function DrawingController:_compactRawSemanticPoints()
-	compactEveryOther(self._rawSemanticPoints)
+	for _, point in compacted do table.insert(points, point) end
 end
 
 function DrawingController:_tryAppendRawSemanticPoint(point: Vector2, forceFinal: boolean)
 	local samples = self._rawSemanticPoints
-	local config = PhysicsConfig.StrokeProcessing
 	local last = samples[#samples]
-	if last == nil then
-		table.insert(samples, point)
-		return
-	end
-	if (point - last).Magnitude <= 0 then
-		return
-	end
-
-	if #samples >= config.MaxRawPoints then
-		self:_compactRawSemanticPoints()
-		last = samples[#samples]
-	end
-	if forceFinal or (point - last).Magnitude >= config.RawSampleMinMovementNormalized then
-		table.insert(samples, point)
-	end
+	if last == nil then table.insert(samples, point); return end
+	if (point - last).Magnitude <= 0 then return end
+	if #samples >= PhysicsConfig.StrokeProcessing.MaxRawPoints then compactEveryOther(samples); last = samples[#samples] end
+	if forceFinal or (point - last).Magnitude >= PhysicsConfig.StrokeProcessing.RawSampleMinMovementNormalized then table.insert(samples, point) end
 end
 
-function DrawingController:_compactLivePoints()
-	compactEveryOther(self._livePoints)
+function DrawingController:_appendLivePoint(point: Vector2)
+	local previous = self._livePoints[#self._livePoints]
+	if previous ~= nil and (point - previous).Magnitude <= 0 then return end
+	if #self._livePoints >= PhysicsConfig.StrokeProcessing.MaxRawPoints then compactEveryOther(self._livePoints) end
+	table.insert(self._livePoints, point)
 end
 
-function DrawingController:_appendLivePoint(point: Vector2, _forceFinal: boolean)
-	local points = self._livePoints
-	local previous = points[#points]
-	if previous == nil then
-		table.insert(points, point)
-		return
-	end
-	if (point - previous).Magnitude <= 0 then
-		return
-	end
-	if #points >= PhysicsConfig.StrokeProcessing.MaxRawPoints then
-		self:_compactLivePoints()
-	end
-	table.insert(points, point)
-end
-
-function DrawingController:_buildCanonical(rawSemanticPoints: { Vector2 }): (any?, string?)
-	if #rawSemanticPoints < PhysicsConfig.StrokeProcessing.MinimumRawPoints then
-		return nil, "TOO_FEW_POINTS"
-	end
-	return CanonicalLegShape.Build(
-		rawSemanticPoints,
-		PhysicsConfig.StrokeProcessing,
-		PhysicsConfig.LegGeometry
-	)
+function DrawingController:_buildCanonical(rawPoints: { Vector2 }): (any?, string?)
+	if #rawPoints < PhysicsConfig.StrokeProcessing.MinimumRawPoints then return nil, "TOO_FEW_POINTS" end
+	return CanonicalLegShape.Build(rawPoints, PhysicsConfig.StrokeProcessing, PhysicsConfig.LegGeometry)
 end
 
 function DrawingController:_renderLiveCanonicalPreview()
-	local inputSize = self._ui.drawInputRect.AbsoluteSize
-	if inputSize.X <= 0 or inputSize.Y <= 0 then
-		clearSegments(self._ui.liveLayer)
-		return
-	end
-
+	local size = self._ui.drawInputRect.AbsoluteSize
+	if size.X <= 0 or size.Y <= 0 then clearSegments(self._ui.liveLayer); return end
 	local canonical = self:_buildCanonical(self._rawSemanticPoints)
 	if canonical == nil then
-		-- Pixel trace is presentation-only feedback before a legal canonical shape exists.
 		renderPolyline(self._ui.liveLayer, self._livePoints, self:_strokeThickness(), 0.55)
 		return
 	end
-	local pixels = vectorPointsToPixels(canonical.normalizedPoints, inputSize, canonical.presentationAnchor)
-	renderPolyline(self._ui.liveLayer, pixels, self:_strokeThickness(), 0)
+	renderPolyline(self._ui.liveLayer, vectorPointsToPixels(canonical.normalizedPoints, size), self:_strokeThickness(), 0)
 end
 
 function DrawingController:_pendingStrokeCount(): number
 	local count = 0
-	for _, _ in self._pendingStrokes do
-		count += 1
-	end
+	for _, _ in self._pendingStrokes do count += 1 end
 	return count
 end
 
-function DrawingController:_prunePresentationAnchors(referenceSequence: number)
-	local keepCount = PhysicsConfig.StrokeProcessing.MaxPendingStrokes * PRESENTATION_ANCHOR_HISTORY_MULTIPLIER
-	local minimumSequence = math.max(1, referenceSequence - keepCount)
-	for sequence, _ in self._presentationAnchors do
-		if sequence < minimumSequence then
-			self._presentationAnchors[sequence] = nil
-		end
-	end
-end
-
 function DrawingController:_submitStrokeIntent(rawSemanticPoints: { Vector2 })
-	if self._submitStroke == nil then
-		self:_setValidationReason("NETWORK_NOT_READY")
-		return
-	end
-
+	if self._submitStroke == nil then self:_setValidationReason("NETWORK_NOT_READY"); return end
 	local canonical, prepareError = self:_buildCanonical(rawSemanticPoints)
-	if canonical == nil then
-		self:_setValidationReason(prepareError or "INVALID_STROKE")
-		return
-	end
-
+	if canonical == nil then self:_setValidationReason(prepareError or "INVALID_STROKE"); return end
 	local config = PhysicsConfig.StrokeProcessing
-	if self:_pendingStrokeCount() >= config.MaxPendingStrokes then
-		self:_setValidationReason("CLIENT_PENDING_LIMIT")
-		return
-	end
+	if self:_pendingStrokeCount() >= config.MaxPendingStrokes then self:_setValidationReason("CLIENT_PENDING_LIMIT"); return end
 
-	local serializedRawPoints = vector2ToSemanticPoints(rawSemanticPoints)
+	local serialized = vector2ToSemanticPoints(rawSemanticPoints)
 	local sequence = self._nextSequence
 	self._nextSequence += 1
 	self._latestSubmittedSequence = sequence
 	self._pendingGeneration += 1
 	local generation = self._pendingGeneration
-	self._pendingStrokes[sequence] = {
-		points = copySemanticPoints(serializedRawPoints),
-		generation = generation,
-	}
-	self._presentationAnchors[sequence] = {
-		x = canonical.presentationAnchor.X,
-		y = canonical.presentationAnchor.Y,
-	}
-	self:_prunePresentationAnchors(sequence)
+	self._pendingStrokes[sequence] = { points = copySemanticPoints(serialized), generation = generation }
 	self:_setValidation(nil)
-
 	task.delay(config.StrokeResultTimeout, function()
-		if self._ui.safeRoot.Parent == nil then
-			return
-		end
+		if self._ui.safeRoot.Parent == nil then return end
 		local pending = self._pendingStrokes[sequence]
 		if pending ~= nil and pending.generation == generation then
 			self._pendingStrokes[sequence] = nil
-			print(("[DrawRacers][R14.5] stroke result timeout sequence=%d"):format(sequence))
-			if sequence == self._latestSubmittedSequence then
-				self:_setValidationReason("NETWORK_TIMEOUT")
-			end
+			if sequence == self._latestSubmittedSequence then self:_setValidationReason("NETWORK_TIMEOUT") end
 		end
 	end)
-
-	local payload: SubmitStrokePayload = {
-		sequence = sequence,
-		points = serializedRawPoints,
-	}
+	local payload: SubmitStrokePayload = { sequence = sequence, points = serialized }
 	self._submitStroke:FireServer(payload)
-	print(("[DrawRacers][B12] stroke submitted sequence=%d points=%d"):format(sequence, #serializedRawPoints))
 end
 
 function DrawingController:_onStrokeResult(result: any)
-	if type(result) ~= "table" then
-		return
-	end
+	if type(result) ~= "table" then return end
 	local sequence = result.sequence
-	if type(sequence) ~= "number" or math.floor(sequence) ~= sequence then
-		return
-	end
-
+	if type(sequence) ~= "number" or math.floor(sequence) ~= sequence then return end
 	self._pendingStrokes[sequence] = nil
 	if result.accepted == true then
 		if not validServerSemanticPoints(result.acceptedPoints) then
-			warn(("[DrawRacers][R14.1] malformed authoritative acceptedPoints sequence=%d"):format(sequence))
-			if sequence == self._latestSubmittedSequence then
-				self:_setValidationReason("INVALID_SERVER_RESULT")
-			end
+			if sequence == self._latestSubmittedSequence then self:_setValidationReason("INVALID_SERVER_RESULT") end
 			return
 		end
 		if sequence > self._lastAcceptedSequence then
 			self._lastAcceptedSequence = sequence
 			self._acceptedSemanticPoints = copySemanticPoints(result.acceptedPoints)
-			local presentationAnchor = self._presentationAnchors[sequence]
-			self._acceptedPresentationAnchor = if presentationAnchor ~= nil then copySemanticPoint(presentationAnchor) else nil
 			self:_renderAcceptedStroke()
 			self:_renderThumbnail()
-			self._ui.emptyGhost.Visible = not self._hasStartedStroke
 			self:_setValidation(nil)
-			for pendingSequence, _ in self._pendingStrokes do
-				if pendingSequence < sequence then
-					self._pendingStrokes[pendingSequence] = nil
-				end
-			end
+			for pendingSequence, _ in self._pendingStrokes do if pendingSequence < sequence then self._pendingStrokes[pendingSequence] = nil end end
 		end
-		self._presentationAnchors[sequence] = nil
-		self:_prunePresentationAnchors(sequence)
-		print(("[DrawRacers][B12] stroke accepted sequence=%d shapeVersion=%s"):format(
-			sequence,
-			tostring(result.shapeVersion)
-		))
 		return
 	end
-
-	self._presentationAnchors[sequence] = nil
-	self:_renderAcceptedStroke()
-	self:_renderThumbnail()
-	self._ui.emptyGhost.Visible = not self._hasStartedStroke
 	if sequence == self._latestSubmittedSequence then
-		local rejectReasonCode = if type(result.rejectReasonCode) == "string"
-			then result.rejectReasonCode
-			else "STROKE_REJECTED"
-		self:_setValidationReason(rejectReasonCode)
-		print(("[DrawRacers][B12] stroke rejected sequence=%d reason=%s"):format(sequence, rejectReasonCode))
+		self:_setValidationReason(if type(result.rejectReasonCode) == "string" then result.rejectReasonCode else "STROKE_REJECTED")
 	end
 end
 
-function DrawingController:_capturePointerPoint(point: Vector2, forceFinal: boolean)
-	self:_appendLivePoint(point, forceFinal)
-	local semanticPoint = self:_toSemantic(point)
-	if semanticPoint ~= nil then
-		self:_tryAppendRawSemanticPoint(semanticPoint, forceFinal)
-	end
+function DrawingController:_capturePointerPoint(localPoint: Vector2, forceFinal: boolean)
+	self:_appendLivePoint(localPoint)
+	local semantic = self:_toSemantic(localPoint)
+	if semantic ~= nil then self:_tryAppendRawSemanticPoint(semantic, forceFinal) end
 	self:_renderLiveCanonicalPreview()
 end
 
 function DrawingController:_onPointer(event)
 	if event.phase == "start" then
-		self._pointerFamily = event.family
-		if event.family ~= self._layoutFamily then
-			self._pendingLayoutFamily = event.family
+		local localPoint = self:_toLocal(event.position)
+		local semantic = self:_toSemantic(localPoint)
+		if semantic == nil or semantic.Magnitude > PhysicsConfig.StrokeProcessing.PivotStartRadiusNormalized then
+			self:_setValidation("START FROM THE DOT")
+			return
 		end
+		self._pointerFamily = event.family
+		if event.family ~= self._layoutFamily then self._pendingLayoutFamily = event.family end
 		self._drawing = true
 		self._hasStartedStroke = true
 		self._ui.emptyGhost.Visible = false
 		self._ui.acceptedLayer.Visible = false
 		self:_setValidation(nil)
 		self:_clearLiveStroke()
-		self:_capturePointerPoint(self:_toLocal(event.position), false)
+		self:_capturePointerPoint(localPoint, false)
 	elseif event.phase == "move" then
-		if not self._drawing then
-			return
-		end
-		self:_capturePointerPoint(self:_toLocal(event.position), false)
+		if self._drawing then self:_capturePointerPoint(self:_toLocal(event.position), false) end
 	elseif event.phase == "end" then
-		if not self._drawing then
-			return
-		end
-
+		if not self._drawing then return end
 		self:_capturePointerPoint(self:_toLocal(event.position), true)
-		local pendingPixels = copyPoints(self._livePoints)
-		local rawSemanticPoints = copyPoints(self._rawSemanticPoints)
+		local rawPoints = copyPoints(self._rawSemanticPoints)
 		self._drawing = false
 		self:_clearLiveStroke()
 		self._ui.acceptedLayer.Visible = true
 		self:_renderAcceptedStroke()
-		self._ui.emptyGhost.Visible = not self._hasStartedStroke
-
-		if #rawSemanticPoints >= PhysicsConfig.StrokeProcessing.MinimumRawPoints then
-			self:_submitStrokeIntent(rawSemanticPoints)
-		else
-			self:_setValidationReason("TOO_FEW_POINTS")
-		end
-		print(("[DrawRacers][B02] local stroke complete pending=%d semantic=%d accepted=%d"):format(
-			#pendingPixels,
-			#rawSemanticPoints,
-			#self.acceptedPoints
-		))
+		if #rawPoints >= PhysicsConfig.StrokeProcessing.MinimumRawPoints then self:_submitStrokeIntent(rawPoints) else self:_setValidationReason("TOO_FEW_POINTS") end
 		self:_applyPendingLayout()
 	elseif event.phase == "cancel" then
-		if not self._drawing then
-			return
-		end
+		if not self._drawing then return end
 		self._drawing = false
 		self:_clearLiveStroke()
 		self._ui.acceptedLayer.Visible = true
 		self:_renderAcceptedStroke()
-		self._ui.emptyGhost.Visible = not self._hasStartedStroke
-		print(("[DrawRacers][B02] stroke cancelled; accepted preserved=%d"):format(#self.acceptedPoints))
 		self:_applyPendingLayout()
 	end
 end
 
 function DrawingController:Start()
-	if self._connection then
-		return
-	end
-	local inputController = self._inputController
-	local drawInputRect = self._ui.drawInputRect
-	inputController:Bind(drawInputRect)
-	self._connection = inputController:Connect(function(event)
-		self:_onPointer(event)
-	end)
+	if self._connection then return end
+	self._inputController:Bind(self._ui.drawInputRect)
+	self._connection = self._inputController:Connect(function(event) self:_onPointer(event) end)
 	self._layoutConnection = UserInputService.LastInputTypeChanged:Connect(function(inputType)
 		local family = inputTypeFamily(inputType)
-		if family == nil or self._drawing or family == self._layoutFamily then
-			return
-		end
-		self:_applyLayout(family)
+		if family ~= nil and not self._drawing and family ~= self._layoutFamily then self:_applyLayout(family) end
 	end)
-	if self._strokeResult ~= nil and self._resultConnection == nil then
-		self._resultConnection = self._strokeResult.OnClientEvent:Connect(function(result)
-			self:_onStrokeResult(result)
-		end)
+	if self._strokeResult ~= nil then
+		self._resultConnection = self._strokeResult.OnClientEvent:Connect(function(result) self:_onStrokeResult(result) end)
 	end
-	print("[DrawRacers][B02] local draw preview ready")
+	print("[DrawRacers][CR2] fixed-pivot draw controller ready")
 end
 
 function DrawingController:Destroy()
-	if self._connection then
-		self._connection:Disconnect()
-		self._connection = nil
-	end
-	if self._resultConnection then
-		self._resultConnection:Disconnect()
-		self._resultConnection = nil
-	end
-	if self._layoutConnection then
-		self._layoutConnection:Disconnect()
-		self._layoutConnection = nil
-	end
+	if self._connection then self._connection:Disconnect() end
+	if self._resultConnection then self._resultConnection:Disconnect() end
+	if self._layoutConnection then self._layoutConnection:Disconnect() end
+	self._connection, self._resultConnection, self._layoutConnection = nil, nil, nil
 	self._validationGeneration += 1
 	self._pendingGeneration += 1
 	table.clear(self._pendingStrokes)
-	table.clear(self._presentationAnchors)
 	table.clear(self._acceptedSemanticPoints)
 	table.clear(self._livePoints)
 	table.clear(self._rawSemanticPoints)
-	self._acceptedPresentationAnchor = nil
 	self._inputController:Unbind()
-	if self._ui.safeRoot then
-		self._ui.safeRoot:Destroy()
-	end
+	if self._ui.safeRoot then self._ui.safeRoot:Destroy() end
 end
 
 return DrawingController

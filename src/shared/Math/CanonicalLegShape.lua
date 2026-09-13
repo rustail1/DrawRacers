@@ -24,7 +24,6 @@ export type CanonicalShape = {
 	extent: number,
 	segmentPlan: { ShapeSegmentPlanEntry },
 	cleanedLength: number,
-	presentationAnchor: Vector2,
 	debugRawPointCount: number,
 	debugPhysicsPointCount: number,
 }
@@ -40,6 +39,14 @@ local function freezeSegmentPlan(segmentPlan: { ShapeSegmentPlanEntry }): { Shap
 	return table.freeze(segmentPlan)
 end
 
+local function copyPoints(points: { Vector2 }): { Vector2 }
+	local result = table.create(#points)
+	for index, point in points do
+		result[index] = point
+	end
+	return result
+end
+
 function CanonicalLegShape.Build(
 	rawPoints: { Vector2 },
 	strokeConfig: any,
@@ -52,9 +59,10 @@ function CanonicalLegShape.Build(
 		return nil, "TOO_FEW_POINTS"
 	end
 
-	-- Single canonical pipeline shared by prediction and server authority:
-	-- raw -> clamp -> dedupe -> simplify -> resample -> first-point anchor
-	-- -> world mapping -> segment plan.
+	-- CORE REPAIR v2 canonical pipeline:
+	-- raw -> clamp -> fixed-pivot start validation -> snap first sample only
+	-- -> dedupe -> simplify -> resample -> world mapping -> segment plan.
+	-- The full stroke is never translated to hide an arbitrary first point.
 	local clamped, clampError = StrokeMath.ClampToRect(rawPoints, {
 		minX = -strokeConfig.RawSemanticHalfWidth,
 		maxX = strokeConfig.RawSemanticHalfWidth,
@@ -66,15 +74,26 @@ function CanonicalLegShape.Build(
 		return nil, clampError or "INVALID_STROKE"
 	end
 
-	local deduped = StrokeMath.Dedupe(clamped, strokeConfig.DedupeDistance)
+	local pivotRadius = strokeConfig.PivotStartRadiusNormalized or 0
+	if #clamped == 0 or clamped[1].Magnitude > pivotRadius then
+		return nil, "START_OFF_PIVOT"
+	end
+
+	local pivotSnapped = copyPoints(clamped)
+	pivotSnapped[1] = Vector2.zero
+
+	local deduped = StrokeMath.Dedupe(pivotSnapped, strokeConfig.DedupeDistance)
 	if #deduped < 2 then
 		return nil, "TOO_SHORT"
 	end
+	-- Cleanup must preserve the explicit mechanical origin.
+	deduped[1] = Vector2.zero
 
 	local simplified = StrokeMath.SimplifyRDP(deduped, strokeConfig.RDPEpsilon)
 	if #simplified < 2 then
 		return nil, "TOO_SHORT"
 	end
+	simplified[1] = Vector2.zero
 
 	local cleaned = StrokeMath.Resample(
 		simplified,
@@ -83,15 +102,17 @@ function CanonicalLegShape.Build(
 	if #cleaned > strokeConfig.MaxCleanedPoints then
 		return nil, "TOO_MANY_CLEANED_POINTS"
 	end
+	if #cleaned < 2 then
+		return nil, "TOO_SHORT"
+	end
+	cleaned[1] = Vector2.zero
 
 	local cleanedLength = StrokeMath.MeasureLength(cleaned)
-	if #cleaned < 2 or cleanedLength < strokeConfig.MinimumCleanedPolylineLength then
+	if cleanedLength < strokeConfig.MinimumCleanedPolylineLength then
 		return nil, "TOO_SHORT"
 	end
 
-	local presentationAnchor = cleaned[1]
-	local anchored = StrokeMath.AnchorToFirstPoint(cleaned)
-	local geometryPlan = GeometryMath.BuildSegmentPlan(anchored, geometryConfig)
+	local geometryPlan = GeometryMath.BuildSegmentPlan(cleaned, geometryConfig)
 	if #geometryPlan.segmentPlan == 0 then
 		return nil, "TOO_SHORT"
 	end
@@ -99,13 +120,15 @@ function CanonicalLegShape.Build(
 		return nil, "TOO_SHORT"
 	end
 
-	-- GeometryMath can radially cap world points at MaxLegExtentFromHub. Project
-	-- accepted mapped geometry back into semantic units so preview, StrokeResult,
-	-- and world colliders all describe the exact same canonical centerline.
 	assert(geometryConfig.LegCanvasHalfSpan > 0, "LegCanvasHalfSpan must be positive")
 	local normalizedPoints = table.create(#geometryPlan.mappedPoints)
 	for index, mapped in geometryPlan.mappedPoints do
 		normalizedPoints[index] = mapped / geometryConfig.LegCanvasHalfSpan
+	end
+	-- Geometry radial-clamping preserves the origin, but assert it explicitly as part
+	-- of the fixed-pivot public contract.
+	if #normalizedPoints > 0 then
+		normalizedPoints[1] = Vector2.zero
 	end
 
 	local bounds = StrokeMath.ComputeBounds(normalizedPoints)
@@ -113,18 +136,15 @@ function CanonicalLegShape.Build(
 		return nil, "TOO_SHORT"
 	end
 
-	local mappedPoints = geometryPlan.mappedPoints
-	local segmentPlan = geometryPlan.segmentPlan
 	return table.freeze({
 		normalizedPoints = freezePoints(normalizedPoints),
-		mappedPoints = freezePoints(mappedPoints),
+		mappedPoints = freezePoints(geometryPlan.mappedPoints),
 		bounds = table.freeze(bounds),
 		extent = geometryPlan.extent,
-		segmentPlan = freezeSegmentPlan(segmentPlan),
+		segmentPlan = freezeSegmentPlan(geometryPlan.segmentPlan),
 		cleanedLength = cleanedLength,
-		presentationAnchor = presentationAnchor,
 		debugRawPointCount = #rawPoints,
-		debugPhysicsPointCount = #mappedPoints,
+		debugPhysicsPointCount = #geometryPlan.mappedPoints,
 	}), nil
 end
 
