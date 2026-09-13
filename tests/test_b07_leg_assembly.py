@@ -48,10 +48,10 @@ def test_b07_leg_assembly_contract() -> None:
 def test_b07_exact_defaults_and_studio_spec() -> None:
     config = (ROOT / "src" / "shared" / "Config" / "PhysicsConfig.lua").read_text(encoding="utf-8")
     for token in [
-        "LegCanvasHalfSpan = 6.30",
-        "MaxLegExtentFromHub = 9.0",
-        "PhysicalLegSegmentThickness = 0.62",
-        "VisualLegSegmentThickness = 0.90",
+        "LegCanvasHalfSpan = 4.8",
+        "MaxLegExtentFromHub = 6.9",
+        "PhysicalLegSegmentThickness = 0.54",
+        "VisualLegSegmentThickness = 0.78",
         "InnerHubNoCollisionRadius = 0.65",
         "MinimumMappedSegmentLength = 0.08",
         "SegmentOverlapAllowance = 0.06",
