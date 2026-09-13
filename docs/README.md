@@ -1,5 +1,12 @@
 # DRAW RACERS — Roblox Development Bible
 
+## CR3 CURRENT OVERRIDE — canonical current state
+`CR3_CURRENT_SOURCE_OF_TRUTH.md` is the current mechanical owner. The active CR3 contract is **free draw** anywhere inside `DrawInputRect`, deterministic geometry-derived **support anchor** selection, explicit lower `LeftLegMount` / `RightLegMount` attachments, and two physical drive hinges commanded by a **single movement/phase owner** in `LegPairAssembly` with the same base omega and an initial 180° relation. Server authority and transactional redraw remain intact; the cowboy rider is client-only presentation.
+
+Repository checks prove source contracts and buildability only. Live contact/solver feel, mount readability, paired motion, redraw feel, obstacle usefulness, camera/rider presentation and the product gate remain **HUMAN STUDIO PENDING**. Normal Studio mode remains `G0`; **B17/G0 remains HUMAN_GATE PENDING**, and M0.5/multiplayer/meta/economy/shop remain blocked.
+
+The production-bible material below remains valid for product scope and ordered release work, but any older implementation wording that conflicts with CR3 is historical/superseded.
+
 Статус: **v1.3.4 ZERO-QUESTION PRODUCTION FREEZE — START-TO-PUBLIC-RELEASE EXECUTION READY**  
 Дата: 2026-09-03  
 Primary public title: **Draw Racers**; release clearance/fallback rule — `48/62`.
