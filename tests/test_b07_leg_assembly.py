@@ -22,6 +22,7 @@ def test_b07_leg_assembly_contract() -> None:
         'PhysicalLegSegmentThickness',
         'VisualLegSegmentThickness',
         'SegmentOverlapAllowance',
+        'function LegAssembly:ReplaceGeometry',
         'shapeSpec.segmentPlan',
         'axleRoot',
         'socketZ',
@@ -65,6 +66,8 @@ def test_b07_exact_defaults_and_studio_spec() -> None:
     spec_text = spec.read_text(encoding="utf-8")
     assert "GeometryMath.BuildSegmentPlan" in spec_text
     assert "LegAssembly.new" in spec_text
+    assert "leg:ReplaceGeometry(shapeSpec)" in spec_text
+    assert "leg:CompleteReshape()" in spec_text
     assert "one-leg geometry tests PASS" in spec_text
 
     bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
@@ -92,8 +95,7 @@ def test_b07_studio_spec_distinguishes_corner_mapping_from_radial_cap() -> None:
 def test_b07_destroy_does_not_mutate_borrowed_shape_spec_tables() -> None:
     leg = (ROOT / "src" / "server" / "Runtime" / "LegAssembly.lua").read_text(encoding="utf-8")
 
-    # Both Left and Right assemblies receive the same authoritative ShapeSpec tables.
-    # Destroying a staged/retiring side must not clear those caller-owned tables,
-    # because initial phase restaging may immediately reuse the same ShapeSpec.
+    # The side owner borrows authoritative ShapeSpec tables. Replacing or destroying
+    # local geometry must never mutate those caller-owned canonical arrays.
     assert "table.clear(self.segmentPlan)" not in leg
     assert "table.clear(self.mappedPoints)" not in leg

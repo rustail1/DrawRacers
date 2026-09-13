@@ -28,13 +28,12 @@ export type BuildParams = {
 }
 
 type LegBuildParams = {
-	racerModel: Model,
+	container: Instance,
 	axleRoot: Part,
 	shapeSpec: ShapeSpec,
 	side: string,
 	socketZ: number,
 	phaseDegrees: number,
-	staged: boolean,
 }
 
 local function ensureBodyAttachment(body: Part): Attachment
@@ -61,20 +60,24 @@ local function axleBaseCFrame(body: Part): CFrame
 end
 
 local function buildLeg(params: LegBuildParams)
-	return LegAssembly.new({
-		racerModel = params.racerModel,
+	local leg = LegAssembly.new({
+		container = params.container,
 		side = params.side,
-		shapeSpec = params.shapeSpec,
 		axleRoot = params.axleRoot,
 		socketZ = params.socketZ,
 		phaseDegrees = params.phaseDegrees,
-		staged = params.staged,
 	})
+	leg:ReplaceGeometry(params.shapeSpec)
+	leg:CompleteReshape()
+	return leg
 end
 
 function LegPairAssembly.new(params: BuildParams)
 	assert(type(params.shapeSpec) == "table", "LegPairAssembly requires authoritative shapeSpec")
-	assert(type(params.shapeSpec.segmentPlan) == "table" and #params.shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
+	assert(
+		type(params.shapeSpec.segmentPlan) == "table" and #params.shapeSpec.segmentPlan > 0,
+		"shapeSpec missing physical segmentPlan"
+	)
 	CollisionGroups.ensure()
 
 	local racerModel = params.racerModel
@@ -88,6 +91,15 @@ function LegPairAssembly.new(params: BuildParams)
 	local staged = params.staged == true
 	local initialPhaseDegrees = params.initialPhaseDegrees or 0
 	local bodyAttachment = ensureBodyAttachment(body)
+
+	local stagingContainer = nil
+	local sideContainer: Instance = legsFolder
+	if staged then
+		local detached = Instance.new("Folder")
+		detached.Name = "LegPairStaging"
+		stagingContainer = detached
+		sideContainer = detached
+	end
 
 	local axleRoot = Instance.new("Part")
 	axleRoot.Name = "AxleRoot"
@@ -115,16 +127,12 @@ function LegPairAssembly.new(params: BuildParams)
 	joint.Attachment0 = bodyAttachment
 	joint.Attachment1 = axleAttachment
 	joint.ActuatorType = Enum.ActuatorType.Motor
-	joint.AngularVelocity = PhysicsConfig.Motor.AngularVelocity
+	joint.AngularVelocity = motor.AngularVelocity
 	joint.MotorMaxTorque = motor.MotorMaxTorque
 	joint.MotorMaxAcceleration = motor.MotorMaxAcceleration
 	joint.Enabled = if staged then false else params.motorEnabled == true
 	joint.Parent = axleRoot
 
-	-- BG-04: human Studio evidence showed a real support hole during the 0.08-0.15s
-	-- HUB->TIP transition: old colliders retire immediately while the new pair starts
-	-- at zero length. Counter only gravity during that short interval; do not anchor,
-	-- teleport, or apply horizontal propulsion.
 	local reshapeSupportAttachment = Instance.new("Attachment")
 	reshapeSupportAttachment.Name = "ReshapeSupportAttachment"
 	reshapeSupportAttachment.Parent = body
@@ -142,27 +150,26 @@ function LegPairAssembly.new(params: BuildParams)
 	local rightLeg = nil
 	local sideBuildOk, sideBuildError = pcall(function()
 		leftLeg = buildLeg({
-			racerModel = racerModel,
+			container = sideContainer,
 			axleRoot = axleRoot,
 			shapeSpec = params.shapeSpec,
 			side = "Left",
 			socketZ = -geometry.LegSocketZAbs,
 			phaseDegrees = 0,
-			staged = staged,
 		})
 		rightLeg = buildLeg({
-			racerModel = racerModel,
+			container = sideContainer,
 			axleRoot = axleRoot,
 			shapeSpec = params.shapeSpec,
 			side = "Right",
 			socketZ = geometry.LegSocketZAbs,
 			phaseDegrees = motor.RightPhaseOffsetDegrees,
-			staged = staged,
 		})
 	end)
 	if not sideBuildOk then
 		if leftLeg ~= nil then leftLeg:Destroy() end
 		if rightLeg ~= nil then rightLeg:Destroy() end
+		if stagingContainer ~= nil then stagingContainer:Destroy() end
 		reshapeSupportForce:Destroy()
 		reshapeSupportAttachment:Destroy()
 		axleRoot:Destroy()
@@ -174,6 +181,7 @@ function LegPairAssembly.new(params: BuildParams)
 		racerModel = racerModel,
 		body = body,
 		legsFolder = legsFolder,
+		stagingContainer = stagingContainer,
 		axleRoot = axleRoot,
 		joint = joint,
 		leftLeg = leftLeg,
@@ -221,12 +229,17 @@ end
 
 function LegPairAssembly:Commit()
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	if self.committed then return end
+	if self.committed then
+		return
+	end
 	assert(self.axleRoot.Parent == nil, "staged axle root already has a parent")
-	assert(not self.leftLeg:IsCommitted() and not self.rightLeg:IsCommitted(), "staged sides unexpectedly committed")
+	assert(self.stagingContainer ~= nil, "staged pair missing temporary side container")
+
 	self.axleRoot.Parent = self.legsFolder
-	self.leftLeg:Commit()
-	self.rightLeg:Commit()
+	self.leftLeg:GetModel().Parent = self.legsFolder
+	self.rightLeg:GetModel().Parent = self.legsFolder
+	self.stagingContainer:Destroy()
+	self.stagingContainer = nil
 	self.committed = true
 end
 
@@ -251,111 +264,37 @@ function LegPairAssembly:_SetReshapeSupportEnabled(enabled: boolean)
 	force.Enabled = true
 end
 
-local function buildStagedSides(self: any, shapeSpec: ShapeSpec)
-	local geometry = PhysicsConfig.LegGeometry
-	local motor = PhysicsConfig.Motor
-	-- BG-01: the shared axle keeps its live phase, but a freshly drawn shape is
-	-- mounted with the inverse live phase so its first rendered world frame has
-	-- the same orientation the player just saw on the canonical canvas. The
-	-- Right copy retains the fixed 180-degree structural opposition.
-	local currentAxlePhaseDegrees = self:GetPhaseDegrees()
-	local redrawBasePhaseDegrees = -currentAxlePhaseDegrees
-	local stagedLeft = nil
-	local stagedRight = nil
-	local buildOk, buildError = pcall(function()
-		stagedLeft = buildLeg({
-			racerModel = self.racerModel,
-			axleRoot = self.axleRoot,
-			shapeSpec = shapeSpec,
-			side = "Left",
-			socketZ = -geometry.LegSocketZAbs,
-			phaseDegrees = redrawBasePhaseDegrees,
-			staged = true,
-		})
-		stagedRight = buildLeg({
-			racerModel = self.racerModel,
-			axleRoot = self.axleRoot,
-			shapeSpec = shapeSpec,
-			side = "Right",
-			socketZ = geometry.LegSocketZAbs,
-			phaseDegrees = redrawBasePhaseDegrees + motor.RightPhaseOffsetDegrees,
-			staged = true,
-		})
-	end)
-	if not buildOk then
-		if stagedLeft ~= nil then stagedLeft:Destroy() end
-		if stagedRight ~= nil then stagedRight:Destroy() end
-		error(buildError)
-	end
-	assert(stagedLeft ~= nil and stagedRight ~= nil, "geometry replacement produced incomplete staged sides")
-	return stagedLeft, stagedRight
-end
-
 function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
 	assert(self.committed, "ReplaceGeometry requires a committed stable axle")
-	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
+	assert(
+		type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0,
+		"shapeSpec missing physical segmentPlan"
+	)
 
 	self.reshapeForcedComplete = false
 	self:_SetReshapeSupportEnabled(false)
-	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec)
-	local oldLeft = self.leftLeg
-	local oldRight = self.rightLeg
-	oldLeft:SetRetiring(true)
-	oldRight:SetRetiring(true)
-
-	local commitOk, commitError = pcall(function()
-		stagedLeft:Commit()
-		stagedRight:Commit()
-	end)
-	if not commitOk then
-		stagedLeft:Destroy()
-		stagedRight:Destroy()
-		oldLeft:SetRetiring(false)
-		oldRight:SetRetiring(false)
-		error(commitError)
-	end
-
-	self.leftLeg = stagedLeft
-	self.rightLeg = stagedRight
-	oldLeft:Destroy()
-	oldRight:Destroy()
+	self.leftLeg:ReplaceGeometry(shapeSpec)
+	self.rightLeg:ReplaceGeometry(shapeSpec)
+	self.leftLeg:CompleteReshape()
+	self.rightLeg:CompleteReshape()
 	return self.leftLeg, self.rightLeg
 end
 
 function LegPairAssembly:BeginGeometryReshape(shapeSpec: ShapeSpec)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
 	assert(self.committed, "BeginGeometryReshape requires a committed stable axle")
-	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
+	assert(
+		type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0,
+		"shapeSpec missing physical segmentPlan"
+	)
 
-	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec)
-	stagedLeft:SetReshapeProgress(0)
-	stagedRight:SetReshapeProgress(0)
 	self.reshapeForcedComplete = false
 	self:_SetReshapeSupportEnabled(true)
-
-	local oldLeft = self.leftLeg
-	local oldRight = self.rightLeg
-	oldLeft:SetRetiring(true)
-	oldRight:SetRetiring(true)
-
-	local commitOk, commitError = pcall(function()
-		stagedLeft:Commit()
-		stagedRight:Commit()
-	end)
-	if not commitOk then
-		self:_SetReshapeSupportEnabled(false)
-		stagedLeft:Destroy()
-		stagedRight:Destroy()
-		oldLeft:SetRetiring(false)
-		oldRight:SetRetiring(false)
-		error(commitError)
-	end
-
-	self.leftLeg = stagedLeft
-	self.rightLeg = stagedRight
-	oldLeft:Destroy()
-	oldRight:Destroy()
+	self.leftLeg:ReplaceGeometry(shapeSpec)
+	self.rightLeg:ReplaceGeometry(shapeSpec)
+	self.leftLeg:SetReshapeProgress(0)
+	self.rightLeg:SetReshapeProgress(0)
 	return self.leftLeg, self.rightLeg
 end
 
@@ -383,24 +322,21 @@ function LegPairAssembly:SetEnabled(enabled: boolean)
 	self.joint.Enabled = enabled
 end
 
-function LegPairAssembly:SetRetiring(retiring: boolean)
-	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	self.axleRoot.Name = if retiring then "AxleRoot_Retiring" else "AxleRoot"
-	self.leftLeg:SetRetiring(retiring)
-	self.rightLeg:SetRetiring(retiring)
-end
-
 function LegPairAssembly:Destroy()
-	if self.destroyed then return end
+	if self.destroyed then
+		return
+	end
 	self:_SetReshapeSupportEnabled(false)
 	self.destroyed = true
 	if self.leftLeg then self.leftLeg:Destroy() end
 	if self.rightLeg then self.rightLeg:Destroy() end
+	if self.stagingContainer then self.stagingContainer:Destroy() end
 	if self.reshapeSupportForce then self.reshapeSupportForce:Destroy() end
 	if self.reshapeSupportAttachment then self.reshapeSupportAttachment:Destroy() end
 	if self.axleRoot then self.axleRoot:Destroy() end
 	self.leftLeg = nil
 	self.rightLeg = nil
+	self.stagingContainer = nil
 	self.reshapeSupportForce = nil
 	self.reshapeSupportAttachment = nil
 	self.axleRoot = nil

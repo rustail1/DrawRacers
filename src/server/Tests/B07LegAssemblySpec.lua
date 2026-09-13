@@ -17,6 +17,16 @@ local function assertClose(actual: number, expected: number, epsilon: number, me
 	assert(math.abs(actual - expected) <= epsilon, string.format("%s: expected %.6f got %.6f", message, expected, actual))
 end
 
+local function countNamed(folder: Instance, name: string): number
+	local count = 0
+	for _, child in folder:GetChildren() do
+		if child.Name == name then
+			count += 1
+		end
+	end
+	return count
+end
+
 function B07LegAssemblySpec.run()
 	local racer = RacerRuntime.new({
 		raceId = "B07_TEST",
@@ -59,19 +69,19 @@ function B07LegAssemblySpec.run()
 	}
 
 	local leg = LegAssembly.new({
-		racerModel = model,
+		container = legsFolder,
 		side = "Left",
-		shapeSpec = shapeSpec,
 		axleRoot = axleRoot,
 		socketZ = -PhysicsConfig.LegGeometry.LegSocketZAbs,
 		phaseDegrees = 0,
 	})
+	leg:ReplaceGeometry(shapeSpec)
 
 	local legModel = leg:GetModel()
 	assert(legModel.Name == "LeftLeg")
 	assert(model.Legs:FindFirstChild("LeftLeg") == legModel)
 	assert(legModel:FindFirstChild("LegRoot") and legModel.LegRoot:IsA("Part"), "B07 missing LegRoot")
-	assert(legModel:FindFirstChild("HubJoint") == nil, "R17 side geometry must not own a hinge")
+	assert(legModel:FindFirstChild("HubJoint") == nil, "side geometry must not own a hinge")
 	assert(legModel:FindFirstChild("Segments") and legModel.Segments:IsA("Folder"), "B07 missing Segments")
 	assert(legModel:FindFirstChild("Visual") and legModel.Visual:IsA("Folder"), "B07 missing Visual")
 	assert(legModel:FindFirstChild("RightLeg") == nil, "B07 must not build RightLeg")
@@ -94,15 +104,19 @@ function B07LegAssemblySpec.run()
 		PhysicsConfig.LegGeometry.MaxLegExtentFromHub
 	)
 	assertClose(mapped[3].Magnitude, expectedCornerMagnitude, 1e-5, "corner mapping respects radial hard cap")
-	assert(
-		mapped[3].Magnitude <= PhysicsConfig.LegGeometry.MaxLegExtentFromHub + 1e-5,
-		"corner mapping exceeded radial hard cap"
-	)
+	assert(mapped[3].Magnitude <= PhysicsConfig.LegGeometry.MaxLegExtentFromHub + 1e-5, "corner mapping exceeded radial hard cap")
 
 	local hardCapGeometry = table.clone(PhysicsConfig.LegGeometry)
 	hardCapGeometry.LegCanvasHalfSpan = 4.0
 	local hardCapped = GeometryMath.MapPoint(Vector2.new(1, 1), hardCapGeometry)
 	assertClose(hardCapped.Magnitude, hardCapGeometry.MaxLegExtentFromHub, 1e-5, "radial hard cap")
+
+	assert(#leg:GetSegments() == 0, "progress 0 must not prebuild future full colliders")
+	leg:SetReshapeProgress(0.5)
+	assert(#leg:GetSegments() < #shapeSpec.segmentPlan, "partial reshape must materialize only completed prefix")
+	assert(countNamed(legModel.Segments, "ReshapeTipCollider") <= 1, "partial reshape leaked multiple tip colliders")
+	leg:CompleteReshape()
+	assert(countNamed(legModel.Segments, "ReshapeTipCollider") == 0, "complete reshape left temporary tip collider")
 
 	local segments = leg:GetSegments()
 	assert(#segments == 2, "expected exactly two legal consecutive segments")
@@ -131,7 +145,7 @@ function B07LegAssemblySpec.run()
 			assert(descendant.Massless == true, "visual representation must stay massless")
 		end
 	end
-	assert(visualPartCount > 0, "R16.3B visual layer produced no visible geometry")
+	assert(visualPartCount > 0, "visual layer produced no visible geometry")
 	assert(#leg:GetSegments() == physicalCountBeforeVisualCheck, "physical collider count changed by visual layer")
 
 	leg:Destroy()

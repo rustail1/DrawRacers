@@ -36,27 +36,30 @@ def test_rcp04_config_keeps_arcade_duration_bounded() -> None:
         assert token in config, f"missing RCP-04 config token: {token}"
 
 
-def test_rcp04_leg_assembly_can_apply_partial_geometry_without_midpoint_growth() -> None:
+def test_rcp04_leg_assembly_materializes_only_current_prefix() -> None:
     leg = read("src/server/Runtime/LegAssembly.lua")
     assert 'WaitForChild("LegReshapeMath")' in leg
+    assert "function LegAssembly:ReplaceGeometry" in leg
     assert "function LegAssembly:SetReshapeProgress" in leg
+    assert "function LegAssembly:CompleteReshape" in leg
     assert "LegReshapeMath.Evaluate" in leg
+    assert "materializeCompleteSegment" in leg
     assert "partialEndpoint" in leg
-    assert "setDynamicFrame(self.root, segment, self.partialColliderWeld, a, endpoint)" in leg
-    assert "segment.Size = Vector3.new(" in leg
-    assert "segment.CanCollide = visibleLength" in leg
-    assert 'partialCollider.Name = "ReshapeTipCollider"' in leg
+    assert "updatePartialTip" in leg
+    assert 'collider.Name = "ReshapeTipCollider"' in leg
+    assert "for index = self.materializedCompleteSegments + 1, state.completeSegments do" in leg
 
 
-def test_rcp04_pair_uses_one_visible_pair_same_progress_and_only_bounded_vertical_support() -> None:
+def test_rcp04_pair_reuses_side_owners_and_only_uses_bounded_vertical_support() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     assert "function LegPairAssembly:BeginGeometryReshape" in pair
     assert "function LegPairAssembly:SetReshapeProgress" in pair
+    assert "self.leftLeg:ReplaceGeometry(shapeSpec)" in pair
+    assert "self.rightLeg:ReplaceGeometry(shapeSpec)" in pair
     assert "self.leftLeg:SetReshapeProgress" in pair
     assert "self.rightLeg:SetReshapeProgress" in pair
-    assert "stagedLeft:SetReshapeProgress(0)" in pair
-    assert "stagedRight:SetReshapeProgress(0)" in pair
-    assert "oldLeft:Destroy()" in pair and "oldRight:Destroy()" in pair
+    assert "buildStagedSides" not in pair
+    assert "oldLeft:Destroy()" not in pair and "oldRight:Destroy()" not in pair
     assert 'Instance.new("VectorForce")' in pair
     assert "Vector3.new(0," in pair
     assert "ApplyAtCenterOfMass = true" in pair
