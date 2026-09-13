@@ -2,6 +2,13 @@
 
 Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
+## CR3 CURRENT OVERRIDE — canonical current state
+`docs/CR3_CURRENT_SOURCE_OF_TRUTH.md` is the current mechanical owner. The active CR3 contract is **free draw** anywhere inside `DrawInputRect`, deterministic geometry-derived **support anchor** selection, explicit lower `LeftLegMount` / `RightLegMount` attachments, and two physical drive hinges commanded by a **single movement/phase owner** in `LegPairAssembly` with the same base omega and an initial 180° relation. Server authority and transactional redraw remain intact; the cowboy rider is client-only presentation.
+
+Repository checks prove source contracts and buildability only. Live contact/solver feel, mount readability, paired motion, redraw feel, obstacle usefulness, camera/rider presentation and the product gate remain **HUMAN STUDIO PENDING**. Normal Studio `Play` remains `G0`; **B17/G0 remains HUMAN_GATE PENDING**, so M0.5/multiplayer/meta/economy/shop remain blocked until that gate or another explicit bounded Product Owner decision.
+
+All CR2/R17 “current” wording below is retained as historical regression context and is superseded by CR3 wherever it conflicts.
+
 ## CR2 CURRENT OVERRIDE — canonical current state
 `docs/CR2_CURRENT_SOURCE_OF_TRUTH.md` is the current mechanical owner. CORE REPAIR v2 keeps M0 scope unchanged but replaces the lower historical first-point/shared-axle mechanics with the **fixed visible pivot** + **twin-drive** implementation. Drawing starts near semantic `(0,0)`; `LegPairAssembly` owns persistent Left/Right `LegDriveAssembly` owners with two `DriveJoint` motors and a 180° target. The old one-motor **shared axle** topology is **retired**. Redraw stages candidate visuals while old physical geometry remains active, then collision-safe commit swaps the prepared geometry without replacing pair/drive/joint/side ownership.
 
@@ -118,112 +125,3 @@ The following historical facts remain intentionally present because repository r
 - BACKLOG — 8 lane scaling
 - BACKLOG — STAGING two-place provisioning (`64/70`)
 - BACKLOG — First 10 authored tracks T01–T10 from `60/67`
-- BACKLOG — E03 extend/accept current normalized nonphysical human `RiderPresentationController` for 8-player readability (`21/25/62/65/68`)
-- BACKLOG — FTUE
-- BACKLOG — Lineup/results/podium exact UI from `59`
-- BACKLOG — One-tap requeue
-- BACKLOG — Canonical profile/save lifecycle
-- BACKLOG — Coins + RewardService with `61` starting table
-- BACKLOG — Cosmetic inventory/equip
-- BACKLOG — Atomic Coin catalog purchase (`71`)
-- BACKLOG — First vertical-slice subset of `62` launch catalog
-- BACKLOG — Visible status basics
-- BACKLOG — Analytics funnels/events
-- BACKLOG — Audio/VFX/haptic semantic presentation (`47/68/69/70`)
-- BACKLOG — Settings/accessibility/rival-shape safety controls (`37/39/68`)
-- BACKLOG — Mobile performance/network pass + G3
-
-## M3 — Alpha Product Loop / PUBLIC-LAUNCH CONTENT
-All items below remain required before public release, not optional polish.
-- BACKLOG — Complete T01–T20 authored tracks and both launch themes (`60/62/67/69`)
-- BACKLOG — Mastery Points, access tiers and visible titles (`61`)
-- BACKLOG — Garage/collection final layout (`59`) and catalog (`62`)
-- BACKLOG — First-session ownership pacing using `61`
-- BACKLOG — Required cold-start Bot Fill (`40/74/75`)
-- BACKLOG — Full 20 produced launch cosmetics + Trail_None (`62/69/70`)
-- BACKLOG — Launch audio/VFX set (`47/62`)
-- BACKLOG — G4 session/rematch record
-- BACKLOG — Admin/observability (`34`)
-- BACKLOG — Save/migration/handoff fault matrix (`31/24`)
-- BACKLOG — Content registry/provenance binding (`36/48/69/70`)
-- BACKLOG — G5 free cosmetic/status desire record
-
-## M4 — Monetization / Soft Launch
-- BACKLOG — Three launch Pass SKUs from `61/62`
-- BACKLOG — Contextual Starter Style offer
-- BACKLOG — Post-purchase theatre
-- BACKLOG — Pass entitlement reconciliation (`71`)
-- BACKLOG — `56` receipt/idempotency implementation/tests if any Developer Product is enabled
-- BACKLOG — Monetization analytics
-- BACKLOG — Discovery creative A/B/C from `62` + G6
-- BACKLOG — Price/offer experiments after sufficient sample
-- LATER — Coin Developer Products activation (predefined but disabled until G5 + explicit enable decision)
-
-## M5 — Release / LiveOps Foundation
-- BACKLOG — Config-driven public course rotation
-- BACKLOG — Cosmetic collection configs
-- BACKLOG — Standard LiveOps event constructor/config path
-- BACKLOG — Measurement-contract workflow / rollback
-- BACKLOG — First 30-day content buffer implementation (`76`)
-- BACKLOG — PROD two-place/SKU/asset provisioning (`64/70`)
-- BACKLOG — Production release checklist / rollback drill
-- BACKLOG — Final device/performance matrix
-- BACKLOG — Localization/accessibility pass
-- BACKLOG — Safety/moderation pass
-- BACKLOG — IP/name/asset provenance clearance
-- BACKLOG — G7 content-production record when applicable
-
-## LATER — explicit post-release / data-dependent scope
-- LATER — friend/party quality layer
-- LATER — private-server-specific features
-- LATER — rewarded video
-- LATER — subscription
-- LATER — seasonal paid progression
-- LATER — ranked season/tournament
-- LATER — procedural/endless generator
-- LATER — console/gamepad drawing UX
-- LATER — VictoryPose/PodiumFX category beyond launch FinishFX
-- LATER — paid random items
-
-## Explicit CUT unless new Product Owner Decision
-- CUT — paid speed/torque/grip/radius/hitbox/redraw advantage
-- CUT — racer-vs-racer physical collisions
-- CUT — combat/weapons
-- CUT — free-form public drawing/art publishing
-- CUT — pets as stat power
-- CUT — rebirth/stat simulator
-- CUT — mandatory gacha
-- CUT — giant lobby delaying first race
-- CUT — battle pass before explicit post-launch need
-
-## Production completeness — release blockers
-Every item must be ACCEPTED or explicitly CUT by Product Owner Decision before public release:
-- BACKLOG — Save migrations/recovery (`31`)
-- BACKLOG — Security threat-model pass (`32`)
-- BACKLOG — 8-player performance/device matrix (`33/57`)
-- BACKLOG — Rival drawing safety controls (`39`)
-- BACKLOG — Release/rollback playbook validation (`35`)
-- BACKLOG — Localization/accessibility (`37/59`)
-- BACKLOG — Discovery creative pack (`38/62`)
-- BACKLOG — UI screenshot matrix (`59`)
-- BACKLOG — Exact launch TrackPiece/content validation (`60`)
-- BACKLOG — Economy/progression table implementation (`61`)
-- BACKLOG — Launch art/content manifest complete (`62/69/70`)
-- BACKLOG — Empirical gates G0–G7 as required (`55`)
-- BACKLOG — Coin catalog + Pass entitlement transaction tests (`71`)
-- BACKLOG — Developer Product receipt tests if enabled (`56`)
-- BACKLOG — Current final documentation audit (`78`) remains PASS after any spec change
-
-Any unlisted feature requires a scope decision before documentation/implementation.
-
-## R16 PRE-STUDIO CLOSURE P0–P6
-**Historical repository closure record; Studio acceptance remains pending.**
-
-P0–P6 record the bounded pre-Studio repair sequence: P0 plan/contract reconciliation under the then-current R16.3A centering rule; P1 real elapsed B10 recovery timing; P2 isolated flat benchmark; P3 real below-kill-Y recovery evidence; P4 shared full six-shape matrix with winner-set intersection; P5 Wall suitable-success plus SUBOPTIMAL negative-control proof with dedicated WallContactTimeout preserved; P6 repository status/decision reconciliation and full CI/toolchain verification. R16.3B supersedes only the old shape-origin/input-surface semantics; R17 supersedes the old two-independent-motor and presentation-timing details while preserving the evidence trail. The 2026-09-12 phase correction changes only the current structural side relation to 180° on the same shared axle.
-
-**Studio Gate A — HUMAN STUDIO PENDING**  
-**Studio Gate B — HUMAN STUDIO PENDING**  
-**Studio Gate C — HUMAN STUDIO PENDING**  
-**B17/G0 — HUMAN_GATE PENDING**
-
-`AUTOMATED GREEN` may be recorded only from a fresh successful current-head CI/toolchain run and never marks any Studio or external human gate PASS.
