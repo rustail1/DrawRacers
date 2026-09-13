@@ -7,6 +7,7 @@ local Workspace = game:GetService("Workspace")
 local shared = ReplicatedStorage:WaitForChild("Shared")
 local configFolder = shared:WaitForChild("Config")
 local config = require(configFolder:WaitForChild("M0SceneConfig"))
+local PhysicsConfig = require(configFolder:WaitForChild("PhysicsConfig"))
 local CollisionGroups = require(script.Parent.Runtime:WaitForChild("CollisionGroups"))
 
 type PieceConfig = {
@@ -191,7 +192,12 @@ function M0TestScene.build()
 	referenceLab.Parent = scene
 	buildReferenceBenchmark(referenceLab)
 
-	makeTrackPart("EntryFloor", 0, config.Pieces[1].StartX, config.Lane.TopY, config.Lane.Thickness, obstacleLab, true)
+	-- BG-06: with the repaired ~6.9 stud max reach, the canonical X=4 spawn
+	-- was only four studs from the old rear edge at X=0. A normal rotating leg
+	-- could therefore push the racer off the lab before the first obstacle.
+	-- Extend only the safe entry floor; canonical obstacle dimensions stay frozen.
+	local entryStartX = math.min(0, config.Spawn.X - PhysicsConfig.LegGeometry.MaxLegExtentFromHub - 1.0)
+	makeTrackPart("EntryFloor", entryStartX, config.Pieces[1].StartX, config.Lane.TopY, config.Lane.Thickness, obstacleLab, true)
 
 	for index, rawPiece in ipairs(config.Pieces) do
 		local piece = rawPiece :: PieceConfig
