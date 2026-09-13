@@ -1,11 +1,7 @@
 --!strict
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local PhysicsConfig = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
-)
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 
 local B06RacerRuntimeSpec = {}
@@ -33,19 +29,7 @@ function B06RacerRuntimeSpec.run()
 
 	local visualRoot = template:FindFirstChild("VisualRoot")
 	assert(visualRoot and (visualRoot:IsA("Folder") or visualRoot:IsA("Model")), "RacerTemplate missing VisualRoot")
-
-	local leftHub = template:FindFirstChild("LeftHub")
-	local rightHub = template:FindFirstChild("RightHub")
-	assert(leftHub and leftHub:IsA("Part"), "RacerTemplate missing LeftHub")
-	assert(rightHub and rightHub:IsA("Part"), "RacerTemplate missing RightHub")
-	assert(leftHub:FindFirstChild("MotorAttachment") and leftHub.MotorAttachment:IsA("Attachment"), "LeftHub missing MotorAttachment")
-	assert(rightHub:FindFirstChild("MotorAttachment") and rightHub.MotorAttachment:IsA("Attachment"), "RightHub missing MotorAttachment")
-
-	local geometry = PhysicsConfig.LegGeometry
-	local expectedLeft = Vector3.new(geometry.HubOffsetX, geometry.HubOffsetY, -geometry.HubOffsetZAbs)
-	local expectedRight = Vector3.new(geometry.HubOffsetX, geometry.HubOffsetY, geometry.HubOffsetZAbs)
-	assertVectorClose(body.CFrame:PointToObjectSpace(leftHub.Position), expectedLeft, 1e-4, "LeftHub offset")
-	assertVectorClose(body.CFrame:PointToObjectSpace(rightHub.Position), expectedRight, 1e-4, "RightHub offset")
+	assert(template:FindFirstChildWhichIsA("HingeConstraint", true) == nil, "RacerTemplate must not prebuild the shared axle motor")
 
 	local runtimeAttachments = template:FindFirstChild("RuntimeAttachments")
 	assert(runtimeAttachments and runtimeAttachments:IsA("Folder"), "RacerTemplate missing RuntimeAttachments")
@@ -75,6 +59,7 @@ function B06RacerRuntimeSpec.run()
 	assert(model:FindFirstChild("Legs") and model.Legs:IsA("Folder"), "runtime racer missing Legs root")
 	assert(model:FindFirstChild("Presentation") and model.Presentation:IsA("Folder"), "runtime racer missing Presentation root")
 	assert(model:FindFirstChildWhichIsA("Humanoid", true) == nil, "runtime racer must not contain Humanoid")
+	assert(model:FindFirstChildWhichIsA("HingeConstraint", true) == nil, "axle motor must not exist before the first shape")
 	assertVectorClose(racer:GetBody().Position, Vector3.new(0, 8, 0), 1e-4, "runtime spawn position")
 
 	racer:Destroy()
