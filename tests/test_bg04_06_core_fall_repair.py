@@ -36,7 +36,8 @@ def test_bg05_recovery_cancels_pending_redraw_before_harness_teleport() -> None:
     assert "PivotTo" not in prepare
     assert "racer:PrepareForRecovery()" in harness
     assert harness.index("racer:PrepareForRecovery()") < harness.index("model:PivotTo")
-    assert "RecoveryKillY = -12" in config
+    assert "RecoveryKillY = -6" in config
+    assert "CameraMinFollowY = 0" in config
 
 
 def test_bg06_g0_entry_floor_covers_max_leg_reach_behind_spawn() -> None:
