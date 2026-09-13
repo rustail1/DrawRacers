@@ -73,10 +73,10 @@ local function sanitizeVisual(visual: Model)
 			descendant.Massless = true
 			descendant.Anchored = descendant.Name == "HumanoidRootPart"
 			descendant.LocalTransparencyModifier = 0
+			-- Keep the cloned avatar/accessory Transparency authored by the player's
+			-- appearance. Only the invisible presentation root is forced hidden.
 			if descendant.Name == "HumanoidRootPart" then
 				descendant.Transparency = 1
-			else
-				descendant.Transparency = 0
 			end
 		end
 	end
