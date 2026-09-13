@@ -34,7 +34,7 @@ def test_r11_live_preview_instances_are_bounded_by_existing_stroke_cap() -> None
     assert "function DrawingController:_renderLiveCanonicalPreview" in drawing
 
     append_start = drawing.index("function DrawingController:_appendLivePoint")
-    append_end = drawing.index("function DrawingController:_buildCanonicalFromPixels", append_start)
+    append_end = drawing.index("function DrawingController:_buildCanonical", append_start)
     append_block = drawing[append_start:append_end]
     assert "PhysicsConfig.StrokeProcessing.MaxRawPoints" in append_block
     assert "self:_compactLivePoints()" in append_block
@@ -42,20 +42,19 @@ def test_r11_live_preview_instances_are_bounded_by_existing_stroke_cap() -> None
     compact_start = drawing.index("function DrawingController:_compactLivePoints")
     compact_end = drawing.index("function DrawingController:_appendLivePoint", compact_start)
     compact_block = drawing[compact_start:compact_end]
-    assert "table.clear(self._livePoints)" in compact_block
+    assert "compactEveryOther(self._livePoints)" in compact_block
 
     preview_start = drawing.index("function DrawingController:_renderLiveCanonicalPreview")
-    preview_end = drawing.index("function DrawingController:_prepareRawSemanticPoints", preview_start)
+    preview_end = drawing.index("function DrawingController:_pendingStrokeCount", preview_start)
     preview_block = drawing[preview_start:preview_end]
-    assert "LegShapeMath.BuildCanonical" not in preview_block  # delegated through _buildCanonicalFromPixels
-    assert "self:_buildCanonicalFromPixels" in preview_block
+    assert "self:_buildCanonical(self._rawSemanticPoints)" in preview_block
     assert "renderPolyline(self._ui.liveLayer" in preview_block
 
     capture_start = drawing.index("function DrawingController:_capturePointerPoint")
     capture_end = drawing.index("function DrawingController:_onPointer", capture_start)
     capture_block = drawing[capture_start:capture_end]
     assert "self:_appendLivePoint" in capture_block
-    assert "self:_tryAppendSemanticPoint" in capture_block
+    assert "self:_tryAppendRawSemanticPoint" in capture_block
     assert "self:_renderLiveCanonicalPreview" in capture_block
 
     pointer_start = drawing.index("function DrawingController:_onPointer")
