@@ -53,14 +53,18 @@ local function styleParts(root: Instance?, style: Style, tintOnly: boolean?, bas
 	end
 	for _, descendant in root:GetDescendants() do
 		if descendant:IsA("BasePart") then
+			if baseStyles ~= nil then
+				captureBaseStyle(baseStyles, descendant)
+			end
 			if tintOnly == true then
-				if style.Tint ~= nil and descendant.Name ~= "HumanoidRootPart" then
-					descendant.Color = style.Tint
+				if descendant.Name ~= "HumanoidRootPart" then
+					if style.PreserveBase == true and baseStyles ~= nil then
+						restoreBaseStyle(baseStyles, descendant)
+					elseif style.Tint ~= nil then
+						descendant.Color = style.Tint
+					end
 				end
 			else
-				if baseStyles ~= nil then
-					captureBaseStyle(baseStyles, descendant)
-				end
 				if style.PreserveBase == true and baseStyles ~= nil then
 					restoreBaseStyle(baseStyles, descendant)
 				else
@@ -115,8 +119,8 @@ local function applyCubeStyle(racer: Model, style: Style)
 	styleParts(racer:FindFirstChild("VisualRoot"), style, false)
 end
 
-local function applyRiderStyle(rider: Model?, style: Style)
-	styleParts(rider, style, true)
+local function applyRiderStyle(rider: Model?, style: Style, baseStyles: BaseStyleMap)
+	styleParts(rider, style, true, baseStyles)
 end
 
 function RacerCosmeticsController.new()
@@ -126,6 +130,7 @@ function RacerCosmeticsController.new()
 		_signatures = {} :: SignatureMap,
 		_riderInstances = {} :: RiderInstanceMap,
 		_baseLegStyles = setmetatable({}, { __mode = "k" }) :: BaseStyleMap,
+		_baseRiderStyles = setmetatable({}, { __mode = "k" }) :: BaseStyleMap,
 	}, RacerCosmeticsController)
 end
 
@@ -159,7 +164,7 @@ function RacerCosmeticsController:_applyRacer(racer: Model)
 
 	applyLegStyle(racer, legStyle, self._baseLegStyles)
 	applyCubeStyle(racer, cubeStyle)
-	applyRiderStyle(rider, riderStyle)
+	applyRiderStyle(rider, riderStyle, self._baseRiderStyles)
 	self._signatures[racer] = signature
 	self._riderInstances[racer] = rider
 end
@@ -211,6 +216,7 @@ function RacerCosmeticsController:Destroy()
 	table.clear(self._signatures)
 	table.clear(self._riderInstances)
 	table.clear(self._baseLegStyles)
+	table.clear(self._baseRiderStyles)
 end
 
 return RacerCosmeticsController
