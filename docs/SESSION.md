@@ -1,7 +1,14 @@
 # SESSION.md — CURRENT STATE
 
-Date: 2026-09-13  
-Documentation version: **v1.6.0 MR-06 MECHANICAL CORE REWRITE / READY FOR HUMAN ACCEPTANCE**
+Date: 2026-09-14  
+Documentation version: **v1.7.0 CR3 FREE-DRAW / LOWER-MOUNT / SINGLE-PHASE-OWNER REPAIR — READY FOR HUMAN G0**
+
+## CR3 CURRENT OVERRIDE — canonical current state
+`docs/CR3_CURRENT_SOURCE_OF_TRUTH.md` is the current mechanical owner. The active CR3 contract is **free draw** anywhere inside `DrawInputRect`, deterministic geometry-derived **support anchor** selection, explicit lower `LeftLegMount` / `RightLegMount` attachments, and two physical drive hinges commanded by a **single movement/phase owner** in `LegPairAssembly` with the same base omega and an initial 180° relation. Server authority and transactional redraw remain intact; the cowboy rider is client-only presentation.
+
+Repository checks prove source contracts and buildability only. Live contact/solver feel, mount readability, paired motion, redraw feel, obstacle usefulness, camera/rider presentation and the product gate remain **HUMAN STUDIO PENDING**. Normal Studio `Play` remains `G0`; **B17/G0 remains HUMAN_GATE PENDING**, and no M0.5/multiplayer/meta/economy/shop work is authorized before that gate or another explicit bounded Product Owner decision.
+
+All lower CR2/R17 sections that call themselves “current” are retained only for historical regression traceability and are superseded by CR3 wherever they conflict.
 
 ## CR2 CURRENT OVERRIDE — canonical current state
 `docs/CR2_CURRENT_SOURCE_OF_TRUTH.md` is the current mechanical owner and supersedes the lower historical R16/R17/MR current-state wording wherever it conflicts. CORE REPAIR v2 keeps the wide semantic DrawInputRect but uses a **fixed visible pivot** at semantic `(0,0)`: drawing must start near that dot and the canonical builder no longer translates every shape by its first cleaned point.
