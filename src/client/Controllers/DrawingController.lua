@@ -105,7 +105,7 @@ end
 
 local function clearSegments(layer: Instance)
 	for _, child in layer:GetChildren() do
-		if child.Name == "Segment" then
+		if child.Name == "Segment" or child.Name == "Joint" then
 			child:Destroy()
 		end
 	end
@@ -135,10 +135,30 @@ local function drawSegment(parent: Instance, a: Vector2, b: Vector2, thickness: 
 	corner.Parent = segment
 end
 
+local function drawJoint(parent: Instance, point: Vector2, thickness: number, transparency: number?)
+	local joint = Instance.new("Frame")
+	joint.Name = "Joint"
+	joint.AnchorPoint = Vector2.new(0.5, 0.5)
+	joint.Position = UDim2.fromOffset(point.X, point.Y)
+	joint.Size = UDim2.fromOffset(thickness, thickness)
+	joint.BackgroundColor3 = DEFAULT_GRAPHITE_COLOR
+	joint.BackgroundTransparency = transparency or 0
+	joint.BorderSizePixel = 0
+	joint.ZIndex = 25
+	joint.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = joint
+end
+
 local function renderPolyline(layer: Frame, points: { Vector2 }, thickness: number, transparency: number?)
 	clearSegments(layer)
 	for index = 2, #points do
 		drawSegment(layer, points[index - 1], points[index], thickness, transparency)
+	end
+	for index = 2, #points - 1 do
+		drawJoint(layer, points[index], thickness, transparency)
 	end
 end
 
