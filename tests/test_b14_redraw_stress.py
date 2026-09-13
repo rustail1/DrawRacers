@@ -51,7 +51,7 @@ def test_b14_studio_stress_spec_is_wired() -> None:
     ]:
         assert token in spec, f"missing B14 stress acceptance token: {token}"
 
-    assert "countLegParts(" not in spec, "R16.3B B14 must not classify nonphysical Visual BaseParts as physical"
+    assert "countLegParts(" not in spec, "B14 must not classify nonphysical Visual BaseParts as physical"
 
     bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
     assert "B14RedrawStressSpec" in bootstrap
@@ -60,7 +60,7 @@ def test_b14_studio_stress_spec_is_wired() -> None:
 
 def test_b14_expensive_invalid_payload_cases_run_outside_submit_cooldown() -> None:
     spec = (ROOT / "src" / "server" / "Tests" / "B14RedrawStressSpec.lua").read_text(encoding="utf-8")
-    cooldown_advance = "now += PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown + 0.01"
+    cooldown_advance = "nowRef.value += PhysicsConfig.StrokeProcessing.StrokeSubmitCooldown + 0.01"
 
     for marker in [
         "local malformed = processor:Handle",
@@ -69,7 +69,7 @@ def test_b14_expensive_invalid_payload_cases_run_outside_submit_cooldown() -> No
         "local oversized = processor:Handle",
     ]:
         marker_index = spec.index(marker)
-        prior_window = spec[max(0, marker_index - 180):marker_index]
+        prior_window = spec[max(0, marker_index - 220):marker_index]
         assert cooldown_advance in prior_window, (
             f"{marker} must advance fake server time past StrokeSubmitCooldown so the Studio spec "
             "tests that payload guard instead of correctly receiving RATE_LIMITED"

@@ -7,14 +7,13 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_r04_collider_count_follows_canonical_leg_segments_not_transient_reshape_tip():
+def test_r04_collider_count_follows_cr2_canonical_segments_only():
     telemetry = read("src/server/Runtime/DebugTelemetry.lua")
-    assert 'FindFirstChild("Segments")' in telemetry
-    assert 'segments:GetChildren()' in telemetry
-    assert 'child:IsA("BasePart")' in telemetry
-    assert 'string.match(child.Name, "^Segment_%d+$")' in telemetry
-    assert "ReshapeTipCollider" in telemetry
-    assert 'child.Name == "ReshapeTipCollider"' not in telemetry
+    assert 'legs:GetDescendants()' in telemetry
+    assert 'descendant:IsA("BasePart")' in telemetry
+    assert 'string.match(descendant.Name, "^Segment_%d+$")' in telemetry
+    assert "StageTipVisual" not in telemetry
+    assert "PendingSegments" not in telemetry
 
 
 def test_r04_simplified_points_come_from_current_shape_spec():

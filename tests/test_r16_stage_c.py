@@ -11,34 +11,30 @@ def test_r16_8_moving_redraw_parity_is_stress_verified() -> None:
     b13 = read("src/server/Tests/B13AtomicRedrawSpec.lua")
     b14 = read("src/server/Tests/B14RedrawStressSpec.lua")
 
-    # B13 now verifies the production redraw invariant directly: the live pair,
-    # axle, side owners and current phase remain stable while geometry changes.
-    assert "local phaseBefore = pair:GetPhaseDegrees()" in b13
+    assert "local leftDrive = pair:GetLeftDrive()" in b13
+    assert "local rightDrive = pair:GetRightDrive()" in b13
+    assert "local leftJoint = leftDrive:GetJoint()" in b13
+    assert "local rightJoint = rightDrive:GetJoint()" in b13
     assert "racer:GetLegPair() == pair" in b13
-    assert "pair:GetRoot() == axle and pair:GetJoint() == joint" in b13
-    assert "pair:GetLeftLeg() == left and pair:GetRightLeg() == right" in b13
-    assert "redraw changed live axle phase" in b13
-    assert "successful redraw teleported body CFrame" in b13
-    assert "successful redraw reset AssemblyLinearVelocity" in b13
-    assert "successful redraw reset AssemblyAngularVelocity" in b13
+    assert "pair:GetLeftDrive() == leftDrive and pair:GetRightDrive() == rightDrive" in b13
+    assert "leftDrive:GetJoint() == leftJoint and rightDrive:GetJoint() == rightJoint" in b13
+    assert "successful redraw moved anchored BodyCollider" in b13
+    assert "countHinges(model) == 2" in b13
 
-    # The isolated high-Y B14 moving fixture stress-verifies the same continuity
-    # across repeated redraws without relying on the retired side handoff.
     assert "runMovingRedrawParity" in b14
     assert "for redrawIndex = 1, 10 do" in b14
-    assert "movingBody.AssemblyLinearVelocity" in b14
-    assert "movingBody.AssemblyAngularVelocity" in b14
-    assert "bodyCFrameBeforeRedraw" in b14
-    assert "linearBeforeRedraw" in b14
-    assert "angularBeforeRedraw" in b14
-    assert "pairBeforeRedraw:GetPhaseDegrees()" in b14
-    assert "pairAfterRedraw:GetPhaseDegrees()" in b14
-    assert "angularDistanceDegrees(phaseAfterRedraw, phaseBeforeRedraw) <= 5.0" in b14
-    assert "countAxleRoots(legsFolder) == 1" in b14
-    assert "moving redraw must leave exactly two leg models" in b14
-    assert "moving redraw leaked retiring LeftLeg" in b14
-    assert "moving redraw leaked retiring RightLeg" in b14
-    assert "moving redraw leaked retiring AxleRoot" in b14
+    assert "pairBeforeRedraw:GetLeftDrive()" in b14
+    assert "pairBeforeRedraw:GetRightDrive()" in b14
+    assert "leftDriveBefore:GetJoint()" in b14
+    assert "rightDriveBefore:GetJoint()" in b14
+    assert "pairAfterRedraw == pairBeforeRedraw" in b14
+    assert "pairAfterRedraw:GetLeftDrive() == leftDriveBefore" in b14
+    assert "pairAfterRedraw:GetRightDrive() == rightDriveBefore" in b14
+    assert "leftDriveBefore:GetJoint() == leftJointBefore" in b14
+    assert "rightDriveBefore:GetJoint() == rightJointBefore" in b14
+    assert "moving redraw must leave exactly two drive models" in b14
+    assert "assertNoPending" in b14
+    assert "AxleRoot_Retiring" not in b14
 
 
 def test_r16_9_production_camera_is_side_view_and_observer_is_hidden() -> None:
@@ -93,25 +89,14 @@ def test_r16_10_final_harness_covers_unchanged_full_lab_and_live_redraw() -> Non
     assert "function R16StageBHarness.RunEvidence(): boolean" in stage_b
     assert "R16StageBHarness.RunEvidence()" in stage_c
 
-    for piece_id in [
-        "FlatShort",
-        "SmallSteps",
-        "SingleWallLow",
-        "GapSmall",
-        "LowTunnelWide",
-    ]:
+    for piece_id in ["FlatShort", "SmallSteps", "SingleWallLow", "GapSmall", "LowTunnelWide"]:
         assert piece_id in stage_c
     for token in [
-        'PieceId = "FlatShort"',
-        'Length = 18',
-        'PieceId = "SmallSteps"',
-        'Height = 1.5',
-        'PieceId = "SingleWallLow"',
-        'Height = 2.6',
-        'PieceId = "GapSmall"',
-        'GapWidth = 3.2',
-        'PieceId = "LowTunnelWide"',
-        'Clearance = 4.25',
+        'PieceId = "FlatShort"', 'Length = 18',
+        'PieceId = "SmallSteps"', 'Height = 1.5',
+        'PieceId = "SingleWallLow"', 'Height = 2.6',
+        'PieceId = "GapSmall"', 'GapWidth = 3.2',
+        'PieceId = "LowTunnelWide"', 'Clearance = 4.25',
     ]:
         assert token in scene
 
@@ -131,11 +116,11 @@ def test_r16_10_final_harness_covers_unchanged_full_lab_and_live_redraw() -> Non
     assert "RunService.Heartbeat:Wait()" in stage_c
     assert "LegShapeService.ValidateAndBuild" in stage_c
     assert "movingBody.AssemblyLinearVelocity" in stage_c
-    assert "bodyCFrameBeforeRedraw" in stage_c
-    assert "pairBeforeRedraw:GetPhaseDegrees()" in stage_c
-    assert "pairAfterRedraw:GetPhaseDegrees()" in stage_c
-    assert "angularDistanceDegrees(phaseAfterRedraw, phaseBeforeRedraw) <= 5.0" in stage_c
-    assert "countAxleRoots(legsFolder) ~= 1" in stage_c
+    assert "leftDriveBefore" in stage_c and "rightDriveBefore" in stage_c
+    assert "leftJointBefore" in stage_c and "rightJointBefore" in stage_c
+    assert "pairAfterRedraw == pairBeforeRedraw" in stage_c
+    assert "countDriveModels(legsFolder) ~= 2" in stage_c
+    assert "countHinges(model) ~= 2" in stage_c
     assert "movingRedrawPassed" in stage_c
 
     assert 'Instance.new("Part")' not in stage_c
