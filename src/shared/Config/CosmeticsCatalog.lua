@@ -6,10 +6,9 @@ return {
 	DefaultRiderSkinId = "Default",
 
 	LegSkins = {
-		Default = {
-			Color = Color3.fromRGB(23, 32, 51),
-			Material = Enum.Material.SmoothPlastic,
-		},
+		-- Neutral default: preserve the intrinsic Left/Right presentation colors
+		-- and base material owned by LegAssembly. Explicit skins may override them.
+		Default = {},
 	},
 
 	CubeSkins = {
