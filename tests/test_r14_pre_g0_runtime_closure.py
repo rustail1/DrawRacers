@@ -138,7 +138,8 @@ def test_r14_5_transport_contains_processor_exception_and_returns_generic_error(
 def test_r14_6_g0_fall_recovery_respawns_only_the_racer() -> None:
     config = read("src/shared/Config/M0SceneConfig.lua")
     harness = read("src/server/Tests/M0HumanHarness.lua")
-    assert "RecoveryKillY = -12" in config
+    assert "RecoveryKillY = -6" in config
+    assert "CameraMinFollowY = 0" in config
     assert "recoveryConnection" in harness
     assert "RunService.Heartbeat" in harness
     assert "M0SceneConfig.RecoveryKillY" in harness
