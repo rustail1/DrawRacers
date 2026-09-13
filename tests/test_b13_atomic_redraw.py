@@ -12,11 +12,12 @@ def test_b13_atomic_redraw_contract() -> None:
     for token in [
         "self.legPair:BeginGeometryReshape(shapeSpec)",
         "self.legPair:SetEnabled",
-        "self.leftLeg = leftLeg",
-        "self.rightLeg = rightLeg",
+        "return leftLeg, rightLeg",
     ]:
         assert token in apply_shape, f"missing stable-axle redraw token: {token}"
 
+    assert "self.leftLeg" not in apply_shape
+    assert "self.rightLeg" not in apply_shape
     assert "LegPairAssembly.new" not in apply_shape
     for forbidden in [
         "self.body.CFrame =",
