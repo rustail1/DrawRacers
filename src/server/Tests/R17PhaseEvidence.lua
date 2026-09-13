@@ -12,22 +12,12 @@ local R16ReferenceShapes = require(script.Parent:WaitForChild("R16ReferenceShape
 local R17PhaseEvidence = {}
 
 local PHASE_TARGET_DEGREES = 180
-local STRUCTURAL_ERROR_LIMIT = 0.15
+local PHASE_ERROR_LIMIT_DEGREES = 12.0
 local MEASURE_SECONDS = 1.25
 
-local function localPhaseDegrees(axleRoot: BasePart, sideRoot: BasePart): number
-	local relative = axleRoot.CFrame:ToObjectSpace(sideRoot.CFrame)
-	local _, _, z = relative:ToOrientation()
-	return math.deg(z)
-end
-
-local function structuralPhaseErrorDegrees(pair: any): number
-	local axleRoot = pair:GetRoot()
-	local left = localPhaseDegrees(axleRoot, pair:GetLeftLeg():GetRoot())
-	local right = localPhaseDegrees(axleRoot, pair:GetRightLeg():GetRoot())
-	local difference = (right - left + 360) % 360
-	local signed = (difference - PHASE_TARGET_DEGREES + 180) % 360 - 180
-	return math.abs(signed)
+local function angularDistanceDegrees(a: number, b: number): number
+	local delta = (b - a + 180) % 360 - 180
+	return math.abs(delta)
 end
 
 local function countHinges(model: Model): number
@@ -40,33 +30,59 @@ local function countHinges(model: Model): number
 	return count
 end
 
+local function twinMotorsSafe(pair: any, model: Model): boolean
+	local leftDrive = pair:GetLeftDrive()
+	local rightDrive = pair:GetRightDrive()
+	local leftJoint = leftDrive:GetJoint()
+	local rightJoint = rightDrive:GetJoint()
+	return countHinges(model) == 2
+		and leftJoint.Name == "DriveJoint"
+		and rightJoint.Name == "DriveJoint"
+		and leftJoint:IsA("HingeConstraint")
+		and rightJoint:IsA("HingeConstraint")
+		and leftJoint.ActuatorType == Enum.ActuatorType.Motor
+		and rightJoint.ActuatorType == Enum.ActuatorType.Motor
+		and leftJoint.Enabled
+		and rightJoint.Enabled
+end
+
 local function measureWindow(racer: any): (number, boolean, number)
+	local pair = racer:GetLegPair()
+	assert(pair ~= nil, "R17 CR2 pair missing")
+	local leftDrive = pair:GetLeftDrive()
+	local rightDrive = pair:GetRightDrive()
+	local previousLeft = leftDrive:GetPhaseDegrees()
+	local previousRight = rightDrive:GetPhaseDegrees()
+	local leftTravel = 0
+	local rightTravel = 0
+	local maxPhaseError = math.abs(pair:GetPhaseErrorDegrees())
+	local twinMotorSafe = twinMotorsSafe(pair, racer:GetModel())
 	local elapsed = 0
-	local maxStructuralError = 0
-	local singleMotorSafe = true
-	local startPhase = racer:GetLegPair():GetPhaseDegrees()
 
 	while elapsed < MEASURE_SECONDS do
 		local dt = RunService.Heartbeat:Wait()
 		elapsed += dt
-		local pair = racer:GetLegPair()
-		maxStructuralError = math.max(maxStructuralError, structuralPhaseErrorDegrees(pair))
-		local joint = pair:GetJoint()
-		singleMotorSafe = singleMotorSafe
-			and countHinges(racer:GetModel()) == 1
-			and joint.Name == "AxleJoint"
-			and joint.Enabled
-			and math.abs(joint.AngularVelocity - PhysicsConfig.Motor.AngularVelocity) <= 1e-6
+		local currentPair = racer:GetLegPair()
+		if currentPair ~= pair then
+			twinMotorSafe = false
+			break
+		end
+		local currentLeft = leftDrive:GetPhaseDegrees()
+		local currentRight = rightDrive:GetPhaseDegrees()
+		leftTravel += angularDistanceDegrees(previousLeft, currentLeft)
+		rightTravel += angularDistanceDegrees(previousRight, currentRight)
+		previousLeft = currentLeft
+		previousRight = currentRight
+		maxPhaseError = math.max(maxPhaseError, math.abs(pair:GetPhaseErrorDegrees()))
+		twinMotorSafe = twinMotorSafe and twinMotorsSafe(pair, racer:GetModel())
 	end
 
-	local endPhase = racer:GetLegPair():GetPhaseDegrees()
-	local axleTravel = math.abs((endPhase - startPhase + 180) % 360 - 180)
-	return maxStructuralError, singleMotorSafe, axleTravel
+	return maxPhaseError, twinMotorSafe, math.min(leftTravel, rightTravel)
 end
 
 local function runTrial(redraw: boolean): boolean
 	local racer = RacerRuntime.new({
-		raceId = if redraw then "R17_PHASE_REDRAW" else "R17_PHASE_RIGID",
+		raceId = if redraw then "R17_PHASE_REDRAW" else "R17_PHASE_TWIN",
 		slotIndex = 1,
 		laneIndex = 1,
 		isBot = true,
@@ -76,36 +92,49 @@ local function runTrial(redraw: boolean): boolean
 	})
 
 	local ok, result = xpcall(function()
+		assert(PhysicsConfig.Motor.RightPhaseOffsetDegrees == PHASE_TARGET_DEGREES, "R17 CR2 phase target drift")
 		local body = racer:GetBody()
 		body.Anchored = true
 		racer:ApplyShape(R16ReferenceShapes.Get("ASYM_01"), true)
 		local pair = racer:GetLegPair()
-		assert(pair ~= nil, "R17 shared pair missing")
-		assert(countHinges(racer:GetModel()) == 1, "R17 must have exactly one physical hinge")
-		assert(structuralPhaseErrorDegrees(pair) <= STRUCTURAL_ERROR_LIMIT, "R17 initial side copies are not 180-degree opposed")
+		assert(pair ~= nil, "R17 CR2 pair missing")
+		assert(countHinges(racer:GetModel()) == 2, "R17 CR2 must have exactly two physical hinges")
+		assert(math.abs(pair:GetPhaseErrorDegrees()) <= PHASE_ERROR_LIMIT_DEGREES, "R17 CR2 initial twin-drive phase error too large")
 
 		if redraw then
-			-- Let the one real axle rotate before redraw, then prove the replacement
-			-- inherits that one axle phase while keeping the fixed 180-degree side relation.
 			local waitElapsed = 0
 			while waitElapsed < 0.35 do
 				waitElapsed += RunService.Heartbeat:Wait()
 			end
-			local phaseBefore = racer:GetLegPair():GetPhaseDegrees()
+			local pairBefore = racer:GetLegPair()
+			assert(pairBefore ~= nil)
+			local leftBefore = pairBefore:GetLeftDrive()
+			local rightBefore = pairBefore:GetRightDrive()
+			local leftJointBefore = leftBefore:GetJoint()
+			local rightJointBefore = rightBefore:GetJoint()
+
 			racer:ApplyShape(R16ReferenceShapes.Get("HOOK_01"), true)
-			local phaseAfter = racer:GetLegPair():GetPhaseDegrees()
-			local redrawDelta = math.abs((phaseAfter - phaseBefore + 180) % 360 - 180)
-			assert(redrawDelta <= 1.0, string.format("R17 shared axle redraw phase jump %.3f", redrawDelta))
+
+			local pairAfter = racer:GetLegPair()
+			assert(pairAfter == pairBefore, "R17 CR2 redraw replaced pair")
+			local leftAfter = pairAfter:GetLeftDrive()
+			local rightAfter = pairAfter:GetRightDrive()
+			assert(leftAfter == leftBefore, "R17 CR2 redraw replaced LeftDrive")
+			assert(rightAfter == rightBefore, "R17 CR2 redraw replaced RightDrive")
+			assert(leftAfter:GetJoint() == leftJointBefore, "R17 CR2 redraw replaced left DriveJoint")
+			assert(rightAfter:GetJoint() == rightJointBefore, "R17 CR2 redraw replaced right DriveJoint")
+			assert(math.abs(pairAfter:GetPhaseErrorDegrees()) <= PHASE_ERROR_LIMIT_DEGREES, "R17 CR2 redraw phase error too large")
 		end
 
-		local maxStructuralError, singleMotorSafe, axleTravel = measureWindow(racer)
-		local passed = maxStructuralError <= STRUCTURAL_ERROR_LIMIT and singleMotorSafe and axleTravel > 0.5
+		local maxPhaseError, twinMotorSafe, minimumDriveTravel = measureWindow(racer)
+		local passed = maxPhaseError <= PHASE_ERROR_LIMIT_DEGREES and twinMotorSafe and minimumDriveTravel > 0.5
 		print(string.format(
-			"[DrawRacers][R17.5] redraw=%s opposedPhaseError=%.3f singleMotor=%s axleTravel=%.3f %s",
+			"[DrawRacers][R17.5] redraw=%s phaseTarget=%d maxPhaseError=%.3f twinMotors=%s minDriveTravel=%.3f %s",
 			tostring(redraw),
-			maxStructuralError,
-			tostring(singleMotorSafe),
-			axleTravel,
+			PHASE_TARGET_DEGREES,
+			maxPhaseError,
+			tostring(twinMotorSafe),
+			minimumDriveTravel,
 			if passed then "PASS" else "FAIL"
 		))
 		return passed
@@ -121,10 +150,10 @@ end
 
 function R17PhaseEvidence.RunEvidence(): boolean
 	assert(RunService:IsStudio(), "R17PhaseEvidence is Studio-only")
-	print("[DrawRacers][R17.5] shared-axle opposed-phase evidence starting")
-	local rigidPassed = runTrial(false)
+	print("[DrawRacers][R17.5] CR2 twin-drive opposed-phase evidence starting")
+	local baselinePassed = runTrial(false)
 	local redrawPassed = runTrial(true)
-	return rigidPassed and redrawPassed
+	return baselinePassed and redrawPassed
 end
 
 return R17PhaseEvidence

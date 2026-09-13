@@ -10,6 +10,8 @@ local R16ReferenceShapes = require(script.Parent:WaitForChild("R16ReferenceShape
 
 local R17OriginExperiment = {}
 
+-- HISTORICAL ORIGIN COMPARISON only. CORE REPAIR v2 production authority is the
+-- visible fixed semantic pivot (0,0); this module never selects or writes policy.
 local POLICIES = {
 	"FIRST_POINT",
 	"BOUNDS_CENTER",
@@ -46,15 +48,9 @@ local function boundsCenter(points: { Vector2 }): Vector2
 	return (minPoint + maxPoint) * 0.5
 end
 
--- Deterministic polyline centroid weighted by segment length. This is an evidence
--- candidate only; it does not change the production first-point ShapeSpec path.
 local function geometryCentroid(points: { Vector2 }): Vector2
-	if #points == 0 then
-		return Vector2.zero
-	end
-	if #points == 1 then
-		return points[1]
-	end
+	if #points == 0 then return Vector2.zero end
+	if #points == 1 then return points[1] end
 
 	local weighted = Vector2.zero
 	local totalLength = 0
@@ -67,9 +63,7 @@ local function geometryCentroid(points: { Vector2 }): Vector2
 			totalLength += length
 		end
 	end
-	if totalLength <= 0 then
-		return points[1]
-	end
+	if totalLength <= 0 then return points[1] end
 	return weighted / totalLength
 end
 
@@ -95,7 +89,7 @@ end
 
 function R17OriginExperiment.RunEvidence(): boolean
 	assert(RunService:IsStudio(), "R17OriginExperiment is Studio-only")
-	print("[DrawRacers][R17.3] mechanical-origin comparison starting")
+	print("[DrawRacers][R17.3] HISTORICAL ORIGIN COMPARISON starting; CR2 fixed pivot remains production authority")
 
 	for _, shapeId in SHAPES do
 		local source = R16ReferenceShapes.Get(shapeId)
@@ -105,18 +99,12 @@ function R17OriginExperiment.RunEvidence(): boolean
 			local minX, maxX, minY, maxY, maxRadius = summarize(candidate)
 			print(string.format(
 				"[DrawRacers][R17.3] shape=%s policy=%s x=%.3f..%.3f y=%.3f..%.3f radius=%.3f",
-				shapeId,
-				policy,
-				minX,
-				maxX,
-				minY,
-				maxY,
-				maxRadius
+				shapeId, policy, minX, maxX, minY, maxY, maxRadius
 			))
 		end
 	end
 
-	print("[DrawRacers][R17.3] HUMAN ORIGIN CHOICE PENDING")
+	print("[DrawRacers][R17.3] HISTORICAL ORIGIN COMPARISON complete; no production policy changed")
 	return true
 end
 

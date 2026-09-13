@@ -35,7 +35,7 @@ local function observeEvidence(label: string, runEvidence: () -> boolean): boole
 	end
 	if result ~= true then
 		warn(string.format(
-			"[DrawRacers][R17FINAL] %s NON-GATING evidence FAIL — recorded for R17 tuning/review",
+			"[DrawRacers][R17FINAL] %s NON-GATING evidence FAIL — recorded for tuning/review",
 			label
 		))
 		return false
@@ -46,51 +46,41 @@ end
 
 function R17FinalHarness.start()
 	assert(RunService:IsStudio(), "R17FinalHarness is Studio-only")
-	if started then
-		return
-	end
+	if started then return end
 	started = true
 
-	print("[DrawRacers][R17FINAL] automated evidence starting")
+	print("[DrawRacers][R17FINAL] CR2 automated evidence starting")
 
-	-- B03-B16 already form the hard Studio regression boundary before this
-	-- harness starts. R16 Stage C is retained as a historical/reference-fit
-	-- baseline, but R17 deliberately changed the locomotion architecture and is
-	-- still collecting tuning evidence. A poor old R16 score therefore must not
-	-- prevent the current R17 experiments from running.
+	-- Historical R16 thresholds remain useful comparison evidence but no longer
+	-- define the current CR2 locomotion architecture.
 	observeEvidence("R16 baseline", function()
 		return R16StageCHarness.RunEvidence()
 	end)
 
-	-- R17.3 is comparison evidence only. It intentionally does not select or
-	-- migrate the production mechanical origin.
+	-- R17.3 is now explicitly a historical origin comparison. CR2 fixed pivot is
+	-- already production authority and this evidence cannot change it.
 	observeEvidence("R17.3 origin", function()
 		return R17OriginExperiment.RunEvidence()
 	end)
 
-	-- The live one-axle/co-phase invariant is current structural evidence. If it
-	-- fails, human feel review is unsafe because the implementation itself is not
-	-- honoring the approved R17 mechanical contract.
+	-- CR2 twin-drive structural evidence is the hard repository-side Studio
+	-- prerequisite: two persistent DriveJoint motors must keep the 180-degree
+	-- pair target and survive redraw without owner replacement.
 	requireEvidence("R17.5 phase", function()
 		return R17PhaseEvidence.RunEvidence()
 	end)
 
-	-- R17.6 sweeps temporary racer instances only. Candidate outcomes are the
-	-- evidence being collected, not a precondition for collecting later evidence.
+	-- R17.6 keeps temporary material/reference-feel comparisons. The obsolete
+	-- absolute motor-speed sweep is intentionally retired because CR2 computes
+	-- extent-aware drive speed continuously from the authoritative ShapeSpec.
 	observeEvidence("R17.6 body feel", function()
 		return R17BodyFeelExperiment.RunEvidence()
 	end)
 
-	-- R17.7 is likewise a comparison matrix. Individual shapes are expected to
-	-- succeed/fail differently, so its current gameplay outcome remains
-	-- NON-GATING until the pending reference-feel/tuning choice is made.
 	observeEvidence("R17.7 course", function()
 		return R17ReferenceCourseHarness.RunEvidence()
 	end)
 
-	-- Only the current structural invariant above is a hard R17 gate. The human
-	-- can now review the complete baseline + comparison output instead of being
-	-- blocked by superseded R16 tuning thresholds.
 	M0HumanHarness.start()
 	print("[DrawRacers][R17FINAL] HUMAN REVIEW READY")
 end

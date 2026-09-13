@@ -86,17 +86,26 @@ local function waitForTrackContact(racer: any, timeoutSeconds: number, options: 
 	return false
 end
 
+local function driveJointEnabled(driveModel: Instance?): boolean
+	if driveModel == nil or not driveModel:IsA("Model") then
+		return false
+	end
+	local joint = driveModel:FindFirstChild("DriveJoint", true)
+	return joint ~= nil
+		and joint:IsA("HingeConstraint")
+		and joint.Name == "DriveJoint"
+		and joint.ActuatorType == Enum.ActuatorType.Motor
+		and joint.Enabled
+end
+
 local function allMotorsEnabled(model: Model): boolean
 	local legs = model:FindFirstChild("Legs")
 	if legs == nil then
 		return false
 	end
-	local axleRoot = legs:FindFirstChild("AxleRoot")
-	if not (axleRoot and axleRoot:IsA("BasePart")) then
-		return false
-	end
-	local joint = axleRoot:FindFirstChild("AxleJoint")
-	return joint ~= nil and joint:IsA("HingeConstraint") and joint.Enabled
+	local leftDrive = legs:FindFirstChild("LeftDrive")
+	local rightDrive = legs:FindFirstChild("RightDrive")
+	return driveJointEnabled(leftDrive) and driveJointEnabled(rightDrive)
 end
 
 local function finite(value: number): boolean
@@ -123,10 +132,7 @@ end
 
 local function applyProperties(part: BasePart, density: number?, friction: number?)
 	local baseline = part.CustomPhysicalProperties
-	if baseline == nil then
-		return
-	end
-	if density == nil and friction == nil then
+	if baseline == nil or (density == nil and friction == nil) then
 		return
 	end
 	part.CustomPhysicalProperties = PhysicalProperties.new(
@@ -145,10 +151,6 @@ local function applyTemporaryTuning(racer: any, tuning: any?)
 
 	local body = racer:GetBody()
 	applyProperties(body, tuning.bodyDensity, tuning.bodyFriction)
-	if tuning.colliderSize ~= nil then
-		local colliderSize = tuning.colliderSize
-		body.Size = Vector3.new(colliderSize, colliderSize, colliderSize)
-	end
 
 	local pair = racer:GetLegPair()
 	assert(pair ~= nil, "temporary tuning requires a live LegPairAssembly")
@@ -158,11 +160,6 @@ local function applyTemporaryTuning(racer: any, tuning: any?)
 				applyProperties(segment, tuning.legDensity, nil)
 			end
 		end
-	end
-
-	if tuning.motorAngularVelocity ~= nil then
-		local joint = pair:GetJoint()
-		joint.AngularVelocity = tuning.motorAngularVelocity
 	end
 end
 
@@ -277,8 +274,8 @@ function R16TrialRunner.RunFlat(shapeId: string): any
 	return result
 end
 
--- R17 evidence-only API. options.tuning is applied only to this temporary racer,
--- which is destroyed at the end of the trial; production PhysicsConfig is never mutated.
+-- Historical/reference-feel evidence API. CR2 permits temporary material sweeps only;
+-- the extent-aware twin-drive motor controller remains production-owned and untouched.
 function R16TrialRunner.RunFlatTelemetry(shapeId: string, options: any): any
 	assert(RunService:IsStudio(), "R16TrialRunner is Studio-only")
 	R16TrialRunner.DestroyActive()
@@ -333,25 +330,13 @@ function R16TrialRunner.RunFlatTelemetry(shapeId: string, options: any): any
 		elapsed += dt
 		local bodyContact = partTouchesTrack(body, model, contactOptions)
 		local legContact = legsTouchTrack(model, contactOptions)
-		if bodyContact then
-			result.bodyContactTime += dt
-		end
-		if legContact then
-			result.legContactTime += dt
-		end
-		if not bodyContact and not legContact then
-			result.airTime += dt
-		end
-		if math.abs(body.AssemblyLinearVelocity.X) < 0.5 then
-			result.stuckTime += dt
-		end
+		if bodyContact then result.bodyContactTime += dt end
+		if legContact then result.legContactTime += dt end
+		if not bodyContact and not legContact then result.airTime += dt end
+		if math.abs(body.AssemblyLinearVelocity.X) < 0.5 then result.stuckTime += dt end
 		result.maxBounceHeight = math.max(result.maxBounceHeight, body.Position.Y - startY)
-		if solverUnstable(body) then
-			result.solverInstability = true
-		end
-		if model:GetAttribute("AntiStallActive") == true then
-			result.antiStallSeen = true
-		end
+		if solverUnstable(body) then result.solverInstability = true end
+		if model:GetAttribute("AntiStallActive") == true then result.antiStallSeen = true end
 	end
 
 	result.duration = elapsed
@@ -419,12 +404,8 @@ function R16TrialRunner.RunPiece(pieceId: string, shapeId: string, measureSecond
 		maxX = math.max(maxX, position.X)
 		maxY = math.max(maxY, position.Y)
 		minY = math.min(minY, position.Y)
-		if solverUnstable(body) then
-			result.solverInstability = true
-		end
-		if model:GetAttribute("AntiStallActive") == true then
-			result.antiStallSeen = true
-		end
+		if solverUnstable(body) then result.solverInstability = true end
+		if model:GetAttribute("AntiStallActive") == true then result.antiStallSeen = true end
 		if gapEnd ~= nil and position.X >= gapEnd and hasTrackContact(model, nil) then
 			result.landedAfterGap = true
 		end

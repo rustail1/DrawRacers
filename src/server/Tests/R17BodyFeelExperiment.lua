@@ -15,7 +15,6 @@ local R17BodyFeelExperiment = {}
 
 local BODY_DENSITY_CANDIDATES = { 1.00, 0.60, 0.45, 0.35 }
 local LEG_DENSITY_CANDIDATES = { 1.00, 0.60, 0.40 }
-local MOTOR_SPEED_CANDIDATES = { -8.0, -10.0, -11.5, -12.5 }
 local FRICTION_CANDIDATES = { 0.45, 0.25, 0.10 }
 local SHAPE_ID = "ROUND_01"
 local STEPS_ID = "SmallSteps"
@@ -24,14 +23,12 @@ local WALL_ID = "SingleWallLow"
 local BASE_BODY_DENSITY = 1.0
 local BASE_BODY_FRICTION = 0.45
 local BASE_LEG_DENSITY = PhysicsConfig.PhysicalMaterials.LegSegment.Density
-local BASE_MOTOR_SPEED = PhysicsConfig.Motor.AngularVelocity
 
 local function tuningWith(overrides: any): any
 	return {
 		bodyDensity = overrides.bodyDensity or BASE_BODY_DENSITY,
 		bodyFriction = overrides.bodyFriction or BASE_BODY_FRICTION,
 		legDensity = overrides.legDensity or BASE_LEG_DENSITY,
-		motorAngularVelocity = overrides.motorAngularVelocity or BASE_MOTOR_SPEED,
 	}
 end
 
@@ -99,7 +96,7 @@ local function printPieceTrial(family: string, value: number, pieceId: string, r
 end
 
 local function structurallyUsable(result: any): boolean
-	return result.valid == true and result.motorsEnabled == true
+	return result.valid == true and result.motorsEnabled == true and result.solverInstability ~= true
 end
 
 local function runBodyDensitySweep(): boolean
@@ -128,24 +125,6 @@ local function runLegDensitySweep(): boolean
 	return valid
 end
 
-local function runMotorSpeedSweep(): boolean
-	local valid = true
-	for _, motorAngularVelocity in MOTOR_SPEED_CANDIDATES do
-		local tuning = tuningWith({ motorAngularVelocity = motorAngularVelocity })
-		local flat = R16TrialRunner.RunFlatTelemetry(SHAPE_ID, { tuning = tuning })
-		local steps = runSteps(tuning)
-		local wall = runWall(tuning)
-		printFlatTrial("motorAngularVelocity", motorAngularVelocity, flat)
-		printPieceTrial("motorAngularVelocity", motorAngularVelocity, STEPS_ID, steps)
-		printPieceTrial("motorAngularVelocity", motorAngularVelocity, WALL_ID, wall)
-		valid = valid
-			and structurallyUsable(flat)
-			and structurallyUsable(steps)
-			and structurallyUsable(wall)
-	end
-	return valid
-end
-
 local function runFrictionSweep(): boolean
 	local valid = true
 	for _, bodyFriction in FRICTION_CANDIDATES do
@@ -162,26 +141,28 @@ end
 function R17BodyFeelExperiment.RunEvidence(): boolean
 	assert(RunService:IsStudio(), "R17BodyFeelExperiment is Studio-only")
 	print(string.format(
-		"[DrawRacers][R17.6] ordered reference-feel evidence starting baseline bodyDensity=%.3f legDensity=%.3f motor=%.3f bodyFriction=%.3f torque=%.0f acceleration=%.0f",
+		"[DrawRacers][R17.6] CR2 material/reference-feel evidence starting baseline bodyDensity=%.3f legDensity=%.3f bodyFriction=%.3f targetTipSpeed=%.3f torque=%.0f acceleration=%.0f",
 		BASE_BODY_DENSITY,
 		BASE_LEG_DENSITY,
-		BASE_MOTOR_SPEED,
 		BASE_BODY_FRICTION,
+		PhysicsConfig.Motor.TargetTipSpeed,
 		PhysicsConfig.Motor.MotorMaxTorque,
 		PhysicsConfig.Motor.MotorMaxAcceleration
 	))
 
+	-- CR2 extent-aware motor sweep is retired: LegPairAssembly derives both drive speeds
+	-- from authoritative ShapeSpec extent on every Heartbeat. Mutating a temporary joint
+	-- here would be overwritten immediately and would produce fake evidence. Motor feel is
+	-- reviewed through the real production controller in G0 instead.
+	print("[DrawRacers][R17.6] CR2 extent-aware motor sweep is retired; G0 owns live motor feel review")
+
 	local bodyDensityValid = runBodyDensitySweep()
 	local legDensityValid = runLegDensitySweep()
-	local motorSpeedValid = runMotorSpeedSweep()
 	local frictionValid = runFrictionSweep()
 	R16TrialRunner.DestroyActive()
 
-	-- Each trial creates and destroys a temporary racer, so production config and
-	-- the next trial always begin from the same baseline. A human still chooses
-	-- winners from the printed evidence; this harness never writes tuning back.
 	print("[DrawRacers][R17.6] HUMAN BODY FEEL CHOICE PENDING")
-	return bodyDensityValid and legDensityValid and motorSpeedValid and frictionValid
+	return bodyDensityValid and legDensityValid and frictionValid
 end
 
 return R17BodyFeelExperiment
