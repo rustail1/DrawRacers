@@ -17,7 +17,10 @@ return {
 		Y = 3,
 		Z = 0,
 	},
-	RecoveryKillY = -12,
+	-- G0-only presentation/recovery containment. CameraMinFollowY never changes racer physics;
+	-- RecoveryKillY only controls the Studio human-harness reset boundary.
+	CameraMinFollowY = 0,
+	RecoveryKillY = -6,
 	ReferenceBenchmark = {
 		Name = "R16FlatBenchmark",
 		StartX = 0,
