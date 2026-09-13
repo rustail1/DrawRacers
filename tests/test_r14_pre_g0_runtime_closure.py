@@ -20,10 +20,8 @@ def test_r14_1_client_renders_server_authoritative_points_not_pending_candidate(
     result_start = drawing.index("function DrawingController:_onStrokeResult")
     result_end = drawing.index("function DrawingController:_onPointer", result_start)
     result_body = drawing[result_start:result_end]
-
     assert "result.acceptedPoints" in result_body
     assert "copySemanticPoints(result.acceptedPoints)" in result_body
-
     accepted_start = result_body.index("if result.accepted == true then")
     accepted_end = result_body.index("return", accepted_start)
     accepted_branch = result_body[accepted_start:accepted_end]
@@ -39,20 +37,14 @@ def test_r14_1_studio_b12_compares_result_points_to_current_shape_spec() -> None
 
 def test_r14_2_g0_presentation_harness_is_studio_only_and_non_physical() -> None:
     harness_path = ROOT / "src/client/Dev/M0G0PresentationHarness.lua"
-    assert harness_path.is_file(), "R14.2 requires a Studio-only G0 presentation harness"
+    assert harness_path.is_file()
     harness = harness_path.read_text(encoding="utf-8")
     for token in [
-        'RunService:IsStudio()',
-        'StudioHarnessConfig.Mode ~= "G0"',
-        'GetAttribute("DebugTarget") == true',
-        'FindFirstChild("BodyCollider")',
-        'G0DebugBodyProxy',
-        'CanCollide = false',
-        'CanTouch = false',
-        'CanQuery = false',
-        'RenderStepped',
+        'RunService:IsStudio()', 'StudioHarnessConfig.Mode ~= "G0"', 'GetAttribute("DebugTarget") == true',
+        'FindFirstChild("BodyCollider")', 'G0DebugBodyProxy', 'CanCollide = false', 'CanTouch = false',
+        'CanQuery = false', 'RenderStepped',
     ]:
-        assert token in harness, f"missing R14.2 presentation contract token: {token}"
+        assert token in harness
     assert "camera.CameraType" not in harness
     assert "camera.FieldOfView" not in harness
     assert "camera.CFrame" not in harness
@@ -71,9 +63,7 @@ def test_r14_2_client_bootstrap_wires_g0_proxy_and_production_camera_owner() -> 
 
 
 def test_r14_3_studio_runner_aggregates_failures_under_xpcall() -> None:
-    runner_path = ROOT / "src/server/Tests/StudioSpecRunner.lua"
-    assert runner_path.is_file(), "R14.3 requires StudioSpecRunner.lua"
-    runner = runner_path.read_text(encoding="utf-8")
+    runner = read("src/server/Tests/StudioSpecRunner.lua")
     assert "xpcall" in runner
     assert "debug.traceback" in runner
     assert "failures" in runner
@@ -132,7 +122,7 @@ def test_r14_5_late_authoritative_accept_can_still_replace_timed_out_preview() -
     assert "if result.accepted == true then" in result_body
     assert "sequence > self._lastAcceptedSequence" in result_body
     pending_guard = 'if pending == nil then\n\t\treturn\n\tend'
-    assert pending_guard not in result_body, "late trusted server ACCEPT must not be discarded only because local timeout evicted pending state"
+    assert pending_guard not in result_body
 
 
 def test_r14_5_transport_contains_processor_exception_and_returns_generic_error() -> None:
@@ -158,20 +148,17 @@ def test_r14_6_g0_fall_recovery_respawns_only_the_racer() -> None:
     assert "activeRacer:Destroy()" in harness
 
 
-def test_r14_7_redraw_keeps_pair_and_side_owners_persistent() -> None:
+def test_r14_7_redraw_keeps_pair_drive_and_side_owners_persistent() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
-    reshape = pair[pair.index("function LegPairAssembly:BeginGeometryReshape"):pair.index("function LegPairAssembly:SetReshapeProgress")]
-
-    assert "self.leftLeg:ReplaceGeometry(shapeSpec)" in reshape
-    assert "self.rightLeg:ReplaceGeometry(shapeSpec)" in reshape
-    assert "self.leftLeg:SetReshapeProgress(0)" in reshape
-    assert "self.rightLeg:SetReshapeProgress(0)" in reshape
-    for obsolete in ["stagedLeft", "stagedRight", "oldLeft", "oldRight", "SetRetiring", ":Commit()"]:
-        assert obsolete not in reshape
-
+    stage = pair[pair.index("function LegPairAssembly:StageRedraw"):pair.index("function LegPairAssembly:SetStageProgress")]
+    assert "self.leftDrive:GetLeg():StageGeometry(shapeSpec, offset)" in stage
+    assert "self.rightDrive:GetLeg():StageGeometry(shapeSpec, offset)" in stage
+    for obsolete in ["LegDriveAssembly.new", "LegAssembly.new", "oldLeft", "oldRight", "SetRetiring"]:
+        assert obsolete not in stage
     apply = runtime[runtime.index("function RacerRuntime:_ApplyShapeSpec"):runtime.index("function RacerRuntime:ApplyShape")]
-    assert "self.legPair:BeginGeometryReshape(shapeSpec)" in apply
+    assert "self.legPair:StageRedraw(shapeSpec)" in apply
+    assert "self.legPair:CommitStagedRedraw()" in apply
     assert "LegPairAssembly.new" not in apply
 
 
@@ -180,6 +167,7 @@ def test_r14_8_player_toast_maps_internal_reason_codes_to_copy() -> None:
     assert "validationMessageForReason" in drawing
     assert '"DRAW A DIFFERENT SHAPE"' in drawing
     assert '"TRY AGAIN"' in drawing
+    assert '"START FROM THE DOT"' in drawing
     assert "_setValidationReason" in drawing
     assert 'self:_setValidation(rejectReasonCode)' not in drawing
     assert 'self:_setValidation("TOO_FEW_POINTS")' not in drawing
@@ -197,17 +185,8 @@ def test_r14_9_ci_builds_the_rojo_project_after_contract_checks() -> None:
 
 def test_r14_10_stroke_types_own_network_payloads_and_runtime_debug_fields() -> None:
     stroke_types = read("src/shared/Types/StrokeTypes.lua")
-    for token in [
-        "export type SemanticPoint",
-        "export type SemanticPoints",
-        "export type SubmitStrokePayload",
-        "export type StrokeResultPayload",
-        "acceptedPoints",
-        "rejectReasonCode",
-        "debugRawPointCount",
-        "debugPhysicsPointCount",
-    ]:
-        assert token in stroke_types, f"missing R14.10 StrokeTypes token: {token}"
+    for token in ["export type SemanticPoint", "export type SemanticPoints", "export type SubmitStrokePayload", "export type StrokeResultPayload", "acceptedPoints", "rejectReasonCode", "debugRawPointCount", "debugPhysicsPointCount"]:
+        assert token in stroke_types
 
 
 def test_r14_10_active_remote_consumers_use_remote_names_registry() -> None:
@@ -224,19 +203,9 @@ def test_r14_11_status_docs_record_code_closure_without_passing_human_gate() -> 
     evidence_run = "34387618626"
     for path in ["README.md", "docs/README.md", "docs/SESSION.md", "docs/FEATURE_LIST.md"]:
         text = read(path)
-        for token in [
-            "R14.1–R14.11",
-            evidence_sha,
-            evidence_run,
-            "120 passed, 0 failed",
-            "Rojo build",
-            "Studio checkpoints: HUMAN PENDING",
-            "B17/G0",
-            "HUMAN_GATE",
-        ]:
-            assert token in text, f"{path} missing R14.11 evidence token: {token}"
+        for token in ["R14.1–R14.11", evidence_sha, evidence_run, "120 passed, 0 failed", "Rojo build", "Studio checkpoints: HUMAN PENDING", "B17/G0", "HUMAN_GATE"]:
+            assert token in text
         assert "ACCEPTED — B17" not in text
-
     decision = read("docs/DECISION_LOG_PRE_G0_RUNTIME_CLOSURE_R14_2026-09-09.md")
     for task in range(1, 12):
         assert f"R14.{task}" in decision
@@ -247,11 +216,5 @@ def test_r14_11_status_docs_record_code_closure_without_passing_human_gate() -> 
 
 def test_r14_11_architecture_marks_target_tree_as_non_authorizing_and_keeps_racer_service_d05() -> None:
     architecture = read("docs/21_SYSTEM_CLASS_ARCHITECTURE.md")
-    for token in [
-        "TARGET architecture",
-        "does not authorize early implementation",
-        "RacerService remains D05",
-        "Studio-only injected resolver",
-        "Do not implement RacerService before D05",
-    ]:
-        assert token in architecture, f"architecture missing R14.11 boundary: {token}"
+    for token in ["TARGET architecture", "does not authorize early implementation", "RacerService remains D05", "Studio-only injected resolver", "Do not implement RacerService before D05"]:
+        assert token in architecture

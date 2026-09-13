@@ -9,26 +9,20 @@ def read(path: str) -> str:
 
 def test_r11_hybrid_layout_changes_only_from_non_drawing_input() -> None:
     drawing = read("src/client/Controllers/DrawingController.lua")
-
     handler_start = drawing.index("UserInputService.LastInputTypeChanged")
     handler_end = drawing.index('print("[DrawRacers][B02] local draw preview ready")', handler_start)
     handler = drawing[handler_start:handler_end]
-
     assert "self._drawing" in handler
-    assert "return" in handler
+    assert "family ~= nil and not self._drawing" in handler
     assert "self:_applyLayout(family)" in handler
     assert "self._pendingLayoutFamily = family" not in handler
 
-    start_block = drawing[
-        drawing.index('if event.phase == "start" then'):
-        drawing.index('elseif event.phase == "move" then')
-    ]
+    start_block = drawing[drawing.index('if event.phase == "start" then'):drawing.index('elseif event.phase == "move" then')]
     assert "self._pendingLayoutFamily = event.family" in start_block
 
 
 def test_r11_live_preview_instances_are_bounded_by_existing_stroke_cap() -> None:
     drawing = read("src/client/Controllers/DrawingController.lua")
-
     assert "function DrawingController:_compactLivePoints" in drawing
     assert "function DrawingController:_appendLivePoint" in drawing
     assert "function DrawingController:_renderLiveCanonicalPreview" in drawing
@@ -40,7 +34,7 @@ def test_r11_live_preview_instances_are_bounded_by_existing_stroke_cap() -> None
     assert "self:_compactLivePoints()" in append_block
 
     compact_start = drawing.index("function DrawingController:_compactLivePoints")
-    compact_end = drawing.index("function DrawingController:_appendLivePoint", compact_start)
+    compact_end = drawing.index("function DrawingController:_compactRawSemanticPoints", compact_start)
     compact_block = drawing[compact_start:compact_end]
     assert "compactEveryOther(self._livePoints)" in compact_block
 

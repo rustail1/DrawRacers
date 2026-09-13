@@ -10,188 +10,105 @@ def read(path: str) -> str:
 def test_r17_9_camera_uses_full_yaw_target_and_smoothed_rendered_orbit() -> None:
     camera = read("src/client/Controllers/RaceCameraController.lua")
     math = read("src/shared/Math/CameraMath.lua")
-
-    assert "ORBIT_YAW_LIMIT" not in camera, "R17.9 removes the artificial +/-40 degree yaw wall"
+    assert "ORBIT_YAW_LIMIT" not in camera
     assert "ORBIT_PITCH_LIMIT = 70" in camera
-    for token in [
-        "_targetOrbitYaw",
-        "_targetOrbitPitch",
-        "_orbitYaw",
-        "_orbitPitch",
-        "ORBIT_INPUT_DAMPING_TIME",
-    ]:
-        assert token in camera, f"missing R17.9 camera token: {token}"
+    for token in ["_targetOrbitYaw", "_targetOrbitPitch", "_orbitYaw", "_orbitPitch", "ORBIT_INPUT_DAMPING_TIME"]:
+        assert token in camera
     assert "SmoothAngleDegrees" in math
     assert "ClampPitch" in math
 
 
-def test_r17_10_production_uses_one_shared_axle_motor_for_both_rigid_sides() -> None:
-    pair_path = ROOT / "src/server/Runtime/LegPairAssembly.lua"
-    assert pair_path.is_file(), "R17.10 requires LegPairAssembly"
-    pair = pair_path.read_text(encoding="utf-8")
+def test_r17_10_production_uses_two_persistent_drive_motors() -> None:
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
+    drive = read("src/server/Runtime/LegDriveAssembly.lua")
     racer = read("src/server/Runtime/RacerRuntime.lua")
     leg = read("src/server/Runtime/LegAssembly.lua")
-
-    for token in [
-        'joint.Name = "AxleJoint"',
-        "Enum.ActuatorType.Motor",
-        "local motor = PhysicsConfig.Motor",
-        "joint.AngularVelocity = motor.AngularVelocity",
-        'side = "Left"',
-        'side = "Right"',
-        "RightPhaseOffsetDegrees",
-        "function LegPairAssembly:GetJoint()",
-        "function LegPairAssembly:GetPhaseDegrees()",
-    ]:
-        assert token in pair, f"missing shared-axle token: {token}"
-
+    for token in ['joint.Name = "DriveJoint"', "Enum.ActuatorType.Motor", "joint.AngularVelocity", "joint.MotorMaxTorque", "joint.MotorMaxAcceleration"]:
+        assert token in drive
+    assert pair.count("LegDriveAssembly.new") == 2
+    assert 'side = "Left"' in pair and 'side = "Right"' in pair
+    assert "RightPhaseOffsetDegrees" in pair
+    assert "function LegPairAssembly:GetLeftDrive" in pair
+    assert "function LegPairAssembly:GetRightDrive" in pair
     assert 'require(script.Parent:WaitForChild("LegPairAssembly"))' in racer
-    assert "self.legPair" in racer
     assert "phaseSyncConnection" not in racer
-    assert "_StepLegPhaseSync" not in racer
-    assert "leftJoint.AngularVelocity" not in racer
-    assert "rightJoint.AngularVelocity" not in racer
-
     assert 'Instance.new("HingeConstraint")' not in leg
     assert "ActuatorType" not in leg
 
 
-def test_r17_11_phase_lock_correction_config_is_removed_in_favor_of_structural_opposition() -> None:
+def test_r17_11_phase_correction_config_is_bounded_for_twin_drives() -> None:
     config = read("src/shared/Config/PhysicsConfig.lua")
     assert "RightPhaseOffsetDegrees = 180" in config
-    for obsolete in [
-        "PhaseLockToleranceDegrees",
-        "PhaseLockRecoveryTime",
-        "PhaseLockMaxRelativeCorrection",
-    ]:
+    assert "PhaseCorrectionGain" in config
+    assert "MaxPhaseCorrection" in config
+    assert "PhaseDeadbandDegrees" in config
+    for obsolete in ["PhaseLockToleranceDegrees", "PhaseLockRecoveryTime", "PhaseLockMaxRelativeCorrection"]:
         assert obsolete not in config
 
 
-def test_r17_12_socket_and_collision_contract_remain_reference_safe() -> None:
-    config = read("src/shared/Config/PhysicsConfig.lua")
+def test_r17_12_horizontal_pivot_and_collision_contract_are_reference_safe() -> None:
     collision = read("src/server/Runtime/CollisionGroups.lua")
+    drive = read("src/server/Runtime/LegDriveAssembly.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
-
-    assert "LegSocketZAbs = 1.5" in config
-    assert "geometry.LegSocketZAbs" in pair
+    assert "body.Size.X / 2" in drive
+    assert "Vector3.new(pivotX, 0, 0)" in drive
+    assert "LegSocketZAbs" not in pair
     assert 'CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.Track, true)' in collision
     assert 'CollisionGroupSetCollidable(CollisionGroups.RacerBody, CollisionGroups.RacerLeg, false)' in collision
     assert 'CollisionGroupSetCollidable(CollisionGroups.RacerLeg, CollisionGroups.RacerLeg, false)' in collision
 
 
-def test_r17_14_redraw_replaces_only_geometry_and_preserves_one_axle_phase() -> None:
+def test_r17_14_redraw_replaces_only_geometry_and_preserves_twin_drive_identity() -> None:
     racer = read("src/server/Runtime/RacerRuntime.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
-    apply = racer.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split(
-        "function RacerRuntime:ApplyShape", 1
-    )[0]
-    reshape = pair.split("function LegPairAssembly:BeginGeometryReshape", 1)[1].split(
-        "function LegPairAssembly:SetReshapeProgress", 1
-    )[0]
-
-    assert "self.legPair:BeginGeometryReshape(shapeSpec)" in apply
+    apply = racer.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split("function RacerRuntime:ApplyShape", 1)[0]
+    stage = pair.split("function LegPairAssembly:StageRedraw", 1)[1].split("function LegPairAssembly:SetStageProgress", 1)[0]
+    assert "self.legPair:StageRedraw(shapeSpec)" in apply
+    assert "self.legPair:CommitStagedRedraw()" in apply
     assert "LegPairAssembly.new" not in apply
-    assert "self.legPair:SetEnabled" in apply
-
-    for token in [
-        "self.leftLeg:ReplaceGeometry(shapeSpec)",
-        "self.rightLeg:ReplaceGeometry(shapeSpec)",
-        "self.leftLeg:SetReshapeProgress(0)",
-        "self.rightLeg:SetReshapeProgress(0)",
-    ]:
-        assert token in reshape, f"missing persistent-side geometry reshape token: {token}"
-
-    for obsolete in [
-        "buildStagedSides", "stagedLeft", "stagedRight", "oldLeft", "oldRight",
-        "SetRetiring", "LegAssembly.new", 'Instance.new("HingeConstraint")',
-    ]:
-        assert obsolete not in reshape, f"legacy redraw handoff remains: {obsolete}"
-
-    assert "self.axleRoot.CFrame =" not in reshape
-    assert "self.joint" not in reshape
+    assert "self.leftDrive:GetLeg():StageGeometry(shapeSpec, offset)" in stage
+    assert "self.rightDrive:GetLeg():StageGeometry(shapeSpec, offset)" in stage
+    for obsolete in ["buildStagedSides", "oldLeft", "oldRight", "SetRetiring", "LegDriveAssembly.new", "LegAssembly.new", 'Instance.new("HingeConstraint")']:
+        assert obsolete not in stage
 
 
-def test_r17_contract_docs_record_shared_axle_opposed_phase_and_unbounded_yaw_without_passing_human_gate() -> None:
-    decision = read("docs/DECISION_LOG_R17_OPPOSED_LEG_PHASE_2026-09-12.md")
-    camera_decision = read("docs/DECISION_LOG_R17_SHARED_AXLE_CAMERA_FIDELITY_2026-09-11.md")
+def test_r17_contract_docs_are_superseded_by_cr2_twin_pivot_without_passing_human_gate() -> None:
+    cr2 = read("docs/superpowers/specs/2026-09-14-core-repair-v2-twin-pivot-design.md")
     architecture = read("docs/21_SYSTEM_CLASS_ARCHITECTURE.md")
     qa = read("docs/24_TESTING_QA_MATRIX.md")
-
-    for token in ["shared axle", "one hinge", "one motor", "180", "HUMAN STUDIO PENDING"]:
-        assert token.lower() in decision.lower(), f"opposed-phase decision missing token: {token}"
-    assert "RightPhaseOffsetDegrees = 180" in decision
-    assert "superseded" in decision.lower() and "co-phase" in decision.lower()
-    assert "360" in camera_decision
-    assert "LegPairAssembly" in architecture
-    assert "R17.9" in qa and "R17.14" in qa
+    assert "shared axle" in cr2.lower() and "retire" in cr2.lower()
+    for doc in [architecture, qa]:
+        assert "CORE REPAIR v2" in doc
+        assert "LegDriveAssembly" in doc or "DriveJoint" in doc
+    assert "HUMAN" in qa.upper()
 
 
-def test_r17_navigation_map_routes_current_shared_axle_and_full_yaw_owners() -> None:
+def test_r17_navigation_map_routes_current_twin_drive_and_full_yaw_owners() -> None:
     navigation = read("docs/ARCHITECTURE_MAP.md")
-    decision = read("docs/DECISION_LOG_R17_OPPOSED_LEG_PHASE_2026-09-12.md")
-
-    for token in [
-        "LegPairAssembly.lua",
-        "AxleJoint",
-        "one shared axle",
-        "full 360",
-        "R17FINAL",
-    ]:
-        assert token.lower() in navigation.lower(), f"navigation map missing current R17 token: {token}"
-
-    assert "RightPhaseOffsetDegrees = 180" in decision
-    assert "one HingeConstraint motor per leg" not in navigation
-    assert "RMB/touch bounded orbit" not in navigation
+    for token in ["LegDriveAssembly.lua", "LegPairAssembly.lua", "DriveJoint", "full 360", "G0"]:
+        assert token.lower() in navigation.lower()
+    assert "one shared axle" not in navigation.lower().split("CORE REPAIR v2", 1)[-1]
 
 
-def test_r17_exact_geometry_and_instance_docs_keep_shared_axle_contract_under_latest_phase_override() -> None:
+def test_r17_exact_geometry_and_instance_docs_use_twin_drive_contract() -> None:
     geometry = read("docs/73_SHAPE_COORDINATE_PIVOT_COLLIDER_SPEC.md")
     studio = read("docs/65_STUDIO_DATAMODEL_INSTANCE_PROPERTY_SPEC.md")
-    decision = read("docs/DECISION_LOG_R17_OPPOSED_LEG_PHASE_2026-09-12.md")
-
-    for doc_name, doc in [("73", geometry), ("65", studio)]:
-        for token in [
-            "LegPairAssembly",
-            "AxleRoot",
-            "AxleJoint",
-            "AxleMotorAttachment",
-            "LegSocketZAbs = 1.5",
-            "one motor",
-            "HUMAN STUDIO PENDING",
-        ]:
-            assert token.lower() in doc.lower(), f"doc {doc_name} missing current R17 shared-axle token: {token}"
-
-        assert "HubJoint" not in doc, f"doc {doc_name} still specifies obsolete per-side HubJoint"
-        assert "Hinge motor rotates LegRoot" not in doc, f"doc {doc_name} still gives a side LegRoot its own motor"
-
-    assert "RightPhaseOffsetDegrees = 180" in decision
-    assert "co-phase" in decision.lower() and "superseded" in decision.lower()
-    assert "R17" in geometry
-    assert "R17" in studio
-    assert "Beginning only at E03" not in studio
-    assert "no rider object is required before E03" not in studio
+    for doc in [geometry, studio]:
+        assert "CORE REPAIR v2" in doc
+        assert "LeftDrive" in doc
+        assert "RightDrive" in doc
+        assert "DriveJoint" in doc
+        assert "fixed pivot" in doc.lower()
+        assert "HUMAN" in doc.upper()
 
 
-def test_r17_core_tuning_and_technical_docs_match_current_axle_and_camera_under_latest_phase_override() -> None:
+def test_r17_core_tuning_and_technical_docs_match_twin_drive_and_camera() -> None:
     core = read("docs/03_CORE_MECHANICS_SPEC.md")
     tuning = read("docs/16_BALANCE_TUNING.md")
     tech = read("docs/11_TECH_DESIGN_ROBLOX.md")
-    decision = read("docs/DECISION_LOG_R17_OPPOSED_LEG_PHASE_2026-09-12.md")
-
-    for doc_name, doc in [("03", core), ("16", tuning), ("11", tech)]:
-        assert "LegPairAssembly" in doc, f"doc {doc_name} must route current rotation to LegPairAssembly"
-        assert "shared axle" in doc.lower(), f"doc {doc_name} must describe the shared axle"
-
-    assert "Один motor/hinge на leg." not in core
-    assert "Use one motorized hinge per leg" not in tuning
-    assert "one motor" in core.lower()
-    assert "one motor" in tuning.lower()
-    assert "RightPhaseOffsetDegrees = 180" in decision
-    assert "superseded" in decision.lower()
-
-    assert "Free-look yaw limit | **±40°**" not in tuning
+    for doc in [core, tuning, tech]:
+        assert "CORE REPAIR v2" in doc
+        assert "LegDriveAssembly" in doc or "twin" in doc.lower()
+    assert "TargetTipSpeed" in tuning
+    assert "RightPhaseOffsetDegrees = 180" in tuning
     assert "full 360" in tuning.lower()
-    assert "70°" in tuning or "70" in tuning
-
-    assert "one `AxleJoint`" in tech or "one AxleJoint" in tech
-    assert "attach at current hubs/phase" not in tech
