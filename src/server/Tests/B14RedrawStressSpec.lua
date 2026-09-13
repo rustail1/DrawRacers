@@ -171,6 +171,8 @@ local function runMovingRedrawParity()
 	for redrawIndex = 1, 10 do
 		local pairBeforeRedraw = movingRacer:GetLegPair()
 		assert(pairBeforeRedraw ~= nil, "moving redraw missing shared pair before redraw")
+		local axleBeforeRedraw = pairBeforeRedraw:GetRoot()
+		local jointBeforeRedraw = pairBeforeRedraw:GetJoint()
 		local bodyCFrameBeforeRedraw = movingBody.CFrame
 		local linearBeforeRedraw = movingBody.AssemblyLinearVelocity
 		local angularBeforeRedraw = movingBody.AssemblyAngularVelocity
@@ -195,7 +197,9 @@ local function runMovingRedrawParity()
 		assert(movingBody.AssemblyAngularVelocity == angularBeforeRedraw, "moving redraw reset AssemblyAngularVelocity")
 
 		local pairAfterRedraw = movingRacer:GetLegPair()
-		assert(pairAfterRedraw ~= nil and pairAfterRedraw ~= pairBeforeRedraw, "moving redraw must replace shared pair")
+		assert(pairAfterRedraw ~= nil and pairAfterRedraw == pairBeforeRedraw, "moving redraw must preserve stable shared pair")
+		assert(pairAfterRedraw:GetRoot() == axleBeforeRedraw, "moving redraw replaced stable axle root")
+		assert(pairAfterRedraw:GetJoint() == jointBeforeRedraw, "moving redraw replaced stable axle joint")
 		local phaseAfterRedraw = pairAfterRedraw:GetPhaseDegrees()
 		assert(
 			angularDistanceDegrees(phaseAfterRedraw, phaseBeforeRedraw) <= 5.0,
