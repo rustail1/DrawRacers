@@ -165,10 +165,6 @@ local function makeInternalShapeSpec(normalizedPoints: { Vector2 }): ShapeSpec
 	}
 end
 
-local function angularDistanceDegrees(a: number, b: number): number
-	return math.abs((a - b + 180) % 360 - 180)
-end
-
 function RacerRuntime.new(params: SpawnParams)
 	assert(params.slotIndex >= 1 and params.slotIndex <= 8, "slotIndex must be 1..8")
 	assert(params.laneIndex >= 1 and params.laneIndex <= 8, "laneIndex must be 1..8")
@@ -325,55 +321,36 @@ function RacerRuntime:_CreateInitialLegPair(shapeSpec: ShapeSpec, motorEnabled: 
 	local selectedPhaseDegrees = initialPhaseDegrees
 	local redrawSafetyFallback = false
 	local redrawPenetrationScore = 0
-	local stagedLegPair = nil
+	local legPair = nil
 
 	local buildOk, buildError = pcall(function()
-		stagedLegPair = LegPairAssembly.new({
+		legPair = LegPairAssembly.new({
 			racerModel = model,
 			shapeSpec = shapeSpec,
 			motorEnabled = false,
 			initialPhaseDegrees = initialPhaseDegrees,
-			staged = true,
 		})
 
 		selectedPhaseDegrees, redrawSafetyFallback, redrawPenetrationScore = RedrawSpawnSafety.ChoosePhase(
 			model,
-			stagedLegPair,
+			legPair,
 			initialPhaseDegrees
 		)
-
-		if angularDistanceDegrees(selectedPhaseDegrees, initialPhaseDegrees) > 0.01 then
-			stagedLegPair:Destroy()
-			stagedLegPair = LegPairAssembly.new({
-				racerModel = model,
-				shapeSpec = shapeSpec,
-				motorEnabled = false,
-				initialPhaseDegrees = selectedPhaseDegrees,
-				staged = true,
-			})
-		end
+		legPair:SetInitialPhaseDegrees(selectedPhaseDegrees)
+		legPair:SetEnabled(motorEnabled == true)
 	end)
 
 	if not buildOk then
-		if stagedLegPair ~= nil then
-			stagedLegPair:Destroy()
+		if legPair ~= nil then
+			legPair:Destroy()
 		end
 		error(buildError)
 	end
-	assert(stagedLegPair ~= nil, "initial leg staging produced incomplete shared leg pair")
+	assert(legPair ~= nil, "initial leg pair construction produced no persistent pair")
 
-	local commitOk, commitError = pcall(function()
-		stagedLegPair:Commit()
-		stagedLegPair:SetEnabled(motorEnabled == true)
-	end)
-	if not commitOk then
-		stagedLegPair:Destroy()
-		error(commitError)
-	end
-
-	self.legPair = stagedLegPair
-	self.leftLeg = stagedLegPair:GetLeftLeg()
-	self.rightLeg = stagedLegPair:GetRightLeg()
+	self.legPair = legPair
+	self.leftLeg = legPair:GetLeftLeg()
+	self.rightLeg = legPair:GetRightLeg()
 	model:SetAttribute("DebugRedrawSafetyFallback", redrawSafetyFallback)
 	model:SetAttribute("DebugRedrawPenetrationScore", redrawPenetrationScore)
 
