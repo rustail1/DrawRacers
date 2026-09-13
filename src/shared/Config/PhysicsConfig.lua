@@ -12,9 +12,6 @@ return {
 		MinimumCleanedPolylineLength = 0.18,
 		RawSemanticHalfWidth = 1.75,
 		RawSemanticHalfHeight = 1.0,
-		-- CORE REPAIR v2: the mechanical pivot is visible and fixed at semantic (0,0).
-		-- A stroke that does not begin near it is input-invalid rather than translated later.
-		PivotStartRadiusNormalized = 0.18,
 		-- Legacy symmetric bounds remain for low-level helpers only.
 		NormalizedMin = -1,
 		NormalizedMax = 1,
