@@ -247,22 +247,6 @@ function LegPairAssembly:_SetReshapeSupportEnabled(enabled: boolean)
 	force.Enabled = true
 end
 
-function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
-	assert(not self.destroyed, "LegPairAssembly is destroyed")
-	assert(
-		type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0,
-		"shapeSpec missing physical segmentPlan"
-	)
-
-	self.reshapeForcedComplete = false
-	self:_SetReshapeSupportEnabled(false)
-	self.leftLeg:ReplaceGeometry(shapeSpec)
-	self.rightLeg:ReplaceGeometry(shapeSpec)
-	self.leftLeg:CompleteReshape()
-	self.rightLeg:CompleteReshape()
-	return self.leftLeg, self.rightLeg
-end
-
 function LegPairAssembly:BeginGeometryReshape(shapeSpec: ShapeSpec)
 	assert(not self.destroyed, "LegPairAssembly is destroyed")
 	assert(
