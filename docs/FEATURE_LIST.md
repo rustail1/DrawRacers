@@ -2,6 +2,11 @@
 
 Statuses: `BACKLOG | ACTIVE | ACCEPTED | CUT | LATER`
 
+## CR2 CURRENT OVERRIDE — canonical current state
+`docs/CR2_CURRENT_SOURCE_OF_TRUTH.md` is the current mechanical owner. CORE REPAIR v2 keeps M0 scope unchanged but replaces the lower historical first-point/shared-axle mechanics with the **fixed visible pivot** + **twin-drive** implementation. Drawing starts near semantic `(0,0)`; `LegPairAssembly` owns persistent Left/Right `LegDriveAssembly` owners with two `DriveJoint` motors and a 180° target. The old one-motor **shared axle** topology is **retired**. Redraw stages candidate visuals while old physical geometry remains active, then collision-safe commit swaps the prepared geometry without replacing pair/drive/joint/side ownership.
+
+This is repository/source/contract/build closure only. Live solver/contact/feel, obstacle trade-offs, camera/rider readability and empirical acceptance remain **HUMAN STUDIO PENDING**. Normal Studio `Play` remains `G0`; **B17/G0 remains HUMAN_GATE PENDING**, so M0.5/multiplayer/meta/economy/shop remain blocked until that gate or another explicit bounded Product Owner decision.
+
 ## Current milestone / canonical override
 **Current milestone:** M0 — Physics Lab  
 **Current gameplay feature:** Authoritative draw → physical locomotion → redraw → canonical obstacle lab → debug/tuning/reference-core evidence, implementation items **B03–B16** plus bounded R17 repair/evidence work.  
