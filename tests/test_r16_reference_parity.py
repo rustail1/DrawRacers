@@ -37,7 +37,7 @@ def test_r16_2_hub_offsets_have_one_numeric_owner() -> None:
 
     for token in [
         "HubOffsetX = 0.0",
-        "HubOffsetY = -0.35",
+        "HubOffsetY = 0.0",
         "HubOffsetZAbs = 1.62",
     ]:
         assert token in config
@@ -57,7 +57,7 @@ def test_r16_2_studio_instance_contract_uses_canonical_hub_offsets() -> None:
     hub_section = studio.split("Hub Parts:", 1)[1].split("## 4. Runtime leg assembly", 1)[0]
 
     assert "PhysicsConfig.LegGeometry" in hub_section
-    assert "HubOffsetY = -0.35" in hub_section
+    assert "HubOffsetY = 0.0" in hub_section
     assert "HubOffsetZAbs = 1.62" in hub_section
     assert "(0,-0.75,-1.62)" not in hub_section
     assert "(0,-0.75,+1.62)" not in hub_section
@@ -131,7 +131,7 @@ def test_r16_3b_docs_supersede_bounds_center_semantics() -> None:
 
     assert "RawSemanticHalfWidth = 1.75" in shape_doc
     assert "RawSemanticHalfHeight = 1.0" in shape_doc
-    assert "HubOffsetY = -0.35" in shape_doc
+    assert "HubOffsetY = 0.0" in shape_doc
     assert "server recenters the cleaned stroke around its own bounds center" not in shape_doc
 
 
