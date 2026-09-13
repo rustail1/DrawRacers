@@ -135,8 +135,8 @@ function B11LegShapeServiceSpec.run()
 	local second = LegShapeService.ValidateAndBuild(racer, SECOND_VALID_SHAPE, false)
 	assert(second.accepted == true and second.shapeVersion == 2, "second valid shape must increment ShapeVersion exactly once")
 	assert(racer:GetShapeVersion() == 2)
-	assert(model.Legs:FindFirstChild("LeftLeg") ~= oldLeft, "second accepted shape did not rebuild LeftLeg")
-	assert(model.Legs:FindFirstChild("RightLeg") ~= oldRight, "second accepted shape did not rebuild RightLeg")
+	assert(model.Legs:FindFirstChild("LeftLeg") == oldLeft, "second accepted shape replaced persistent LeftLeg owner")
+	assert(model.Legs:FindFirstChild("RightLeg") == oldRight, "second accepted shape replaced persistent RightLeg owner")
 
 	local anchoringRacer = RacerRuntime.new({
 		raceId = "B11_ANCHORING_TEST",
