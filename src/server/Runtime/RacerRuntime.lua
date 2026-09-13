@@ -290,6 +290,7 @@ function RacerRuntime:ApplyValidatedShape(shapeSpec: ShapeSpec, motorEnabled: bo
 		return left, right, reason
 	end)
 	if not applied then
+		self:_CancelReshape()
 		warn("[DrawRacers][CR2] mechanical apply failed: " .. tostring(leftLeg))
 		return { accepted = false, rejectReasonCode = "BUILD_FAILED" }
 	end
