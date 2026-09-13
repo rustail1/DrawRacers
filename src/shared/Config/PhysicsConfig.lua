@@ -21,10 +21,13 @@ return {
 		MaxPendingStrokes = 4,
 	},
 	LegGeometry = {
-		-- CR2 starting scale. Human Studio G0 remains the tuning authority.
+		-- CR3 starting scale and explicit lower-body leg mount placement.
+		-- Mount fractions are measured against body half-extents and remain HUMAN STUDIO tuning hypotheses.
 		LegCanvasHalfSpan = 3.2,
 		MaxLegExtentFromHub = 4.5,
 		MinUsefulLegExtent = 0.7,
+		LegMountHorizontalFraction = 0.78,
+		LegMountVerticalFraction = -0.72,
 		PhysicalLegSegmentThickness = 0.54,
 		VisualLegSegmentThickness = 0.78,
 		MaxColliderSegmentsPerLeg = 14,
@@ -47,10 +50,6 @@ return {
 		MotorMaxTorque = 35000,
 		MotorMaxAcceleration = 120,
 		RightPhaseOffsetDegrees = 180,
-		-- rad/s of differential correction per degree of pair error.
-		PhaseCorrectionGain = 0.03,
-		MaxPhaseCorrection = 1.5,
-		PhaseDeadbandDegrees = 3.0,
 	},
 	RedrawSafety = {
 		CandidateCount = 24,
