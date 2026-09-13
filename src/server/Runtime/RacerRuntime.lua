@@ -45,44 +45,6 @@ local function debugEnvironmentAllowed(): boolean
 	return environment == "DEV" or environment == "STAGING"
 end
 
-local function hubOffset(sideSign: number): Vector3
-	local geometry = PhysicsConfig.LegGeometry
-	return Vector3.new(
-		geometry.HubOffsetX,
-		geometry.HubOffsetY,
-		geometry.HubOffsetZAbs * sideSign
-	)
-end
-
-local function makeCompatibilityHub(name: string, offset: Vector3, body: Part, parent: Model): Part
-	local hub = Instance.new("Part")
-	hub.Name = name
-	hub.Size = Vector3.new(0.25, 0.25, 0.25)
-	hub.CFrame = body.CFrame * CFrame.new(offset)
-	hub.Anchored = false
-	hub.CanCollide = false
-	hub.CanTouch = false
-	hub.CanQuery = false
-	hub.Transparency = 1
-	hub.Massless = true
-	hub.CollisionGroup = CollisionGroups.RacerBody
-	hub.Parent = parent
-
-	local motorAttachment = Instance.new("Attachment")
-	motorAttachment.Name = "MotorAttachment"
-	motorAttachment.Axis = Vector3.zAxis
-	motorAttachment.SecondaryAxis = Vector3.yAxis
-	motorAttachment.Parent = hub
-
-	local bodyWeld = Instance.new("WeldConstraint")
-	bodyWeld.Name = "BodyWeld"
-	bodyWeld.Part0 = body
-	bodyWeld.Part1 = hub
-	bodyWeld.Parent = hub
-
-	return hub
-end
-
 local function ensureRuntimeFolder(model: Model, name: string): Folder
 	local existing = model:FindFirstChild(name)
 	if existing and existing:IsA("Folder") then
@@ -166,11 +128,6 @@ function RacerRuntime.EnsureTemplate(): Model
 	local visualRoot = Instance.new("Folder")
 	visualRoot.Name = "VisualRoot"
 	visualRoot.Parent = template
-
-	-- Compatibility markers are intentionally retained until MR-06. They are
-	-- body-welded markers only; LegPairAssembly owns the real shared axle/motor.
-	makeCompatibilityHub("LeftHub", hubOffset(-1), body, template)
-	makeCompatibilityHub("RightHub", hubOffset(1), body, template)
 
 	local runtimeAttachments = Instance.new("Folder")
 	runtimeAttachments.Name = "RuntimeAttachments"
