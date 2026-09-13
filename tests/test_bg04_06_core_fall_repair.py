@@ -102,3 +102,16 @@ def test_bg06_wall_requires_safe_completion_for_suitable_shapes() -> None:
     assert "result.fellBelowRecovery ~= true" in safe_body
     assert "safeTraversalResult(hook) and hook.completedPiece" in stage_c
     assert "safeTraversalResult(longBar) and longBar.completedPiece" in stage_c
+
+
+def test_bg06_moving_redraw_evidence_preserves_stable_pair_axle_and_joint() -> None:
+    stage_c = read("src/server/Tests/R16StageCHarness.lua")
+    b14 = read("src/server/Tests/B14RedrawStressSpec.lua")
+
+    for source in (stage_c, b14):
+        assert "local axleBeforeRedraw = pairBeforeRedraw:GetRoot()" in source
+        assert "local jointBeforeRedraw = pairBeforeRedraw:GetJoint()" in source
+        assert "pairAfterRedraw ~= pairBeforeRedraw" not in source
+        assert "pairAfterRedraw == pairBeforeRedraw" in source
+        assert "pairAfterRedraw:GetRoot() == axleBeforeRedraw" in source
+        assert "pairAfterRedraw:GetJoint() == jointBeforeRedraw" in source
