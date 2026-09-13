@@ -207,9 +207,10 @@ function LegPairAssembly:Commit()
 	self.committed = true
 end
 
-local function buildStagedSides(self: any, shapeSpec: ShapeSpec)
+local function buildStagedSides(self: any, shapeSpec: ShapeSpec, redrawBasePhaseDegrees: number?)
 	local geometry = PhysicsConfig.LegGeometry
 	local motor = PhysicsConfig.Motor
+	local basePhaseDegrees = redrawBasePhaseDegrees or 0
 	local stagedLeft = nil
 	local stagedRight = nil
 	local buildOk, buildError = pcall(function()
@@ -219,7 +220,7 @@ local function buildStagedSides(self: any, shapeSpec: ShapeSpec)
 			shapeSpec = shapeSpec,
 			side = "Left",
 			socketZ = -geometry.LegSocketZAbs,
-			phaseDegrees = 0,
+			phaseDegrees = basePhaseDegrees,
 			staged = true,
 		})
 		stagedRight = buildLeg({
@@ -228,7 +229,7 @@ local function buildStagedSides(self: any, shapeSpec: ShapeSpec)
 			shapeSpec = shapeSpec,
 			side = "Right",
 			socketZ = geometry.LegSocketZAbs,
-			phaseDegrees = motor.RightPhaseOffsetDegrees,
+			phaseDegrees = basePhaseDegrees + motor.RightPhaseOffsetDegrees,
 			staged = true,
 		})
 	end)
@@ -246,7 +247,9 @@ function LegPairAssembly:ReplaceGeometry(shapeSpec: ShapeSpec)
 	assert(self.committed, "ReplaceGeometry requires a committed stable axle")
 	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
 
-	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec)
+	local currentAxlePhaseDegrees = self:GetPhaseDegrees()
+	local redrawBasePhaseDegrees = -currentAxlePhaseDegrees
+	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec, redrawBasePhaseDegrees)
 	local oldLeft = self.leftLeg
 	local oldRight = self.rightLeg
 	oldLeft:SetRetiring(true)
@@ -276,7 +279,9 @@ function LegPairAssembly:BeginGeometryReshape(shapeSpec: ShapeSpec)
 	assert(self.committed, "BeginGeometryReshape requires a committed stable axle")
 	assert(type(shapeSpec) == "table" and type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing physical segmentPlan")
 
-	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec)
+	local currentAxlePhaseDegrees = self:GetPhaseDegrees()
+	local redrawBasePhaseDegrees = -currentAxlePhaseDegrees
+	local stagedLeft, stagedRight = buildStagedSides(self, shapeSpec, redrawBasePhaseDegrees)
 	stagedLeft:SetReshapeProgress(0)
 	stagedRight:SetReshapeProgress(0)
 
