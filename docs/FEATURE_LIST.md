@@ -12,7 +12,7 @@ Current R17 invariants:
 - `LegPairAssembly` is the current mechanical owner: one **shared axle**, one `AxleRoot`, one `AxleJoint`, **one motor**, two rigid side `LegAssembly` objects.
 - The rigid Left/Right copies use the same ShapeSpec and a fixed opposed relation, `RightPhaseOffsetDegrees = 180`; both rotate with the same shared motor direction/speed. There is no second side actuator and no runtime phase-chasing correction.
 - Production `RaceCameraController`/`CameraMath` are active M0 owners under R17. Normal follow uses a **stable two-axis dead-zone** anchor before smoothing. Hold-RMB yaw is **full 360°**, pitch remains bounded, rendered orbit/return are smoothed, and body rotation is not camera authority.
-- Instant redraw keeps the current pair live until a staged replacement completes a bounded **collision-safe redraw phase** search against Track geometry. Only then does retire/commit occur; BodyCollider CFrame and linear/angular velocity are not reset.
+- Instant redraw preserves the existing `AxleRoot`/`AxleJoint`, motor and current rotational phase. Only side geometry is replaced, then grows **hub-to-tip** on that stable axle through the bounded rapid reshape; BodyCollider CFrame and linear/angular velocity are not reset. Collision-safe phase search is initial-spawn safety only, not redraw behavior.
 - Production `RiderPresentationController` is active as a normalized nonphysical human rider presentation owner under R17. E03 later extends/accepts the same owner for 8-player readability; it does not introduce a duplicate rider system.
 - R17.6 compares **body density**, **leg density**, **motor speed**, and optional **body friction** only on temporary Studio racers. **Production tuning remains unchanged** until human Studio evidence is reviewed; `HUMAN BODY FEEL CHOICE PENDING`.
 - R17.7 retains the canonical reference-course matrix. `R17FINAL` remains an explicit one-click ordered Studio evidence route, while normal Roblox Studio `Play` now uses committed **`G0`** as the fast manual CORE loop and skips automatic B03–B16/R17 startup evidence. No CI result may fabricate human acceptance.
@@ -38,7 +38,7 @@ The 2026-09-10 Camera/Rider decision remains the original contract lock, but its
 - ACTIVE / R16 Stage B / R16.5–R16.7 IMPLEMENTED/AUTOMATED GREEN; Studio Gate B — HUMAN STUDIO PENDING.
 - ACTIVE / R16 Stage C / R16.8–R16.10 IMPLEMENTED/AUTOMATED GREEN; Studio Gate C — HUMAN STUDIO PENDING.
 - ACTIVE / R16.3B retained stroke-origin/reference-parity contract; HUMAN STUDIO PENDING.
-- ACTIVE / R17 reference-core implementation — origin comparison evidence, one shared axle with fixed **180°** rigid sides, stable two-axis dead-zone camera, collision-safe redraw phase selection, isolated body/leg/motor/friction evidence, reference-course matrix, normalized rider presentation, explicit `R17FINAL` evidence mode, and **G0 manual CORE as the committed Studio default**.
+- ACTIVE / R17 reference-core implementation — origin comparison evidence, one shared axle with fixed **180°** rigid sides, stable two-axis dead-zone camera, stable-phase rapid **hub-to-tip** redraw reshape, isolated body/leg/motor/friction evidence, reference-course matrix, normalized rider presentation, explicit `R17FINAL` evidence mode, and **G0 manual CORE as the committed Studio default**.
 - BACKLOG / HUMAN_GATE — B17/G0; **hard stop before M0.5** and still required after local technical Studio review.
 
 ## Historical implementation/evidence record retained for regressions
@@ -87,7 +87,7 @@ The following historical facts remain intentionally present because repository r
 - R17.7 — canonical reference-course matrix reuses the existing trial runner for Flat/Steps/Wall/Gap/Tunnel across the reference shape set.
 - R17.8 — `R17FINAL` remains an explicit ordered R16 Stage-C + R17 evidence mode before human review handoff; it is **not** the normal Play default. Normal Play uses `G0` for direct CORE iteration.
 - R17.9 — `RaceCameraController` supports a stable two-axis dead-zone normal follow, full 360 yaw target, bounded pitch and smoothed rendered orbit/return.
-- R17.10–R17.14 — `LegPairAssembly` owns one shared axle/`AxleJoint`/motor, fixed **180°** rigid sides and the safe socket/collision contract. Atomic whole-pair redraw performs bounded collision-safe redraw phase scoring before retiring the old pair. No per-side phase-chasing owner remains.
+- R17.10–R17.14 — `LegPairAssembly` owns one shared axle/`AxleJoint`/motor, fixed **180°** rigid sides and the safe socket/collision contract. Redraw preserves that axle and current phase while replacement side geometry performs a bounded rapid **hub-to-tip** reshape; no whole-pair redraw phase search or per-side phase-chasing owner remains.
 - Human camera feel, rigid-leg visual/solver behavior, rider pose/readability, origin/body-feel choice and B17 remain **HUMAN STUDIO PENDING**.
 
 ## M0.5 — Adaptation Acceptance
