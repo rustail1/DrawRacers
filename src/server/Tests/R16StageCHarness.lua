@@ -99,6 +99,12 @@ local function verifyCanonicalPieces(): boolean
 	return true
 end
 
+local function safeTraversalResult(result: any): boolean
+	return result.valid == true
+		and result.solverInstability ~= true
+		and result.fellBelowRecovery ~= true
+end
+
 local function runWallTrial(): boolean
 	local acceptance = M0SceneConfig.ReferenceAcceptance
 	local options = {
@@ -108,14 +114,18 @@ local function runWallTrial(): boolean
 	local hook = R16TrialRunner.RunPiece("SingleWallLow", "HOOK_01", acceptance.WallMeasureSeconds, options)
 	local longBar = R16TrialRunner.RunPiece("SingleWallLow", "LONG_BAR_01", acceptance.WallMeasureSeconds, options)
 	local suboptimal = R16TrialRunner.RunPiece("SingleWallLow", "SUBOPTIMAL_01", acceptance.WallMeasureSeconds, options)
-	local wallGoodPassed = hook.completedPiece or longBar.completedPiece
-	local wallBadPassed = suboptimal.valid and not suboptimal.completedPiece
+	local wallGoodPassed = (safeTraversalResult(hook) and hook.completedPiece)
+		or (safeTraversalResult(longBar) and longBar.completedPiece)
+	local wallBadPassed = safeTraversalResult(suboptimal) and not suboptimal.completedPiece
 	local wallPassed = wallGoodPassed and wallBadPassed
 	print(string.format(
-		"[DrawRacers][R16.10] wall summary hook=%s longBar=%s suboptimal=%s good=%s bad=%s wallPassed=%s %s",
+		"[DrawRacers][R16.10] wall summary hook=%s/%s longBar=%s/%s suboptimal=%s/%s good=%s bad=%s wallPassed=%s %s",
 		tostring(hook.completedPiece),
+		tostring(safeTraversalResult(hook)),
 		tostring(longBar.completedPiece),
+		tostring(safeTraversalResult(longBar)),
 		tostring(suboptimal.completedPiece),
+		tostring(safeTraversalResult(suboptimal)),
 		tostring(wallGoodPassed),
 		tostring(wallBadPassed),
 		tostring(wallPassed),
