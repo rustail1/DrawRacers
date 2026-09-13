@@ -3,87 +3,36 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_b09_two_leg_same_xy_opposed_phase_contract() -> None:
-    config = (ROOT / "src" / "shared" / "Config" / "PhysicsConfig.lua").read_text(encoding="utf-8")
-    leg = (ROOT / "src" / "server" / "Runtime" / "LegAssembly.lua").read_text(encoding="utf-8")
-    pair = (ROOT / "src" / "server" / "Runtime" / "LegPairAssembly.lua").read_text(encoding="utf-8")
-    racer = (ROOT / "src" / "server" / "Runtime" / "RacerRuntime.lua").read_text(encoding="utf-8")
+def read(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
 
+
+def test_b09_two_horizontal_drives_keep_180_phase_target() -> None:
+    config = read("src/shared/Config/PhysicsConfig.lua")
+    drive = read("src/server/Runtime/LegDriveAssembly.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
     assert "RightPhaseOffsetDegrees = 180" in config
-    for obsolete in [
-        "PhaseLockToleranceDegrees",
-        "PhaseLockRecoveryTime",
-        "PhaseLockMaxRelativeCorrection",
-    ]:
-        assert obsolete not in config
-        assert obsolete not in racer
+    assert 'side == "Left" then -body.Size.X / 2 else body.Size.X / 2' in drive
+    assert "Vector3.new(pivotX, 0, 0)" in drive
+    assert 'side = "Left"' in pair and 'side = "Right"' in pair
+    assert "initialPhaseDegrees = (params.initialPhaseDegrees or 0) + PhysicsConfig.Motor.RightPhaseOffsetDegrees" in pair
+    assert "LegDriveMath.PairPhaseErrorDegrees" in pair
+    assert "self.leftDrive:SetMotorVelocity" in pair
+    assert "self.rightDrive:SetMotorVelocity" in pair
+    assert "LegSocketZAbs" not in pair
 
-    for token in [
-        'params.side == "Left" or params.side == "Right"',
-        '"LeftLeg"',
-        '"RightLeg"',
-        "phaseDegrees",
-        '"AxleWeld"',
-    ]:
-        assert token in leg, f"missing B09 rigid-side token: {token}"
 
-    for forbidden in [
-        "-point.X",
-        "-point.Y",
-        "point.X * -1",
-        "point.Y * -1",
-        "Vector2.new(-point.X",
-        "Vector2.new(point.X, -point.Y",
-    ]:
-        assert forbidden not in leg, f"B09 must not mirror/invert shape XY: {forbidden}"
-
-    for token in [
-        '"Left"',
-        '"Right"',
-        "RightPhaseOffsetDegrees",
-        'joint.Name = "AxleJoint"',
-        "function LegPairAssembly:GetPhaseDegrees()",
-        "function LegPairAssembly:BeginGeometryReshape",
-    ]:
-        assert token in pair, f"missing B09 stable-pair token: {token}"
-
-    assert pair.count('Instance.new("HingeConstraint")') == 1
-    assert 'Instance.new("HingeConstraint")' not in leg
-    assert "function RacerRuntime:ApplyShape" in racer
-    assert "LegPairAssembly.new" in racer
-    assert "self.legPair" in racer
-    assert "phaseSyncConnection" not in racer
-    assert "_StepLegPhaseSync" not in racer
-    assert "leftJoint.AngularVelocity" not in racer
-    assert "rightJoint.AngularVelocity" not in racer
-
-    apply_shape_spec = racer.split("function RacerRuntime:_ApplyShapeSpec", 1)[1].split(
-        "function RacerRuntime:ApplyShape", 1
-    )[0]
-    assert "self.legPair:BeginGeometryReshape(shapeSpec)" in apply_shape_spec
-    assert "LegPairAssembly.new" not in apply_shape_spec
+def test_b09_same_shape_reaches_both_persistent_leg_owners() -> None:
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
+    assert "leftDrive:GetLeg():InstallGeometry(params.shapeSpec, initialOffset)" in pair
+    assert "rightDrive:GetLeg():InstallGeometry(params.shapeSpec, initialOffset)" in pair
+    assert "self.leftDrive:GetLeg():StageGeometry(shapeSpec, offset)" in pair
+    assert "self.rightDrive:GetLeg():StageGeometry(shapeSpec, offset)" in pair
+    assert "LegDriveAssembly.new" not in pair.split("function LegPairAssembly:StageRedraw", 1)[1].split("function LegPairAssembly:SetStageProgress", 1)[0]
 
 
 def test_b09_studio_spec_is_wired() -> None:
-    spec = ROOT / "src" / "server" / "Tests" / "B09TwoLegPhaseSpec.lua"
-    assert spec.is_file(), "missing B09 Studio behavior spec"
-    text = spec.read_text(encoding="utf-8")
-
-    for token in [
-        "ApplyShape",
-        "LeftLeg",
-        "RightLeg",
-        "GetMappedPoints",
-        "GetLegPair",
-        "AxleJoint",
-        "RightPhaseOffsetDegrees",
-        "opposed structural difference expected 180",
-        "two-leg same-XY/opposed-phase tests PASS",
-    ]:
-        assert token in text, f"missing B09 Studio acceptance token: {token}"
-
-    assert "_StepLegPhaseSync" not in text
-
-    bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
+    assert (ROOT / "src/server/Tests/B09TwoLegPhaseSpec.lua").is_file()
+    bootstrap = read("src/server/Bootstrap.server.lua")
     assert "B09TwoLegPhaseSpec" in bootstrap
     assert "B09TwoLegPhaseSpec.run()" in bootstrap

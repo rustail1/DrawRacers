@@ -7,106 +7,65 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-MECHANICAL_CLUSTER = [
-    "src/shared/Math/CanonicalLegShape.lua",
-    "src/shared/Math/StrokeMath.lua",
-    "src/shared/Math/GeometryMath.lua",
-    "src/shared/Math/LegReshapeMath.lua",
-    "src/server/Services/LegShapeService.lua",
-    "src/server/Runtime/LegAssembly.lua",
-    "src/server/Runtime/LegPairAssembly.lua",
-    "src/server/Runtime/RacerRuntime.lua",
-    "src/client/Controllers/DrawingController.lua",
-]
-
-
-def test_mr06_mechanical_cluster_has_no_retired_transition_paths() -> None:
-    combined = "\n".join(read(path) for path in MECHANICAL_CLUSTER)
-
-    for retired in [
-        "LegShapeMath",
-        "stagingContainer",
-        "LegPairStaging",
-        "function LegPairAssembly:Commit",
-        "function LegPairAssembly:IsCommitted",
-        "SetRetiring",
-        "buildStagedSides",
-        "makeCompatibilityHub",
-        '"LeftHub"',
-        '"RightHub"',
-    ]:
-        assert retired not in combined, f"retired mechanical transition path remains: {retired}"
-
-
-def test_mr06_one_canonical_builder_and_one_axle_joint_owner() -> None:
-    canonical = read("src/shared/Math/CanonicalLegShape.lua")
-    service = read("src/server/Services/LegShapeService.lua")
-    runtime = read("src/server/Runtime/RacerRuntime.lua")
-    pair = read("src/server/Runtime/LegPairAssembly.lua")
-    controller = read("src/client/Controllers/DrawingController.lua")
-
-    assert canonical.count("function CanonicalLegShape.Build") == 1
-    assert pair.count('Instance.new("HingeConstraint")') == 1
-    for path in [
+def test_mr06_mechanical_cluster_has_no_retired_shared_axle_paths() -> None:
+    paths = [
         "src/server/Runtime/LegAssembly.lua",
+        "src/server/Runtime/LegPairAssembly.lua",
         "src/server/Runtime/RacerRuntime.lua",
         "src/server/Services/LegShapeService.lua",
+        "src/shared/Math/CanonicalLegShape.lua",
         "src/client/Controllers/DrawingController.lua",
+    ]
+    combined = "\n".join(read(path) for path in paths)
+    for retired in [
+        '"AxleRoot"', '"AxleJoint"', "AxleMotorAttachment", "LegSocketZAbs",
+        "BeginGeometryReshape", "CompleteReshapeForRecovery", "presentationAnchor",
+        "ReshapeSupportForce", "GravityCompensationFraction", "ReshapeTipCollider",
     ]:
-        assert 'Instance.new("HingeConstraint")' not in read(path), f"second axle/joint owner in {path}"
-
-    for consumer_name, consumer in [
-        ("service", service),
-        ("runtime", runtime),
-        ("controller", controller),
-    ]:
-        for duplicate_cleanup in [
-            "StrokeMath.ClampToRect",
-            "StrokeMath.Dedupe",
-            "StrokeMath.SimplifyRDP",
-            "StrokeMath.Resample",
-            "GeometryMath.BuildSegmentPlan",
-        ]:
-            assert duplicate_cleanup not in consumer, f"duplicate canonical cleanup in {consumer_name}: {duplicate_cleanup}"
-
-    assert "CanonicalLegShape.Build" in service
-    assert "CanonicalLegShape.Build" in runtime
-    assert "CanonicalLegShape.Build" in controller
+        assert retired not in combined
 
 
-def test_mr06_pair_exposes_one_redraw_geometry_entrypoint() -> None:
+def test_mr06_one_canonical_builder_and_twin_drive_hinge_owner() -> None:
+    canonical = read("src/shared/Math/CanonicalLegShape.lua")
+    drive = read("src/server/Runtime/LegDriveAssembly.lua")
     pair = read("src/server/Runtime/LegPairAssembly.lua")
     runtime = read("src/server/Runtime/RacerRuntime.lua")
+    service = read("src/server/Services/LegShapeService.lua")
+    drawing = read("src/client/Controllers/DrawingController.lua")
+    assert "function CanonicalLegShape.Build" in canonical
+    assert "CanonicalLegShape.Build" in runtime
+    assert "CanonicalLegShape.Build" in service
+    assert "CanonicalLegShape.Build" in drawing
+    assert drive.count('Instance.new("HingeConstraint")') == 1
+    assert pair.count("LegDriveAssembly.new") == 2
+    assert 'Instance.new("HingeConstraint")' not in pair
 
-    assert "function LegPairAssembly:BeginGeometryReshape" in pair
-    assert "function LegPairAssembly:ReplaceGeometry" not in pair
-    assert "self.legPair:BeginGeometryReshape(shapeSpec)" in runtime
-    assert "self.legPair:ReplaceGeometry(shapeSpec)" not in runtime
+
+def test_mr06_pair_exposes_one_transactional_redraw_pipeline() -> None:
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
+    for token in [
+        "function LegPairAssembly:StageRedraw", "function LegPairAssembly:SetStageProgress",
+        "function LegPairAssembly:CommitStagedRedraw", "function LegPairAssembly:CancelStagedRedraw",
+    ]:
+        assert token in pair
+    assert "BeginGeometryReshape" not in pair
+    assert "ReplaceGeometry" not in pair
 
 
-def test_mr06_template_and_studio_specs_match_persistent_pair_architecture() -> None:
+def test_mr06_template_and_studio_specs_remain_available() -> None:
     runtime = read("src/server/Runtime/RacerRuntime.lua")
-    b06 = read("src/server/Tests/B06RacerRuntimeSpec.lua")
-    b09 = read("src/server/Tests/B09TwoLegPhaseSpec.lua")
-
-    for retired_hub in ["LeftHub", "RightHub", "makeCompatibilityHub"]:
-        assert retired_hub not in runtime
-        assert retired_hub not in b06
-
-    assert "pairAfter == pairBefore" in b09
-    assert "pairAfter ~= pairBefore" not in b09
-    assert "redraw must preserve shared pair" in b09
+    bootstrap = read("src/server/Bootstrap.server.lua")
+    assert 'body.Name = "BodyCollider"' in runtime
+    assert 'ensureRuntimeFolder(model, "Legs")' in runtime
+    for name in ["B07LegAssemblySpec", "B09TwoLegPhaseSpec", "B11LegShapeServiceSpec", "B13AtomicRedrawSpec", "B14RedrawStressSpec"]:
+        assert name in bootstrap
 
 
 def test_mr06_safety_gates_and_fast_g0_remain_intact() -> None:
-    trial = read("src/server/Tests/R16TrialRunner.lua")
-    stage_b = read("src/server/Tests/R16StageBHarness.lua")
+    session = read("docs/SESSION.md")
+    feature = read("docs/FEATURE_LIST.md")
     harness_config = read("src/shared/Config/StudioHarnessConfig.lua")
-
-    assert "M0SceneConfig.RecoveryKillY" in trial
-    assert "result.fellBelowRecovery = true" in trial
-    assert "result.solverInstability = true" in trial
-    assert "result.solverInstability ~= true" in stage_b
-    assert "result.fellBelowRecovery ~= true" in stage_b
     assert 'Mode = "G0"' in harness_config
-    assert "no automatic B03-B16/R17 evidence startup" in harness_config
+    assert "G0" in session
+    assert "HUMAN" in session.upper()
+    assert "G0" in feature

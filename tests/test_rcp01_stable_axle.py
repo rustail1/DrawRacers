@@ -3,44 +3,38 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _function_body(source: str, signature: str) -> str:
-    start = source.index(signature)
-    tail = source[start:]
-    marker = "\nend\n\nfunction "
-    end = tail.find(marker)
-    return tail if end < 0 else tail[: end + len("\nend")]
+def read(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_rcp01_redraw_reuses_existing_axle_and_joint() -> None:
-    runtime = (ROOT / "src/server/Runtime/RacerRuntime.lua").read_text(encoding="utf-8")
-    pair = (ROOT / "src/server/Runtime/LegPairAssembly.lua").read_text(encoding="utf-8")
-    apply_body = _function_body(runtime, "function RacerRuntime:_ApplyShapeSpec")
+def section(text: str, start: str, end: str) -> str:
+    return text.split(start, 1)[1].split(end, 1)[0]
 
-    assert "BeginGeometryReshape" in pair
-    assert "self.legPair:BeginGeometryReshape" in apply_body
+
+def test_rcp01_redraw_reuses_existing_twin_drives_and_joints() -> None:
+    runtime = read("src/server/Runtime/RacerRuntime.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
+    apply_body = section(runtime, "function RacerRuntime:_ApplyShapeSpec", "function RacerRuntime:ApplyShape")
     assert "LegPairAssembly.new" not in apply_body
+    assert "self.legPair:StageRedraw(shapeSpec)" in apply_body
+    assert "self.legPair:CommitStagedRedraw()" in apply_body
+    stage = section(pair, "function LegPairAssembly:StageRedraw", "function LegPairAssembly:SetStageProgress")
+    assert "LegDriveAssembly.new" not in stage
+    assert 'Instance.new("HingeConstraint")' not in stage
 
 
 def test_rcp01_redraw_reuses_existing_side_owners() -> None:
-    pair = (ROOT / "src/server/Runtime/LegPairAssembly.lua").read_text(encoding="utf-8")
-    body = _function_body(pair, "function LegPairAssembly:BeginGeometryReshape")
-
-    assert "self.leftLeg:ReplaceGeometry(shapeSpec)" in body
-    assert "self.rightLeg:ReplaceGeometry(shapeSpec)" in body
-    assert "self.leftLeg:SetReshapeProgress(0)" in body
-    assert "self.rightLeg:SetReshapeProgress(0)" in body
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
+    body = section(pair, "function LegPairAssembly:StageRedraw", "function LegPairAssembly:SetStageProgress")
+    assert "self.leftDrive:GetLeg():StageGeometry" in body
+    assert "self.rightDrive:GetLeg():StageGeometry" in body
     assert "LegAssembly.new" not in body
-    assert "stagedLeft" not in body and "stagedRight" not in body
-    assert "oldLeft" not in body and "oldRight" not in body
 
 
-def test_rcp01_stable_motor_remains_single_owner() -> None:
-    pair = (ROOT / "src/server/Runtime/LegPairAssembly.lua").read_text(encoding="utf-8")
-    leg = (ROOT / "src/server/Runtime/LegAssembly.lua").read_text(encoding="utf-8")
-    reshape_body = _function_body(pair, "function LegPairAssembly:BeginGeometryReshape")
-
-    assert pair.count('Instance.new("HingeConstraint")') == 1
-    assert 'Instance.new("HingeConstraint")' not in leg
-    assert 'Instance.new("HingeConstraint")' not in reshape_body
-    assert "LegAssembly.new" not in reshape_body
-    assert "buildStagedSides" not in pair
+def test_rcp01_motor_ownership_is_per_drive_and_pair_only_coordinates() -> None:
+    drive = read("src/server/Runtime/LegDriveAssembly.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
+    assert drive.count('Instance.new("HingeConstraint")') == 1
+    assert 'Instance.new("HingeConstraint")' not in pair
+    assert pair.count("LegDriveAssembly.new") == 2
+    assert "SetMotorVelocity" in pair

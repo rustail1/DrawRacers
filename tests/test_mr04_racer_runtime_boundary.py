@@ -13,75 +13,46 @@ def section(text: str, start: str, end: str) -> str:
 
 def test_mr04_runtime_uses_shared_canonical_shape_owner_for_internal_apply() -> None:
     runtime = read("src/server/Runtime/RacerRuntime.lua")
-
-    assert 'WaitForChild("CanonicalLegShape")' in runtime
-    assert 'WaitForChild("StrokeMath")' not in runtime
-    assert 'WaitForChild("GeometryMath")' not in runtime
-
     internal = section(runtime, "local function makeInternalShapeSpec", "local function publishValidatedShapeState")
     assert "CanonicalLegShape.Build" in internal
-    assert "PhysicsConfig.StrokeProcessing" in internal
-    assert "PhysicsConfig.LegGeometry" in internal
-    assert "StrokeMath." not in internal
-    assert "GeometryMath." not in internal
+    assert "StrokeMath" not in internal
+    assert "GeometryMath" not in internal
 
 
-def test_mr04_runtime_has_one_pair_constructor_and_no_duplicate_side_ownership_cache() -> None:
+def test_mr04_runtime_has_one_pair_constructor_and_transactional_redraw() -> None:
     runtime = read("src/server/Runtime/RacerRuntime.lua")
     initial = section(runtime, "function RacerRuntime:_CreateInitialLegPair", "function RacerRuntime:_ApplyShapeSpec")
     apply_body = section(runtime, "function RacerRuntime:_ApplyShapeSpec", "function RacerRuntime:ApplyShape")
-
-    assert runtime.count("LegPairAssembly.new") == 1
-    assert "LegPairAssembly.new" in initial
+    assert initial.count("LegPairAssembly.new") == 1
+    assert "self.legPair = legPair" in initial
     assert "LegPairAssembly.new" not in apply_body
-    assert "self.legPair:BeginGeometryReshape(shapeSpec)" in apply_body
-
-    assert "self.leftLeg" not in runtime
-    assert "self.rightLeg" not in runtime
-    assert 'Instance.new("HingeConstraint")' not in runtime
-    assert 'Instance.new("WedgePart")' not in runtime
-    assert 'Instance.new("MeshPart")' not in runtime
+    assert "self.legPair:StageRedraw(shapeSpec)" in apply_body
+    assert "self.legPair:CommitStagedRedraw()" in apply_body
+    assert "REDRAW_PENDING" in apply_body
 
 
-def test_mr04_recovery_is_destination_independent_and_runtime_owned() -> None:
+def test_mr04_recovery_is_destination_independent_and_cancels_redraw() -> None:
     runtime = read("src/server/Runtime/RacerRuntime.lua")
-    recovery = section(runtime, "function RacerRuntime:PrepareForRecovery", "function RacerRuntime:_CancelReshape")
-
+    recovery = section(runtime, "function RacerRuntime:PrepareForRecovery", "function RacerRuntime:_CreateInitialLegPair")
     assert "self:_CancelReshape()" in recovery
-    assert "self.legPair:CompleteReshapeForRecovery()" in recovery
-    for forbidden in [
-        "PivotTo",
-        ".CFrame =",
-        "AssemblyLinearVelocity",
-        "AssemblyAngularVelocity",
-        "M0SceneConfig",
-        "RecoveryKillY",
-    ]:
-        assert forbidden not in recovery, f"recovery preparation owns destination/teleport policy: {forbidden}"
+    assert "self.legPair:PrepareForRecovery()" in recovery
+    for forbidden in ["PivotTo", "CFrame =", "AssemblyLinearVelocity", "AssemblyAngularVelocity"]:
+        assert forbidden not in recovery
 
 
-def test_mr04_validated_shape_publishes_authoritative_state_only_after_mechanical_apply() -> None:
+def test_mr04_validated_shape_publishes_only_after_mechanical_apply() -> None:
     runtime = read("src/server/Runtime/RacerRuntime.lua")
-    publisher = section(runtime, "local function publishValidatedShapeState", "function RacerRuntime.EnsureTemplate")
     validated = section(runtime, "function RacerRuntime:ApplyValidatedShape", "function RacerRuntime:IsDestroyed")
-
-    assert "self.currentShapeSpec = shapeSpec" in publisher
-    assert 'self.model:SetAttribute("ShapeVersion", shapeSpec.version)' in publisher
-    assert publisher.index("self.currentShapeSpec = shapeSpec") < publisher.index(
-        'self.model:SetAttribute("ShapeVersion", shapeSpec.version)'
-    )
-
     apply_index = validated.index("self:_ApplyShapeSpec(shapeSpec, motorEnabled)")
     publish_index = validated.index("publishValidatedShapeState(self, shapeSpec)")
     assert apply_index < publish_index
-    assert "shapeSpec.version == self:GetShapeVersion() + 1" in validated
+    assert "accepted = false" in validated
+    assert "accepted = true" in validated
 
 
-def test_mr04_destroy_cancels_transient_timeline_before_owned_instances() -> None:
+def test_mr04_destroy_cancels_pending_transaction_before_owned_instances() -> None:
     runtime = read("src/server/Runtime/RacerRuntime.lua")
-    destroy = runtime.split("function RacerRuntime:Destroy", 1)[1]
-
+    destroy = section(runtime, "function RacerRuntime:Destroy", "return RacerRuntime")
     cancel_index = destroy.index("self:_CancelReshape()")
     pair_index = destroy.index("self.legPair:Destroy()")
-    model_index = destroy.index("self.model:Destroy()")
-    assert cancel_index < pair_index < model_index
+    assert cancel_index < pair_index

@@ -3,26 +3,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_bg03_production_axle_is_centered_on_cube_side_surface() -> None:
-    config = (ROOT / "src/shared/Config/PhysicsConfig.lua").read_text(encoding="utf-8")
-    pair = (ROOT / "src/server/Runtime/LegPairAssembly.lua").read_text(encoding="utf-8")
-    runtime = (ROOT / "src/server/Runtime/RacerRuntime.lua").read_text(encoding="utf-8")
-
-    assert "local BODY_SIZE = Vector3.new(3, 3, 3)" in runtime
-    assert "HubOffsetX = 0.0" in config
-    assert "HubOffsetY = 0.0" in config
-    assert "LegSocketZAbs = 1.5" in config
-    assert "attachment.Position = Vector3.new(geometry.HubOffsetX, geometry.HubOffsetY, 0)" in pair
-    assert "return body.CFrame * CFrame.new(geometry.HubOffsetX, geometry.HubOffsetY, 0)" in pair
-    assert "socketZ = -geometry.LegSocketZAbs" in pair
-    assert "socketZ = geometry.LegSocketZAbs" in pair
+def read(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_bg03_leg_geometry_has_no_hidden_xy_translation_after_socket_mount() -> None:
-    leg = (ROOT / "src/server/Runtime/LegAssembly.lua").read_text(encoding="utf-8")
+def test_bg03_drive_pivots_live_on_horizontal_cube_edges() -> None:
+    drive = read("src/server/Runtime/LegDriveAssembly.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
+    assert 'side == "Left" then -body.Size.X / 2 else body.Size.X / 2' in drive
+    assert "bodyAttachment.Position = Vector3.new(pivotX, 0, 0)" in drive
+    assert "CFrame.new(pivotX, 0, 0)" in drive
+    assert "LegSocketZAbs" not in pair
+    assert "socketZ" not in pair
 
-    assert "root.CFrame = params.axleRoot.CFrame" in leg
-    assert "CFrame.new(0, 0, params.socketZ)" in leg
-    assert "makeSegmentCFrame(root.CFrame, a, b)" in leg
-    assert "root.CFrame * CFrame.new(point.X, point.Y, 0)" in leg
-    assert "HubOffsetY" not in leg
+
+def test_bg03_leg_geometry_has_no_hidden_mount_translation() -> None:
+    leg = read("src/server/Runtime/LegAssembly.lua")
+    assert "root.CFrame = params.driveRoot.CFrame" in leg
+    assert 'weld(params.driveRoot, root, "DriveWeld")' in leg
+    assert "CFrame.new(0, 0," not in leg
+    assert "socketZ" not in leg
+    assert "axleRoot" not in leg

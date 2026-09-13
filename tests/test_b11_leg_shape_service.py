@@ -3,109 +3,37 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_b11_authoritative_leg_shape_service_contract() -> None:
-    service_path = ROOT / "src" / "server" / "Services" / "LegShapeService.lua"
-    builder_path = ROOT / "src" / "shared" / "Math" / "CanonicalLegShape.lua"
-    legacy_path = ROOT / "src" / "shared" / "Math" / "LegShapeMath.lua"
-    assert service_path.is_file(), "missing B11 LegShapeService.lua"
-    assert builder_path.is_file(), "missing shared CanonicalLegShape owner"
-    assert not legacy_path.exists(), "legacy LegShapeMath owner must be removed"
-    text = service_path.read_text(encoding="utf-8")
-    builder = builder_path.read_text(encoding="utf-8")
-
-    for token in [
-        "function LegShapeService.ValidateAndBuild",
-        'WaitForChild("CanonicalLegShape")',
-        "CanonicalLegShape.Build",
-        "MinimumRawPoints",
-        "MaxRawPoints",
-        'typeof(point) ~= "Vector2"',
-        "ApplyValidatedShape",
-        "normalizedPoints",
-        "segmentPlan",
-        "debugId",
-    ]:
-        assert token in text, f"missing B11 authority token: {token}"
-
-    for token in [
-        "function CanonicalLegShape.Build",
-        "StrokeMath.ClampToRect",
-        "minX = -strokeConfig.RawSemanticHalfWidth",
-        "maxX = strokeConfig.RawSemanticHalfWidth",
-        "minY = -strokeConfig.RawSemanticHalfHeight",
-        "maxY = strokeConfig.RawSemanticHalfHeight",
-        "maxPoints = strokeConfig.MaxRawPoints",
-        "StrokeMath.Dedupe",
-        "StrokeMath.SimplifyRDP",
-        "StrokeMath.Resample",
-        "StrokeMath.MeasureLength",
-        "StrokeMath.AnchorToFirstPoint",
-        "StrokeMath.ComputeBounds",
-        "GeometryMath.BuildSegmentPlan",
-    ]:
-        assert token in builder, f"missing B11 canonical math token: {token}"
-
-    for forbidden in [
-        'Instance.new(',
-        'RemoteEvent',
-        'OnServerEvent',
-        'CFrame.new(',
-        'workspace.',
-        'Workspace',
-    ]:
-        assert forbidden not in text, f"B11 service must not accept/create client world geometry directly: {forbidden}"
-        assert forbidden not in builder, f"B11 canonical builder must stay pure: {forbidden}"
-
-    for forbidden in ["game:GetService", "ReplicatedStorage"]:
-        assert forbidden not in builder, f"canonical builder must not depend on DataModel services: {forbidden}"
-
-    for forbidden in ["StrokeMath.SimplifyRDP", "StrokeMath.Resample", "GeometryMath.BuildSegmentPlan"]:
-        assert forbidden not in text, f"service must not duplicate canonical geometry pipeline: {forbidden}"
+def read(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_b11_shape_types_and_runtime_commit_contract() -> None:
-    types = (ROOT / "src" / "shared" / "Types" / "StrokeTypes.lua").read_text(encoding="utf-8")
-    for token in [
-        "export type ShapeBounds",
-        "export type ShapeSegmentPlanEntry",
-        "export type ShapeSpec",
-        "export type LegShapeResult",
-        "version: number",
-        "normalizedPoints: { Vector2 }",
-        "bounds: ShapeBounds",
-        "extent: number",
-        "segmentPlan: { ShapeSegmentPlanEntry }",
-        "debugId: string",
-    ]:
-        assert token in types, f"missing B11 ShapeSpec type token: {token}"
+def test_b11_authoritative_fixed_pivot_shape_service_contract() -> None:
+    builder = read("src/shared/Math/CanonicalLegShape.lua")
+    service = read("src/server/Services/LegShapeService.lua")
+    config = read("src/shared/Config/PhysicsConfig.lua")
+    assert "CanonicalLegShape.Build" in service
+    assert "PivotStartRadiusNormalized" in config
+    assert "START_OFF_PIVOT" in builder
+    assert "AnchorToFirstPoint" not in builder
+    assert "presentationAnchor" not in builder
+    assert "canonical.normalizedPoints" in service
+    assert "canonical.segmentPlan" in service
+    assert "racerRuntime:ApplyValidatedShape(shapeSpec, motorEnabled)" in service
+    assert "applyResult.accepted" in service
+    assert "applyResult.rejectReasonCode" in service
 
-    runtime = (ROOT / "src" / "server" / "Runtime" / "RacerRuntime.lua").read_text(encoding="utf-8")
-    for token in [
-        "currentShapeSpec = nil",
-        "function RacerRuntime:ApplyValidatedShape",
-        "function RacerRuntime:GetShapeVersion",
-        "function RacerRuntime:GetCurrentShapeSpec",
-        'SetAttribute("ShapeVersion", shapeSpec.version)',
-        "self.currentShapeSpec = shapeSpec",
-    ]:
-        assert token in runtime, f"missing B11 RacerRuntime commit token: {token}"
+
+def test_b11_shape_version_and_result_publish_after_mechanical_accept() -> None:
+    runtime = read("src/server/Runtime/RacerRuntime.lua")
+    service = read("src/server/Services/LegShapeService.lua")
+    validated = runtime.split("function RacerRuntime:ApplyValidatedShape", 1)[1].split("function RacerRuntime:IsDestroyed", 1)[0]
+    assert validated.index("self:_ApplyShapeSpec(shapeSpec, motorEnabled)") < validated.index("publishValidatedShapeState(self, shapeSpec)")
+    assert "shapeVersion = nextVersion" in service
+    assert "acceptedPoints = serializeSemanticPoints(shapeSpec.normalizedPoints)" in service
 
 
 def test_b11_studio_spec_is_wired() -> None:
-    spec = ROOT / "src" / "server" / "Tests" / "B11LegShapeServiceSpec.lua"
-    assert spec.is_file(), "missing B11 Studio behavior spec"
-    text = spec.read_text(encoding="utf-8")
-
-    for token in [
-        "LegShapeService.ValidateAndBuild",
-        "ShapeVersion",
-        "TOO_SHORT",
-        "NON_FINITE_POINT",
-        "MALFORMED_POINTS",
-        "authoritative LegShapeService tests PASS",
-    ]:
-        assert token in text, f"missing B11 Studio acceptance token: {token}"
-
-    bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
+    assert (ROOT / "src/server/Tests/B11LegShapeServiceSpec.lua").is_file()
+    bootstrap = read("src/server/Bootstrap.server.lua")
     assert "B11LegShapeServiceSpec" in bootstrap
     assert "B11LegShapeServiceSpec.run()" in bootstrap

@@ -7,61 +7,33 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_mr02_leg_assembly_is_one_persistent_side_owner() -> None:
+def test_mr02_leg_assembly_is_one_persistent_geometry_owner() -> None:
     leg = read("src/server/Runtime/LegAssembly.lua")
-
-    for required in [
-        "function LegAssembly.new",
-        "function LegAssembly:ReplaceGeometry",
-        "function LegAssembly:SetReshapeProgress",
-        "function LegAssembly:CompleteReshape",
+    for token in [
+        "function LegAssembly.new", "function LegAssembly:InstallGeometry",
+        "function LegAssembly:StageGeometry", "function LegAssembly:SetStageProgress",
+        "function LegAssembly:CommitStagedGeometry", "function LegAssembly:CancelStagedGeometry",
         "function LegAssembly:Destroy",
-        'WaitForChild("LegReshapeMath")',
-        "LegReshapeMath.Evaluate",
-        '"AxleWeld"',
-        '"Segments"',
-        '"Visual"',
     ]:
-        assert required in leg, f"missing MR-02 boundary token: {required}"
-
-    for forbidden in [
-        "staged",
-        "function LegAssembly:Commit",
-        "function LegAssembly:IsCommitted",
-        "function LegAssembly:SetRetiring",
-        "_Retiring",
-        'Instance.new("HingeConstraint")',
-        "ActuatorType",
-    ]:
-        assert forbidden not in leg, f"legacy/non-owner behavior remains in LegAssembly: {forbidden}"
+        assert token in leg
+    for forbidden in ["HingeConstraint", "RemoteEvent", "LegShapeService", "RacerRuntime", "otherDrive", "socketZ", "axleRoot"]:
+        assert forbidden not in leg
 
 
-def test_mr02_future_geometry_is_not_prebuilt_and_hidden() -> None:
+def test_mr02_staging_is_visual_only_until_commit() -> None:
     leg = read("src/server/Runtime/LegAssembly.lua")
-    constructor = leg[leg.index("function LegAssembly.new"):leg.index("function LegAssembly:GetModel")]
+    stage = leg.split("function LegAssembly:SetStageProgress", 1)[1].split("function LegAssembly:CommitStagedGeometry", 1)[0]
+    commit = leg.split("function LegAssembly:CommitStagedGeometry", 1)[1].split("function LegAssembly:CancelStagedGeometry", 1)[0]
+    assert 'makeFolder("StageVisual"' in stage
+    assert "self.segmentsFolder:Destroy()" not in stage
+    assert "setPhysicalEnabled(self.segments, self.segmentPlan, false)" in commit
+    assert "setPhysicalEnabled(pendingParts, pendingPlan, true)" in commit
+    assert "ReshapeTipCollider" not in leg
 
-    assert "shapeSpec.segmentPlan" not in constructor
-    assert "params.shapeSpec" not in constructor
-    assert "materializeCompleteSegment" in leg
-    assert "clearGeometry" in leg
-    assert "partialEndpoint" in leg
 
-
-def test_mr02_direct_consumer_no_longer_calls_retired_side_api() -> None:
+def test_mr02_pair_is_the_only_direct_consumer_of_side_geometry() -> None:
     pair = read("src/server/Runtime/LegPairAssembly.lua")
-
-    for forbidden in [
-        "leftLeg:Commit()",
-        "rightLeg:Commit()",
-        "leftLeg:IsCommitted()",
-        "rightLeg:IsCommitted()",
-        "leftLeg:SetRetiring(",
-        "rightLeg:SetRetiring(",
-        "oldLeft:SetRetiring(",
-        "oldRight:SetRetiring(",
-        "buildStagedSides",
-    ]:
-        assert forbidden not in pair, f"LegPairAssembly still calls retired LegAssembly API: {forbidden}"
-
-    assert "self.leftLeg:ReplaceGeometry(shapeSpec)" in pair
-    assert "self.rightLeg:ReplaceGeometry(shapeSpec)" in pair
+    assert "leftDrive:GetLeg():InstallGeometry(params.shapeSpec, initialOffset)" in pair
+    assert "rightDrive:GetLeg():InstallGeometry(params.shapeSpec, initialOffset)" in pair
+    assert "self.leftDrive:GetLeg():StageGeometry(shapeSpec, offset)" in pair
+    assert "self.rightDrive:GetLeg():StageGeometry(shapeSpec, offset)" in pair

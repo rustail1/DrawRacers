@@ -3,72 +3,35 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_b08_one_hinge_motor_contract() -> None:
-    pair_path = ROOT / "src" / "server" / "Runtime" / "LegPairAssembly.lua"
-    leg_path = ROOT / "src" / "server" / "Runtime" / "LegAssembly.lua"
-    config = (ROOT / "src" / "shared" / "Config" / "PhysicsConfig.lua").read_text(encoding="utf-8")
-    assert pair_path.is_file(), "R17 B08 requires LegPairAssembly"
-    pair = pair_path.read_text(encoding="utf-8")
-    leg = leg_path.read_text(encoding="utf-8")
+def read(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
 
-    for token in [
-        "AngularVelocity = -8.0",
-        "MotorMaxTorque = 35000",
-        "MotorMaxAcceleration = 120",
-        "RightPhaseOffsetDegrees = 180",
-    ]:
-        assert token in config, f"missing B08 config default: {token}"
 
-    for token in [
-        "Enum.ActuatorType.Motor",
-        "joint.AngularVelocity",
-        "joint.MotorMaxTorque",
-        "joint.MotorMaxAcceleration",
-        'joint.Name = "AxleJoint"',
-        'Instance.new("HingeConstraint")',
-    ]:
-        assert token in pair, f"missing B08 shared motor token: {token}"
-
-    assert pair.count('Instance.new("HingeConstraint")') == 1
+def test_b08_twin_hinge_motor_contract() -> None:
+    config = read("src/shared/Config/PhysicsConfig.lua")
+    drive = read("src/server/Runtime/LegDriveAssembly.lua")
+    pair = read("src/server/Runtime/LegPairAssembly.lua")
+    leg = read("src/server/Runtime/LegAssembly.lua")
+    for token in ["TargetTipSpeed", "MinAngularVelocity", "MaxAngularVelocity", "MotorMaxTorque = 35000", "MotorMaxAcceleration = 120", "RightPhaseOffsetDegrees = 180"]:
+        assert token in config
+    for token in ['Instance.new("HingeConstraint")', "Enum.ActuatorType.Motor", "joint.AngularVelocity", "joint.MotorMaxTorque", "joint.MotorMaxAcceleration", 'joint.Name = "DriveJoint"']:
+        assert token in drive
+    assert drive.count('Instance.new("HingeConstraint")') == 1
+    assert pair.count("LegDriveAssembly.new") == 2
+    assert 'Instance.new("HingeConstraint")' not in pair
     assert 'Instance.new("HingeConstraint")' not in leg
-
-    # BG-04 human evidence supersedes the old blanket VectorForce ban only for
-    # the short gravity-cancel support inside the stable pair. It must have no
-    # X/Z propulsion and must not leak into LegAssembly.
-    for source in (pair, leg):
-        for forbidden in [
-            "AssemblyLinearVelocity =",
-            "ApplyImpulse(",
-            "LinearVelocity =",
-        ]:
-            assert forbidden not in source, f"B08 must not use hidden propulsion: {forbidden}"
-    assert 'Instance.new("VectorForce")' in pair
-    assert "Vector3.new(0, supportedMass * Workspace.Gravity * fraction, 0)" in pair
-    assert 'Instance.new("VectorForce")' not in leg
+    for source in (drive, pair, leg):
+        for forbidden in ["AssemblyLinearVelocity =", "ApplyImpulse(", "LinearVelocity =", 'Instance.new("VectorForce")']:
+            assert forbidden not in source
 
 
-def test_b08_studio_flat_harness_contract() -> None:
-    harness = ROOT / "src" / "server" / "Tests" / "B08OneHingeMotorHarness.lua"
-    assert harness.is_file(), "missing B08 Studio flat movement harness"
-    text = harness.read_text(encoding="utf-8")
-
-    assert "RacerRuntime.new" in text
-    assert "ApplyShape" in text
-    assert "GetLegPair" in text
-    assert "AxleJoint" in text
-    assert "ROUND_01" in text
-    assert "one-hinge flat harness ready" in text
-    assert "deltaX=" in text
-
-    for forbidden in [
-        "AssemblyLinearVelocity =",
-        "ApplyImpulse(",
-        "VectorForce",
-        "LinearVelocity =",
-        "PivotTo(CFrame.new(startX +",
-    ]:
-        assert forbidden not in text, f"B08 harness must not fake movement: {forbidden}"
-
-    bootstrap = (ROOT / "src" / "server" / "Bootstrap.server.lua").read_text(encoding="utf-8")
+def test_b08_studio_harness_is_wired_without_owning_propulsion() -> None:
+    harness = read("src/server/Tests/B08OneHingeMotorHarness.lua")
+    bootstrap = read("src/server/Bootstrap.server.lua")
+    assert "RacerRuntime.new" in harness
+    assert "ApplyShape" in harness
+    assert "GetLegPair" in harness
+    for forbidden in ["AssemblyLinearVelocity =", "ApplyImpulse(", "VectorForce", "LinearVelocity =", "PivotTo(CFrame.new(startX +"]:
+        assert forbidden not in harness
     assert "B08OneHingeMotorHarness" in bootstrap
     assert "B08OneHingeMotorHarness.start()" in bootstrap
