@@ -1,3 +1,14 @@
+# Draw Racers — current repository entrypoint
+
+## CR3 CURRENT OVERRIDE — canonical current state
+`docs/CR3_CURRENT_SOURCE_OF_TRUTH.md` is the current mechanical owner. The active CR3 contract is **free draw** anywhere inside `DrawInputRect`, deterministic geometry-derived **support anchor** selection, explicit lower `LeftLegMount` / `RightLegMount` attachments, and two physical drive hinges commanded by a **single movement/phase owner** in `LegPairAssembly` with the same base omega and an initial 180° relation. Server authority and transactional redraw remain intact; the cowboy rider is client-only presentation.
+
+Repository checks prove source contracts and buildability only. Live contact/solver feel, mount readability, paired motion, redraw feel, obstacle usefulness, camera/rider presentation and the product gate remain **HUMAN STUDIO PENDING**. Normal Studio mode remains `G0`; **B17/G0 remains HUMAN_GATE PENDING**, and M0.5/multiplayer/meta/economy/shop remain blocked.
+
+Any lower CR2/R17 section that calls itself “current” is retained for historical regression traceability only and is superseded by CR3 wherever it conflicts.
+
+---
+
 # CORE REPAIR v2 — CURRENT ENTRYPOINT
 
 **Current mechanical source of truth:** `docs/CR2_CURRENT_SOURCE_OF_TRUTH.md`. Read it before the historical R16/R17 sections below. It supersedes old first-point anchoring, shared-axle/Z-socket, and destructive physical-redraw wording. Normal Studio mode is `G0`; live physics/product acceptance remains **HUMAN STUDIO PENDING**.
