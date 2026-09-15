@@ -1,5 +1,10 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local PhysicsConfig = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PhysicsConfig")
+)
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
 local R16ReferenceShapes = require(script.Parent:WaitForChild("R16ReferenceShapes"))
 
@@ -22,27 +27,30 @@ function B09TwoLegPhaseHarness.start()
 	body.Material = Enum.Material.SmoothPlastic
 
 	racer:ApplyShape(R16ReferenceShapes.Get("ROUND_01"), true)
+
 	local pair = racer:GetLegPair()
-	assert(pair ~= nil, "B09 CR2 pair missing")
-	local leftDrive = pair:GetLeftDrive()
-	local rightDrive = pair:GetRightDrive()
+	assert(pair ~= nil, "B09 shared-drive pair missing")
+	local drive = pair:GetDrive()
 	local startX = body.Position.X
+
 	print(string.format(
-		"[DrawRacers][B09] CR2 twin-drive harness ready leftPhase=%.1f rightPhase=%.1f",
-		leftDrive:GetPhaseDegrees(),
-		rightDrive:GetPhaseDegrees()
+		"[DrawRacers][B09] shared-drive ready axlePhase=%.1f fixedRightPhase=%d",
+		drive:GetPhaseDegrees(),
+		PhysicsConfig.LegGeometry.RightLegFixedPhaseDegrees
 	))
 
 	task.spawn(function()
 		for second = 1, 6 do
 			task.wait(1)
-			if body.Parent == nil then return end
+			if body.Parent == nil then
+				return
+			end
 			print(string.format(
-				"[DrawRacers][B09] t=%ds deltaX=%.3f speedX=%.3f phaseDelta=%.1f",
+				"[DrawRacers][B09] t=%ds deltaX=%.3f speedX=%.3f pairPhaseError=%.1f",
 				second,
 				body.Position.X - startX,
 				body.AssemblyLinearVelocity.X,
-				(rightDrive:GetPhaseDegrees() - leftDrive:GetPhaseDegrees() + 360) % 360
+				pair:GetPhaseErrorDegrees()
 			))
 		end
 	end)

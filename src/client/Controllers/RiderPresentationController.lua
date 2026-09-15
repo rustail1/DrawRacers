@@ -256,6 +256,9 @@ function RiderPresentationController:_ensureRecord(racer: Model, player: Player)
 		seatPart = seatPart,
 	}
 	self._records[racer] = record
+	if RunService:IsStudio() then
+		print(string.format("[DrawRacers][Rider] presentation ready user=%d", player.UserId))
+	end
 	return record
 end
 

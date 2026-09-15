@@ -24,12 +24,21 @@ local function isFiniteNumber(value: number): boolean
 	return value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function reject(reasonCode: string): LegShapeResult
-	return { accepted = false, rejectReasonCode = reasonCode }
+local function reject(reasonCode: string, clearAccepted: boolean?): LegShapeResult
+	return {
+		accepted = false,
+		rejectReasonCode = reasonCode,
+		clearAccepted = if clearAccepted == true then true else nil,
+	}
 end
 
-local function networkReject(sequence: number, reasonCode: string): StrokeResultPayload
-	return { sequence = sequence, accepted = false, rejectReasonCode = reasonCode }
+local function networkReject(sequence: number, reasonCode: string, clearAccepted: boolean?): StrokeResultPayload
+	return {
+		sequence = sequence,
+		accepted = false,
+		rejectReasonCode = reasonCode,
+		clearAccepted = if clearAccepted == true then true else nil,
+	}
 end
 
 local function serializeSemanticPoints(points: { Vector2 }): SemanticPoints
@@ -103,7 +112,8 @@ function LegShapeService.ValidateAndBuild(racerRuntime: any, rawPoints: any, mot
 		local reason = if type(applyResult) == "table" and type(applyResult.rejectReasonCode) == "string"
 			then applyResult.rejectReasonCode
 			else "BUILD_FAILED"
-		return reject(reason)
+		local clearAccepted = type(applyResult) == "table" and applyResult.clearAccepted == true
+		return reject(reason, clearAccepted)
 	end
 
 	return { accepted = true, shapeVersion = nextVersion, shapeSpec = shapeSpec }
@@ -231,10 +241,29 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 			return networkReject(sequence, "PAYLOAD_TOO_LARGE")
 		end
 
+		-- mechanicalPending is a server-side transaction lock. Clear it on every
+		-- exit path, including unexpected exceptions before ApplyValidatedShape can
+		-- convert the failure into a normal mechanical reject. Otherwise one bad
+		-- request can poison the player forever with REDRAW_PENDING.
 		state.mechanicalPending = true
-		local buildResult = LegShapeService.ValidateAndBuild(racerRuntime, vectors, true)
+		local buildOk, buildResultOrError = xpcall(function()
+			return LegShapeService.ValidateAndBuild(racerRuntime, vectors, true)
+		end, debug.traceback)
 		state.mechanicalPending = false
 		state.pendingSequence = nil
+
+		if not buildOk then
+			warn(string.format(
+				"[DrawRacers][LegShapeService] mechanical transaction failed: %s",
+				tostring(buildResultOrError)
+			))
+			return networkReject(sequence, "MECHANICAL_INTERNAL_ERROR")
+		end
+
+		local buildResult = buildResultOrError
+		if type(buildResult) ~= "table" then
+			return networkReject(sequence, "MECHANICAL_INTERNAL_ERROR")
+		end
 		if buildResult.accepted == true then
 			state.lastAcceptedSequence = sequence
 			local shapeSpec = buildResult.shapeSpec
@@ -246,7 +275,11 @@ function LegShapeService.CreateSubmitProcessor(deps: any)
 				acceptedPoints = serializeSemanticPoints(shapeSpec.normalizedPoints),
 			}
 		end
-		return networkReject(sequence, buildResult.rejectReasonCode or "INVALID_STROKE")
+		return networkReject(
+			sequence,
+			buildResult.rejectReasonCode or "INVALID_STROKE",
+			buildResult.clearAccepted == true
+		)
 	end
 	return processor
 end

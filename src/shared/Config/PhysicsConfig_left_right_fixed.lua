@@ -12,6 +12,7 @@ return {
 		MinimumCleanedPolylineLength = 0.18,
 		RawSemanticHalfWidth = 1.75,
 		RawSemanticHalfHeight = 1.0,
+		-- Legacy symmetric bounds remain for low-level helpers only.
 		NormalizedMin = -1,
 		NormalizedMax = 1,
 		StrokeSubmitCooldown = 0.20,
@@ -19,17 +20,15 @@ return {
 		StrokeResultTimeout = 3.0,
 		MaxPendingStrokes = 4,
 	},
-
 	LegGeometry = {
+		-- CR3 starting scale and explicit lower-body leg mount placement.
+		-- Mount fractions are measured against body half-extents and remain HUMAN STUDIO tuning hypotheses.
 		LegCanvasHalfSpan = 3.2,
 		MaxLegExtentFromHub = 4.5,
 		MinUsefulLegExtent = 0.7,
-
-		-- Shared Z-axis axle; roots live outside the two cube side faces.
-		LegMountOutset = 0.45,
-		LegMountVerticalFraction = 0.0,
-		RightLegFixedPhaseDegrees = 180,
-
+		-- Racer travels along +X, so left/right mounts are separated laterally on +/-Z.
+		LegMountLateralFraction = 0.78,
+		LegMountVerticalFraction = -0.72,
 		PhysicalLegSegmentThickness = 0.54,
 		VisualLegSegmentThickness = 0.78,
 		MaxColliderSegmentsPerLeg = 14,
@@ -37,64 +36,37 @@ return {
 		MinimumMappedSegmentLength = 0.08,
 		SegmentOverlapAllowance = 0.06,
 	},
-
 	LegReshape = {
-		-- RacerRuntime still uses these values to time its redraw transaction.
-		-- LegPairAssembly independently renders the preview every Heartbeat.
-		TypicalDuration = 0.085,
-		MinimumDuration = 0.075,
-		MaximumDuration = 0.095,
+		-- Visual-only staging window. Old physical geometry remains active until commit.
+		TypicalDuration = 0.10,
+		MinimumDuration = 0.08,
+		MaximumDuration = 0.15,
 	},
-
-	BodyDynamics = {
-		-- Reference-like: very light response and strongly reduced effective gravity.
-		GravityScale = 0.28,
-		RedrawHopTargetVelocity = 4.5,
-		RedrawHopMaxDeltaVelocity = 6.5,
-	},
-
 	Motor = {
 		RotationSign = -1,
-		TargetTipSpeed = 15.0,
+		TargetTipSpeed = 10.5,
 		MinimumDriveRadius = 1.75,
 		MinAngularVelocity = 1.5,
-		MaxAngularVelocity = 8.0,
+		MaxAngularVelocity = 6.0,
 		MotorMaxTorque = 35000,
 		MotorMaxAcceleration = 120,
+		RightPhaseOffsetDegrees = 180,
 	},
-
-	ColliderActivation = {
-		-- Final leg colliders are born disabled. A collider is enabled only after
-		-- this shrunken probe no longer intersects collidable Track geometry.
-		ActivationProbeInset = 0.08,
-		MinimumProbeSize = 0.05,
-		MaxProbeParts = 32,
+	RedrawSafety = {
+		CandidateCount = 24,
+		CandidateStepDegrees = 15,
+		-- Shrink the overlap probe slightly so legal surface contact is not treated as penetration.
+		OverlapProbeInset = 0.10,
 	},
-
 	PhysicalMaterials = {
-		Body = {
-			Density = 0.25,
-			Friction = 0.40,
-			Elasticity = 0.04,
-			FrictionWeight = 100,
-			ElasticityWeight = 100,
-		},
 		LegSegment = {
-			Density = 0.60,
+			Density = 1.0,
 			Friction = 1.0,
 			Elasticity = 0.02,
 			FrictionWeight = 100,
 			ElasticityWeight = 100,
 		},
-		Axle = {
-			Density = 0.05,
-			Friction = 0.0,
-			Elasticity = 0.0,
-			FrictionWeight = 0,
-			ElasticityWeight = 0,
-		},
 	},
-
 	Stabilization = {
 		LaneNormalError = 0.03,
 		LaneHardBound = 0.08,
@@ -102,7 +74,6 @@ return {
 		OrientationMaxTorque = 60000,
 		OrientationMaxAngularVelocity = 30,
 	},
-
 	AntiStall = {
 		Enabled = true,
 		ActivationForwardSpeed = 0.35,
@@ -111,7 +82,6 @@ return {
 		MaxAssistDuration = 0.75,
 		DisableForwardSpeed = 1.0,
 	},
-
 	Recovery = {
 		ProgressSampleWindow = 2.5,
 		MeaningfulHorizontalProgress = 0.35,

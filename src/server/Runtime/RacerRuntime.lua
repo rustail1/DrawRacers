@@ -15,9 +15,7 @@ local StrokeTypes = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Types"):WaitForChild("StrokeTypes")
 )
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
-local LegPairAssembly = require(script.Parent:WaitForChild("LegPairAssembly"))
-local RacerAntiStall = require(script.Parent:WaitForChild("RacerAntiStall"))
-local RacerStabilizer = require(script.Parent:WaitForChild("RacerStabilizer"))
+local LegCoreController = require(script.Parent:WaitForChild("CoreV3"):WaitForChild("LegCoreController"))
 
 local BODY_SIZE = Vector3.new(3, 3, 3)
 
@@ -37,14 +35,18 @@ export type SpawnParams = {
 }
 
 local function debugEnvironmentAllowed(): boolean
-	if RunService:IsStudio() then return true end
+	if RunService:IsStudio() then
+		return true
+	end
 	local environment = game:GetAttribute("DrawRacersEnvironment")
 	return environment == "DEV" or environment == "STAGING"
 end
 
 local function ensureRuntimeFolder(model: Model, name: string): Folder
 	local existing = model:FindFirstChild(name)
-	if existing and existing:IsA("Folder") then return existing end
+	if existing and existing:IsA("Folder") then
+		return existing
+	end
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = model
@@ -65,6 +67,8 @@ local function publishSpawnAttributes(model: Model, params: SpawnParams, laneCen
 	model:SetAttribute("TrackId", params.trackId)
 	model:SetAttribute("Finished", false)
 	model:SetAttribute("LaneCenterZ", laneCenterZ)
+	model:SetAttribute("CoreV3Validation", true)
+	model:SetAttribute("AntiStallActive", false)
 end
 
 local function makeInternalShapeSpec(normalizedPoints: { Vector2 }, version: number): ShapeSpec
@@ -95,11 +99,20 @@ local function publishValidatedShapeState(self: any, shapeSpec: ShapeSpec)
 	self.model:SetAttribute("DebugPhysicsPoints", shapeSpec.debugPhysicsPointCount or #shapeSpec.mappedPoints)
 end
 
+local function clearActiveShapeState(self: any)
+	self.currentShapeSpec = nil
+	self.model:SetAttribute("DebugRawPoints", 0)
+	self.model:SetAttribute("DebugSimplifiedPoints", 0)
+	self.model:SetAttribute("DebugPhysicsPoints", 0)
+end
+
 function RacerRuntime.EnsureTemplate(): Model
 	CollisionGroups.ensure()
 	local templatesRoot = ServerStorage:WaitForChild("RacerTemplates")
 	local existing = templatesRoot:FindFirstChild("RacerTemplate")
-	if existing and existing:IsA("Model") then return existing end
+	if existing and existing:IsA("Model") then
+		return existing
+	end
 
 	local template = Instance.new("Model")
 	template.Name = "RacerTemplate"
@@ -112,7 +125,14 @@ function RacerRuntime.EnsureTemplate(): Model
 	body.CanQuery = true
 	body.Transparency = 1
 	body.CollisionGroup = CollisionGroups.RacerBody
-	body.CustomPhysicalProperties = PhysicalProperties.new(1.0, 0.45, 0.05, 100, 100)
+	local bodyMaterial = PhysicsConfig.PhysicalMaterials.Body
+	body.CustomPhysicalProperties = PhysicalProperties.new(
+		bodyMaterial.Density,
+		bodyMaterial.Friction,
+		bodyMaterial.Elasticity,
+		bodyMaterial.FrictionWeight,
+		bodyMaterial.ElasticityWeight
+	)
 	body.Parent = template
 	local visualRoot = Instance.new("Folder")
 	visualRoot.Name = "VisualRoot"
@@ -147,24 +167,28 @@ function RacerRuntime.new(params: SpawnParams)
 	model.PrimaryPart = body
 	ensureRuntimeFolder(model, "Legs")
 	ensureRuntimeFolder(model, "Presentation")
-	if debugEnvironmentAllowed() then ensureRuntimeFolder(model, "Debug") end
+	if debugEnvironmentAllowed() then
+		ensureRuntimeFolder(model, "Debug")
+	end
 	publishSpawnAttributes(model, params, laneCenterZ)
-	model:PivotTo(params.spawnCFrame)
+	body.CFrame = params.spawnCFrame
 	model.Parent = racersRoot
 
-	local stabilizer = RacerStabilizer.new({ racerModel = model, body = body, laneCenterZ = laneCenterZ })
-	local antiStall = RacerAntiStall.new({ racerModel = model, body = body })
 	return setmetatable({
 		model = model,
 		body = body,
-		legPair = nil,
-		stabilizer = stabilizer,
-		antiStall = antiStall,
+		legCore = nil :: any?,
 		currentShapeSpec = nil :: ShapeSpec?,
-		_redrawPending = false,
-		_reshapeGeneration = 0,
 		destroyed = false,
 	}, RacerRuntime)
+end
+
+function RacerRuntime:_EnsureLegCore()
+	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
+	if self.legCore == nil then
+		self.legCore = LegCoreController.new(self.model)
+	end
+	return self.legCore
 end
 
 function RacerRuntime:GetModel(): Model
@@ -177,19 +201,9 @@ function RacerRuntime:GetBody(): Part
 	return self.body
 end
 
-function RacerRuntime:GetStabilizer()
+function RacerRuntime:GetLegCore()
 	assert(not self.destroyed, "RacerRuntime is destroyed")
-	return self.stabilizer
-end
-
-function RacerRuntime:GetAntiStall()
-	assert(not self.destroyed, "RacerRuntime is destroyed")
-	return self.antiStall
-end
-
-function RacerRuntime:GetLegPair()
-	assert(not self.destroyed, "RacerRuntime is destroyed")
-	return self.legPair
+	return self.legCore
 end
 
 function RacerRuntime:GetShapeVersion(): number
@@ -204,71 +218,26 @@ function RacerRuntime:GetCurrentShapeSpec(): ShapeSpec?
 end
 
 function RacerRuntime:IsRedrawPending(): boolean
-	return self._redrawPending
+	if self.destroyed or self.legCore == nil then
+		return false
+	end
+	local state = self.legCore:GetState()
+	return state == "PREVIEW" or state == "WAIT_CLEAR"
 end
 
-function RacerRuntime:_CancelReshape()
-	self._reshapeGeneration += 1
-	self._redrawPending = false
-	if self.legPair ~= nil then self.legPair:CancelStagedRedraw() end
+function RacerRuntime:SetMotorEnabled(enabled: boolean)
+	assert(not self.destroyed, "SetMotorEnabled requires live RacerRuntime")
+	assert(type(enabled) == "boolean", "enabled must be boolean")
+	if self.legCore ~= nil then
+		self.legCore:SetMotorEnabled(enabled)
+	end
 end
 
 function RacerRuntime:PrepareForRecovery()
 	assert(not self.destroyed, "PrepareForRecovery requires live RacerRuntime")
-	self:_CancelReshape()
-	if self.legPair ~= nil then self.legPair:PrepareForRecovery() end
-end
-
-function RacerRuntime:_CreateInitialLegPair(shapeSpec: ShapeSpec, motorEnabled: boolean?)
-	assert(self.legPair == nil, "initial leg pair already exists")
-	local legPair = LegPairAssembly.new({
-		racerModel = self.model,
-		shapeSpec = shapeSpec,
-		motorEnabled = motorEnabled == true,
-		initialPhaseDegrees = 0,
-	})
-	self.legPair = legPair
-	return legPair:GetLeftLeg(), legPair:GetRightLeg()
-end
-
-function RacerRuntime:_ApplyShapeSpec(shapeSpec: ShapeSpec, motorEnabled: boolean?): (any?, any?, string?)
-	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
-	assert(type(shapeSpec.segmentPlan) == "table" and #shapeSpec.segmentPlan > 0, "shapeSpec missing segmentPlan")
-	if self.legPair == nil then
-		local leftLeg, rightLeg = self:_CreateInitialLegPair(shapeSpec, motorEnabled)
-		return leftLeg, rightLeg, nil
+	if self.legCore ~= nil then
+		self.legCore:PrepareForRecovery()
 	end
-	if self._redrawPending then return nil, nil, "REDRAW_PENDING" end
-
-	self._redrawPending = true
-	self._reshapeGeneration += 1
-	local generation = self._reshapeGeneration
-	local staged, stageError = self.legPair:StageRedraw(shapeSpec)
-	if not staged then
-		self._redrawPending = false
-		return nil, nil, stageError or "NO_SAFE_REDRAW_PHASE"
-	end
-
-	local reshape = PhysicsConfig.LegReshape
-	local duration = math.clamp(reshape.TypicalDuration, reshape.MinimumDuration, reshape.MaximumDuration)
-	for step = 1, 3 do
-		if self.destroyed or generation ~= self._reshapeGeneration then
-			if self.legPair ~= nil then self.legPair:CancelStagedRedraw() end
-			self._redrawPending = false
-			return nil, nil, "REDRAW_CANCELLED"
-		end
-		self.legPair:SetStageProgress(step / 3)
-		task.wait(duration / 3)
-	end
-
-	local committed, commitError = self.legPair:CommitStagedRedraw()
-	if not committed then
-		self._redrawPending = false
-		return nil, nil, commitError or "NO_SAFE_REDRAW_PHASE"
-	end
-	self.legPair:SetEnabled(motorEnabled == true)
-	self._redrawPending = false
-	return self.legPair:GetLeftLeg(), self.legPair:GetRightLeg(), nil
 end
 
 function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: boolean?)
@@ -276,29 +245,80 @@ function RacerRuntime:ApplyShape(normalizedPoints: { Vector2 }, motorEnabled: bo
 	local shapeSpec = makeInternalShapeSpec(normalizedPoints, self:GetShapeVersion() + 1)
 	local result = self:ApplyValidatedShape(shapeSpec, motorEnabled)
 	assert(result.accepted == true, result.rejectReasonCode or "internal shape apply failed")
-	return self.legPair:GetLeftLeg(), self.legPair:GetRightLeg()
+	local core = self:GetLegCore()
+	assert(core ~= nil, "accepted shape missing Core V3 controller")
+	return core:GetLeftLeg(), core:GetRightLeg()
 end
 
 function RacerRuntime:ApplyValidatedShape(shapeSpec: ShapeSpec, motorEnabled: boolean?)
 	assert(not self.destroyed and self.model ~= nil, "ApplyValidatedShape requires live RacerRuntime")
 	assert(type(shapeSpec) == "table" and type(shapeSpec.version) == "number", "invalid ShapeSpec")
 	assert(shapeSpec.version == self:GetShapeVersion() + 1, "ShapeSpec version must increment by exactly one")
-	if self._redrawPending then return { accepted = false, rejectReasonCode = "REDRAW_PENDING" } end
+	if self:IsRedrawPending() then
+		return { accepted = false, rejectReasonCode = "REDRAW_PENDING" }
+	end
 
-	local applied, leftLeg, rightLeg, applyError = pcall(function()
-		local left, right, reason = self:_ApplyShapeSpec(shapeSpec, motorEnabled)
-		return left, right, reason
+	local hadAcceptedShape = self.currentShapeSpec ~= nil
+	local applied, acceptedOrError, reasonOrNil = pcall(function()
+		self:_EnsureLegCore()
+		return self.legCore:ApplyShape(shapeSpec, motorEnabled == true)
 	end)
 	if not applied then
-		self:_CancelReshape()
-		warn("[DrawRacers][CR2] mechanical apply failed: " .. tostring(leftLeg))
-		return { accepted = false, rejectReasonCode = "BUILD_FAILED" }
+		warn("[DrawRacers][CoreV3] mechanical apply failed: " .. tostring(acceptedOrError))
+		local invalidatedAccepted = hadAcceptedShape
+			and self.legCore ~= nil
+			and self.legCore:GetState() == "EMPTY"
+		if invalidatedAccepted then
+			clearActiveShapeState(self)
+		end
+		return {
+			accepted = false,
+			rejectReasonCode = "BUILD_FAILED",
+			clearAccepted = invalidatedAccepted,
+		}
 	end
-	if leftLeg == nil or rightLeg == nil then
-		return { accepted = false, rejectReasonCode = applyError or "NO_SAFE_REDRAW_PHASE" }
+	if acceptedOrError ~= true then
+		local invalidatedAccepted = hadAcceptedShape
+			and self.legCore ~= nil
+			and self.legCore:GetState() == "EMPTY"
+		if invalidatedAccepted then
+			clearActiveShapeState(self)
+		end
+		return {
+			accepted = false,
+			rejectReasonCode = reasonOrNil or "BUILD_FAILED",
+			clearAccepted = invalidatedAccepted,
+		}
 	end
 
-	-- _ApplyShapeSpec returns only after twin-drive geometry has physically committed.
+	-- Core V3 is fail-closed: the previous pair is destroyed as soon as the new
+	-- rebuild starts. From this point until ACTIVE there is intentionally no
+	-- accepted physical shape. Keep the old ShapeVersion as history, but clear
+	-- the active ShapeSpec so server/client presentation cannot claim otherwise.
+	clearActiveShapeState(self)
+
+	local waited, committedOrError, mechanicalReason = pcall(function()
+		return self.legCore:WaitForRebuildResult()
+	end)
+	if not waited then
+		warn("[DrawRacers][CoreV3] mechanical completion wait failed: " .. tostring(committedOrError))
+		self.legCore:PrepareForRecovery()
+		clearActiveShapeState(self)
+		return {
+			accepted = false,
+			rejectReasonCode = "BUILD_FAILED",
+			clearAccepted = hadAcceptedShape,
+		}
+	end
+	if committedOrError ~= true then
+		clearActiveShapeState(self)
+		return {
+			accepted = false,
+			rejectReasonCode = mechanicalReason or "BUILD_FAILED",
+			clearAccepted = hadAcceptedShape,
+		}
+	end
+
 	publishValidatedShapeState(self, shapeSpec)
 	return { accepted = true }
 end
@@ -308,16 +328,17 @@ function RacerRuntime:IsDestroyed(): boolean
 end
 
 function RacerRuntime:Destroy()
-	if self.destroyed then return end
+	if self.destroyed then
+		return
+	end
 	self.destroyed = true
-	self:_CancelReshape()
-	if self.legPair then self.legPair:Destroy() end
-	if self.antiStall then self.antiStall:Destroy() end
-	if self.stabilizer then self.stabilizer:Destroy() end
-	if self.model then self.model:Destroy() end
-	self.legPair = nil
-	self.antiStall = nil
-	self.stabilizer = nil
+	if self.legCore ~= nil then
+		self.legCore:Destroy()
+	end
+	if self.model ~= nil then
+		self.model:Destroy()
+	end
+	self.legCore = nil
 	self.model = nil
 	self.body = nil
 	self.currentShapeSpec = nil

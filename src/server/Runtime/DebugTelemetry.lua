@@ -29,27 +29,14 @@ local function countColliderSegments(model: Model): number
 		return count
 	end
 
-	-- CR2: physical segments now live below LeftDrive/RightDrive -> side Leg model.
-	-- Count canonical colliders recursively so telemetry follows the runtime ownership
-	-- hierarchy without owning or reconstructing geometry itself.
 	for _, descendant in legs:GetDescendants() do
-		if descendant:IsA("BasePart") and string.match(descendant.Name, "^Segment_%d+$") then
+		if descendant:IsA("BasePart")
+			and string.match(descendant.Name, "^Segment_%d+$")
+		then
 			count += 1
 		end
 	end
 	return count
-end
-
-local function findDriveJoint(legs: Instance, driveName: string): HingeConstraint?
-	local drive = legs:FindFirstChild(driveName)
-	if not (drive and drive:IsA("Model")) then
-		return nil
-	end
-	local joint = drive:FindFirstChild("DriveJoint", true)
-	if joint and joint:IsA("HingeConstraint") then
-		return joint
-	end
-	return nil
 end
 
 local function getMotorState(model: Model): (boolean, number)
@@ -58,15 +45,17 @@ local function getMotorState(model: Model): (boolean, number)
 		return false, 0
 	end
 
-	local leftJoint = findDriveJoint(legs, "LeftDrive")
-	local rightJoint = findDriveJoint(legs, "RightDrive")
-	if leftJoint == nil or rightJoint == nil then
+	local drive = legs:FindFirstChild("SharedLegDrive")
+	if not (drive and drive:IsA("Model")) then
 		return false, 0
 	end
 
-	local enabled = leftJoint.Enabled and rightJoint.Enabled
-	local meanAngularVelocity = (leftJoint.AngularVelocity + rightJoint.AngularVelocity) * 0.5
-	return enabled, meanAngularVelocity
+	local joint = drive:FindFirstChild("DriveJoint", true)
+	if not (joint and joint:IsA("HingeConstraint")) then
+		return false, 0
+	end
+
+	return joint.Enabled, joint.AngularVelocity
 end
 
 local function getNumberAttribute(model: Model, name: string, fallback: number): number
@@ -147,6 +136,7 @@ function DebugTelemetry.start()
 			return
 		end
 		elapsed = 0
+
 		for _, child in racers:GetChildren() do
 			if child:IsA("Model") then
 				DebugTelemetry.sampleRacer(child)

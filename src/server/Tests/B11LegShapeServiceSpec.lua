@@ -59,17 +59,18 @@ function B11LegShapeServiceSpec.run()
 
 	local pair = racer:GetLegPair()
 	assert(pair ~= nil, "first accepted shape missing pair")
-	local leftDrive = pair:GetLeftDrive()
-	local rightDrive = pair:GetRightDrive()
-	local leftLeg = leftDrive:GetLeg()
-	local rightLeg = rightDrive:GetLeg()
+	local drive = pair:GetDrive()
+	local joint = drive:GetJoint()
+	local leftLeg = pair:GetLeftLeg()
+	local rightLeg = pair:GetRightLeg()
 	local leftModel = leftLeg:GetModel()
 	local rightModel = rightLeg:GetModel()
 
 	local offPivot = LegShapeService.ValidateAndBuild(racer, OFF_PIVOT_SHAPE, false)
 	assert(offPivot.accepted == false and offPivot.rejectReasonCode == "START_OFF_PIVOT", "off-pivot stroke must reject")
 	assert(racer:GetShapeVersion() == 1, "off-pivot rejection changed ShapeVersion")
-	assert(racer:GetLegPair() == pair and pair:GetLeftDrive() == leftDrive and pair:GetRightDrive() == rightDrive)
+	assert(racer:GetLegPair() == pair and pair:GetDrive() == drive)
+	assert(drive:GetJoint() == joint, "rejected redraw replaced DriveJoint")
 
 	local tiny = LegShapeService.ValidateAndBuild(racer, {
 		Vector2.zero,
@@ -99,7 +100,8 @@ function B11LegShapeServiceSpec.run()
 	assert(second.accepted == true and second.shapeVersion == 2 and second.shapeSpec ~= nil, "second valid shape must increment once")
 	assert(racer:GetShapeVersion() == 2)
 	assert(racer:GetLegPair() == pair, "redraw replaced persistent pair")
-	assert(pair:GetLeftDrive() == leftDrive and pair:GetRightDrive() == rightDrive, "redraw replaced persistent drives")
+	assert(pair:GetDrive() == drive, "redraw replaced persistent SharedLegDrive")
+	assert(drive:GetJoint() == joint, "redraw replaced persistent DriveJoint")
 	assert(pair:GetLeftLeg() == leftLeg and pair:GetRightLeg() == rightLeg, "redraw replaced persistent leg owners")
 	assert(leftLeg:GetModel() == leftModel and rightLeg:GetModel() == rightModel, "redraw replaced side models")
 	assert(#leftLeg:GetSegments() == #second.shapeSpec.segmentPlan, "left physical geometry not committed")
@@ -107,7 +109,7 @@ function B11LegShapeServiceSpec.run()
 	assert((second.shapeSpec.normalizedPoints[1] - Vector2.zero).Magnitude <= 1e-6, "second authoritative shape lost fixed pivot")
 
 	racer:Destroy()
-	print("[DrawRacers][B11] CR2 authoritative fixed-pivot LegShapeService tests PASS")
+	print("[DrawRacers][B11] shared-drive authoritative fixed-pivot LegShapeService tests PASS")
 end
 
 return B11LegShapeServiceSpec

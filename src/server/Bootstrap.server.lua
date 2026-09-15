@@ -20,6 +20,15 @@ local STUDIO_REGRESSION_SPECS = {
 	"B15ObstacleLabSpec",
 	"B16DebugTuningSpec",
 }
+local CORE_V3_SPECS = {
+	"C01CoreV3SharedAxleSpec",
+	"C02CoreV3LegGeometrySpec",
+	"C03CoreV3ClearanceSpec",
+	"C04CoreV3ControllerSpec",
+	"C05CoreV3RacerRuntimeSpec",
+	"C06CoreV3StressSpec",
+	"C07CoreV3FlatLocomotionSpec",
+}
 
 -- Compatibility wiring map for the existing repository contract checks. Execution is delegated
 -- to StudioSpecRunner rather than duplicated here:
@@ -29,8 +38,6 @@ local STUDIO_REGRESSION_SPECS = {
 -- B13AtomicRedrawSpec.run() B14RedrawStressSpec.run() B15ObstacleLabSpec.run()
 -- B16DebugTuningSpec.run()
 
-DebugTelemetry.start()
-
 if RunService:IsStudio() then
 	local StudioHarnessConfig = require(
 		ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("StudioHarnessConfig")
@@ -38,24 +45,45 @@ if RunService:IsStudio() then
 	local M0TestScene = require(script.Parent.M0TestScene)
 	local testsFolder = script.Parent:WaitForChild("Tests")
 	local harnessMode = StudioHarnessConfig.Mode
-	local runStartupRegressions = harnessMode ~= "G0"
+	local isCoreV3TestMode = harnessMode == "COREV3_TEST"
+	local isCoreV3HumanMode = harnessMode == "COREV3"
+	local isCoreV3Mode = isCoreV3TestMode or isCoreV3HumanMode
+	local runStartupRegressions = harnessMode ~= "G0" and not isCoreV3Mode
 
-	if runStartupRegressions then
+	if not isCoreV3Mode then
+		DebugTelemetry.start()
+	end
+
+	if isCoreV3TestMode or runStartupRegressions then
 		ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "TESTING")
 	else
 		ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "STARTING")
 	end
 
-	local sceneOk, sceneError = xpcall(function()
-		M0TestScene.build()
-	end, debug.traceback)
-	if not sceneOk then
-		warn("[DrawRacers][StudioGate] scene build failed: " .. tostring(sceneError))
+	local sceneOk = true
+	if isCoreV3Mode then
+		print(string.format(
+			"[DrawRacers][StudioGate] %s isolated mode — legacy M0 obstacle scene skipped",
+			tostring(harnessMode)
+		))
+	else
+		local sceneError: any = nil
+		sceneOk, sceneError = xpcall(function()
+			M0TestScene.build()
+		end, debug.traceback)
+		if not sceneOk then
+			warn("[DrawRacers][StudioGate] scene build failed: " .. tostring(sceneError))
+		end
 	end
 
 	local function startSelectedHarness()
 		print(string.format("[DrawRacers][StudioGate] selected mode=%s", tostring(harnessMode)))
-		if harnessMode == "G0" then
+		if harnessMode == "COREV3" then
+			local harnessModule = testsFolder:FindFirstChild("CoreV3FlatHarness")
+			assert(harnessModule ~= nil, "CoreV3FlatHarness missing")
+			local CoreV3FlatHarness = require(harnessModule)
+			CoreV3FlatHarness.start()
+		elseif harnessMode == "G0" then
 			local M0HumanHarness = require(testsFolder:WaitForChild("M0HumanHarness"))
 			M0HumanHarness.start()
 		elseif harnessMode == "B08" then
@@ -84,28 +112,44 @@ if RunService:IsStudio() then
 		end
 	end
 
-	local specsPassed = sceneOk
-	if sceneOk and runStartupRegressions then
+	if isCoreV3TestMode then
 		local StudioSpecRunner = require(testsFolder:WaitForChild("StudioSpecRunner"))
-		local passed = StudioSpecRunner.run(testsFolder, STUDIO_REGRESSION_SPECS)
-		specsPassed = passed == true
-	elseif sceneOk then
-		print("[DrawRacers][StudioGate] G0 manual core mode — startup regression/evidence suite skipped")
-	end
-
-	if specsPassed then
-		local harnessOk, harnessError = xpcall(startSelectedHarness, debug.traceback)
-		if specsPassed and harnessOk then
-			ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "READY")
-			print("[DrawRacers][StudioGate] SERVER READY — client bootstrap must also report [ClientGate] READY")
+		local passed = StudioSpecRunner.run(testsFolder, CORE_V3_SPECS)
+		if passed == true then
+			ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "TEST_COMPLETE")
+			print("[DrawRacers][StudioGate] COREV3_TEST complete — gameplay/harness startup skipped")
 		else
 			ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "BLOCKED")
-			warn("[DrawRacers][StudioGate] harness start failed: " .. tostring(harnessError))
+			warn("[DrawRacers][StudioGate] COREV3_TEST BLOCKED — Core V3 specs failed or are missing")
 		end
 	else
-		ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "BLOCKED")
-		warn("[DrawRacers][StudioGate] BLOCKED — scene or explicitly requested startup regressions failed")
+		local specsPassed = sceneOk
+		if sceneOk and runStartupRegressions then
+			local StudioSpecRunner = require(testsFolder:WaitForChild("StudioSpecRunner"))
+			local passed = StudioSpecRunner.run(testsFolder, STUDIO_REGRESSION_SPECS)
+			specsPassed = passed == true
+		elseif sceneOk and harnessMode == "G0" then
+			print("[DrawRacers][StudioGate] G0 manual core mode — startup regression/evidence suite skipped")
+		elseif sceneOk and isCoreV3HumanMode then
+			print("[DrawRacers][StudioGate] COREV3 human flat mode — legacy regression/evidence suite skipped")
+		end
+
+		if specsPassed then
+			local harnessOk, harnessError = xpcall(startSelectedHarness, debug.traceback)
+			if harnessOk then
+				ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "READY")
+				print("[DrawRacers][StudioGate] SERVER READY — client bootstrap must also report [ClientGate] READY")
+			else
+				ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "BLOCKED")
+				warn("[DrawRacers][StudioGate] harness start failed: " .. tostring(harnessError))
+			end
+		else
+			ReplicatedStorage:SetAttribute(STUDIO_GATE_ATTRIBUTE, "BLOCKED")
+			warn("[DrawRacers][StudioGate] BLOCKED — scene or explicitly requested startup regressions failed")
+		end
 	end
+else
+	DebugTelemetry.start()
 end
 
 print("[DrawRacers] server bootstrap ready")

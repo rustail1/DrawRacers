@@ -161,6 +161,20 @@ function CanonicalLegShape.Build(
 		return nil, "TOO_SHORT"
 	end
 
+	-- A visually valid stroke is not mechanically valid if every generated
+	-- segment is inside the non-colliding hub exclusion zone. Reject it before
+	-- Core V3 destroys/rebuilds the active pair so ACTIVE can never contain
+	-- zero authoritative drive colliders.
+	local driveColliderCount = 0
+	for _, segment in geometryPlan.segmentPlan do
+		if segment.canCollide == true then
+			driveColliderCount += 1
+		end
+	end
+	if driveColliderCount == 0 then
+		return nil, "NO_DRIVE_COLLIDERS"
+	end
+
 	assert(geometryConfig.LegCanvasHalfSpan > 0, "LegCanvasHalfSpan must be positive")
 	local normalizedPoints = table.create(#geometryPlan.mappedPoints)
 	for index, mapped in geometryPlan.mappedPoints do

@@ -6,6 +6,8 @@ local MODES = {
 	B09 = "B09",
 	B10 = "B10",
 	G0 = "G0",
+	COREV3_TEST = "COREV3_TEST",
+	COREV3 = "COREV3",
 	R16B = "R16B",
 	R16C = "R16C",
 	R16FINAL = "R16FINAL",
@@ -14,8 +16,7 @@ local MODES = {
 
 return {
 	Modes = MODES,
-	-- Normal Studio Play is the fast human core-iteration loop: scene + G0 racer,
-	-- with no automatic B03-B16/R17 evidence startup. Select a focused/R16/R17
-	-- evidence mode explicitly when that evidence is actually needed.
-	Mode = "G0",
+	-- Core V3 Task 8 human flat-physics mode. This starts only CoreV3FlatHarness;
+	-- legacy obstacle/regression/evidence harnesses stay out of the startup path.
+	Mode = "COREV3",
 }

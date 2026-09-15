@@ -24,54 +24,55 @@ local SHAPE_B = {
 	Vector2.new(-0.05, -0.82),
 }
 
-local function angularDistanceDegrees(a: number, b: number): number
-	local delta = (a - b + 180) % 360 - 180
-	return math.abs(delta)
-end
-
 local function assertSamePoints(left: { Vector2 }, right: { Vector2 })
 	assert(#left == #right, "two legs must share mapped point count")
 	for index, point in left do
-		assert((point - right[index]).Magnitude <= 1e-6, string.format("mapped point %d differs between legs", index))
+		assert(
+			(point - right[index]).Magnitude <= 1e-6,
+			string.format("mapped point %d differs between legs", index)
+		)
 	end
 end
 
 local function countHinges(model: Model): number
 	local count = 0
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("HingeConstraint") then count += 1 end
+		if descendant:IsA("HingeConstraint") then
+			count += 1
+		end
 	end
 	return count
 end
 
 local function assertStructuralPair(racer: any)
 	local pair = racer:GetLegPair()
-	assert(pair ~= nil, "B09 CR2 pair missing")
-	local leftDrive = pair:GetLeftDrive()
-	local rightDrive = pair:GetRightDrive()
-	local left = leftDrive:GetLeg()
-	local right = rightDrive:GetLeg()
+	assert(pair ~= nil, "B09 shared-drive pair missing")
+
+	local drive = pair:GetDrive()
+	local left = pair:GetLeftLeg()
+	local right = pair:GetRightLeg()
+
 	assertSamePoints(left:GetMappedPoints(), right:GetMappedPoints())
 
 	local body = racer:GetBody()
-	local leftLocal = body.CFrame:PointToObjectSpace(leftDrive:GetRoot().Position)
-	local rightLocal = body.CFrame:PointToObjectSpace(rightDrive:GetRoot().Position)
-	local halfWidth = body.Size.X * 0.5
-	assert(math.abs(leftLocal.X + halfWidth) <= 1e-3, "left drive pivot must be on negative horizontal cube edge")
-	assert(math.abs(rightLocal.X - halfWidth) <= 1e-3, "right drive pivot must be on positive horizontal cube edge")
-	assert(math.abs(leftLocal.Z) <= 1e-3 and math.abs(rightLocal.Z) <= 1e-3, "CR2 drives must not use depth-separated Z sockets")
+	local leftLocal = body.CFrame:PointToObjectSpace(drive:GetLeftRoot().Position)
+	local rightLocal = body.CFrame:PointToObjectSpace(drive:GetRightRoot().Position)
+	local expectedZ = body.Size.Z * 0.5 + PhysicsConfig.LegGeometry.LegMountOutset
 
-	local structuralDifference = (rightDrive:GetPhaseDegrees() - leftDrive:GetPhaseDegrees() + 360) % 360
-	assert(
-		angularDistanceDegrees(structuralDifference, PhysicsConfig.Motor.RightPhaseOffsetDegrees) <= 0.5,
-		string.format("CR2 opposed drive phase expected 180 got %.4f", structuralDifference)
+	assert(math.abs(leftLocal.Z + expectedZ) <= 1e-3, "left root must sit outside -Z cube face")
+	assert(math.abs(rightLocal.Z - expectedZ) <= 1e-3, "right root must sit outside +Z cube face")
+	assert(math.abs(leftLocal.X) <= 1e-3 and math.abs(rightLocal.X) <= 1e-3, "side roots must not shift forward/back")
+	assert(math.abs(pair:GetPhaseErrorDegrees()) <= 1e-6, "rigid shared axle must have zero pair drift")
+
+	local leftRightDot = drive:GetLeftRoot().CFrame.RightVector:Dot(
+		drive:GetRightRoot().CFrame.RightVector
 	)
+	assert(leftRightDot <= -0.999, "right root must be rigidly opposed by 180 degrees")
 
-	local leftJoint = leftDrive:GetJoint()
-	local rightJoint = rightDrive:GetJoint()
-	assert(leftJoint.Name == "DriveJoint" and rightJoint.Name == "DriveJoint", "CR2 drive joints missing")
-	assert(leftJoint.ActuatorType == Enum.ActuatorType.Motor and rightJoint.ActuatorType == Enum.ActuatorType.Motor)
-	assert(countHinges(racer:GetModel()) == 2, "CR2 pair must own exactly two HingeConstraints")
+	local joint = drive:GetJoint()
+	assert(joint.Name == "DriveJoint")
+	assert(joint.ActuatorType == Enum.ActuatorType.Motor)
+	assert(countHinges(racer:GetModel()) == 1, "shared pair must own exactly one HingeConstraint")
 end
 
 function B09TwoLegPhaseSpec.run()
@@ -84,6 +85,7 @@ function B09TwoLegPhaseSpec.run()
 		spawnCFrame = CFrame.new(-28, 10, 0),
 		laneCenterZ = 0,
 	})
+
 	local body = racer:GetBody()
 	body.Anchored = true
 
@@ -93,25 +95,24 @@ function B09TwoLegPhaseSpec.run()
 	assertStructuralPair(racer)
 
 	local pairBefore = racer:GetLegPair()
-	local leftDriveBefore = pairBefore:GetLeftDrive()
-	local rightDriveBefore = pairBefore:GetRightDrive()
-	local leftJointBefore = leftDriveBefore:GetJoint()
-	local rightJointBefore = rightDriveBefore:GetJoint()
-	local leftLegBefore = leftDriveBefore:GetLeg()
-	local rightLegBefore = rightDriveBefore:GetLeg()
+	assert(pairBefore ~= nil)
+	local driveBefore = pairBefore:GetDrive()
+	local jointBefore = driveBefore:GetJoint()
+	local leftLegBefore = pairBefore:GetLeftLeg()
+	local rightLegBefore = pairBefore:GetRightLeg()
 
 	racer:ApplyShape(SHAPE_B, false)
+
 	local pairAfter = racer:GetLegPair()
-	assert(pairAfter == pairBefore, "redraw must preserve CR2 pair")
-	assert(pairAfter:GetLeftDrive() == leftDriveBefore, "redraw replaced LeftDrive")
-	assert(pairAfter:GetRightDrive() == rightDriveBefore, "redraw replaced RightDrive")
-	assert(pairAfter:GetLeftDrive():GetJoint() == leftJointBefore, "redraw replaced left DriveJoint")
-	assert(pairAfter:GetRightDrive():GetJoint() == rightJointBefore, "redraw replaced right DriveJoint")
-	assert(pairAfter:GetLeftLeg() == leftLegBefore and pairAfter:GetRightLeg() == rightLegBefore, "redraw replaced persistent leg owners")
+	assert(pairAfter == pairBefore, "redraw replaced persistent pair")
+	assert(pairAfter:GetDrive() == driveBefore, "redraw replaced SharedLegDrive")
+	assert(pairAfter:GetDrive():GetJoint() == jointBefore, "redraw replaced DriveJoint")
+	assert(pairAfter:GetLeftLeg() == leftLegBefore, "redraw replaced left leg owner")
+	assert(pairAfter:GetRightLeg() == rightLegBefore, "redraw replaced right leg owner")
 	assertStructuralPair(racer)
 
 	racer:Destroy()
-	print("[DrawRacers][B09] CR2 twin-drive same-shape/opposed-phase tests PASS")
+	print("[DrawRacers][B09] shared-axle fixed-phase tests PASS")
 end
 
 return B09TwoLegPhaseSpec

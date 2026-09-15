@@ -50,7 +50,11 @@ local function isFiniteNumber(value: any): boolean
 end
 
 local function validationMessageForReason(reasonCode: string): string
-	if reasonCode == "TOO_FEW_POINTS" or reasonCode == "TOO_SHORT" or reasonCode == "INVALID_STROKE" then
+	if reasonCode == "TOO_FEW_POINTS"
+		or reasonCode == "TOO_SHORT"
+		or reasonCode == "INVALID_STROKE"
+		or reasonCode == "NO_DRIVE_COLLIDERS"
+	then
 		return "DRAW A DIFFERENT SHAPE"
 	end
 	return "TRY AGAIN"
@@ -363,6 +367,15 @@ function DrawingController:_renderAcceptedStroke()
 	renderPolyline(self._ui.acceptedLayer, self.acceptedPoints, self:_strokeThickness(), 0.35)
 end
 
+function DrawingController:_clearAcceptedStroke()
+	table.clear(self._acceptedSemanticPoints)
+	self._acceptedPresentationAnchor = nil
+	table.clear(self.acceptedPoints)
+	clearSegments(self._ui.acceptedLayer)
+	self._hasStartedStroke = false
+	self._ui.emptyGhost.Visible = true
+end
+
 function DrawingController:_applyLayout(family: string)
 	if self._drawing then self._pendingLayoutFamily = family; return end
 	self._layoutFamily = family
@@ -548,7 +561,14 @@ function DrawingController:_onStrokeResult(result: any)
 		return
 	end
 	self._presentationAnchors[sequence] = nil
-	self:_renderAcceptedStroke()
+	if result.clearAccepted == true and sequence >= self._lastAcceptedSequence then
+		-- Fail-closed Core V3 redraws destroy the old physical pair before the new
+		-- pair can commit. If that mechanical transaction fails, keeping the old
+		-- accepted line visible would lie about the actual racer state.
+		self:_clearAcceptedStroke()
+	else
+		self:_renderAcceptedStroke()
+	end
 	if sequence == self._latestSubmittedSequence then
 		self:_setValidationReason(if type(result.rejectReasonCode) == "string" then result.rejectReasonCode else "STROKE_REJECTED")
 	end

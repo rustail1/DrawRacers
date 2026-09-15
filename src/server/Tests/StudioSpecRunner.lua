@@ -7,7 +7,8 @@ function StudioSpecRunner.run(testsFolder: Instance, specNames: { string }): (bo
 
 	for _, specName in specNames do
 		local ok, failure = xpcall(function()
-			local module = testsFolder:WaitForChild(specName)
+			local module = testsFolder:FindFirstChild(specName)
+			assert(module ~= nil, specName .. " missing")
 			local spec = require(module)
 			assert(type(spec) == "table" and type(spec.run) == "function", specName .. " missing run()")
 			spec.run()

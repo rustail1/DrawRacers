@@ -24,10 +24,12 @@ local SECOND_SHAPE = {
 	Vector2.new(-0.58, -0.72),
 }
 
-local function countNamedDriveModels(legsFolder: Folder): number
+local function countSharedDriveModels(legsFolder: Folder): number
 	local count = 0
 	for _, child in legsFolder:GetChildren() do
-		if child:IsA("Model") and (child.Name == "LeftDrive" or child.Name == "RightDrive") then count += 1 end
+		if child:IsA("Model") and child.Name == "SharedLegDrive" then
+			count += 1
+		end
 	end
 	return count
 end
@@ -35,16 +37,18 @@ end
 local function countHinges(model: Model): number
 	local count = 0
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("HingeConstraint") then count += 1 end
+		if descendant:IsA("HingeConstraint") then
+			count += 1
+		end
 	end
 	return count
 end
 
-local function assertNoPendingGeometry(model: Model)
+local function assertNoTransientGeometry(model: Model)
 	for _, descendant in model:GetDescendants() do
-		assert(descendant.Name ~= "StageVisual", "redraw leaked StageVisual")
-		assert(descendant.Name ~= "PendingSegments", "redraw leaked PendingSegments")
-		assert(descendant.Name ~= "PendingVisual", "redraw leaked PendingVisual")
+		assert(descendant.Name ~= "Preview", "redraw leaked Preview")
+		assert(descendant.Name ~= "BuildSegments", "redraw leaked BuildSegments")
+		assert(descendant.Name ~= "BuildVisual", "redraw leaked BuildVisual")
 	end
 end
 
@@ -63,19 +67,19 @@ function B13AtomicRedrawSpec.run()
 	local body = racer:GetBody()
 	body.Anchored = true
 	local bodyCFrameBefore = body.CFrame
+
 	local legsFolder = model:FindFirstChild("Legs")
 	assert(legsFolder and legsFolder:IsA("Folder"))
 
 	local first = LegShapeService.ValidateAndBuild(racer, FIRST_SHAPE, false)
 	assert(first.accepted == true and first.shapeVersion == 1, "B13 setup shape failed")
+
 	local pair = racer:GetLegPair()
 	assert(pair ~= nil, "B13 setup pair missing")
-	local leftDrive = pair:GetLeftDrive()
-	local rightDrive = pair:GetRightDrive()
-	local leftJoint = leftDrive:GetJoint()
-	local rightJoint = rightDrive:GetJoint()
-	local left = leftDrive:GetLeg()
-	local right = rightDrive:GetLeg()
+	local drive = pair:GetDrive()
+	local joint = drive:GetJoint()
+	local left = pair:GetLeftLeg()
+	local right = pair:GetRightLeg()
 	local leftModel = left:GetModel()
 	local rightModel = right:GetModel()
 
@@ -83,29 +87,37 @@ function B13AtomicRedrawSpec.run()
 	assert(invalid.accepted == false, "invalid redraw must fail closed")
 	assert(racer:GetShapeVersion() == 1, "invalid redraw changed ShapeVersion")
 	assert(racer:GetLegPair() == pair, "invalid redraw replaced pair")
-	assert(pair:GetLeftDrive() == leftDrive and pair:GetRightDrive() == rightDrive, "invalid redraw replaced drives")
-	assert(leftDrive:GetJoint() == leftJoint and rightDrive:GetJoint() == rightJoint, "invalid redraw replaced drive joints")
-	assert(left:GetModel() == leftModel and right:GetModel() == rightModel, "invalid redraw replaced leg models")
+	assert(pair:GetDrive() == drive, "invalid redraw replaced SharedLegDrive")
+	assert(drive:GetJoint() == joint, "invalid redraw replaced DriveJoint")
+	assert(left:GetModel() == leftModel and right:GetModel() == rightModel, "invalid redraw replaced leg owners")
+	assertNoTransientGeometry(model)
 
 	local second = LegShapeService.ValidateAndBuild(racer, SECOND_SHAPE, false)
-	assert(second.accepted == true and second.shapeVersion == 2 and second.shapeSpec ~= nil, "valid B13 redraw must accept exactly once")
+	assert(
+		second.accepted == true
+			and second.shapeVersion == 2
+			and second.shapeSpec ~= nil,
+		"valid B13 redraw must accept exactly once"
+	)
+
 	assert(racer:GetShapeVersion() == 2)
-	assert(racer:GetLegPair() == pair, "successful redraw replaced persistent pair")
-	assert(pair:GetLeftDrive() == leftDrive and pair:GetRightDrive() == rightDrive, "successful redraw replaced persistent drives")
-	assert(leftDrive:GetJoint() == leftJoint and rightDrive:GetJoint() == rightJoint, "successful redraw replaced drive joints")
-	assert(pair:GetLeftLeg() == left and pair:GetRightLeg() == right, "successful redraw replaced side owners")
-	assert(left:GetModel() == leftModel and right:GetModel() == rightModel, "successful redraw replaced side models")
-	assert(body.CFrame == bodyCFrameBefore, "successful redraw moved anchored BodyCollider")
-	assert(countNamedDriveModels(legsFolder) == 2, "redraw must leave exactly two persistent drive models")
-	assert(countHinges(model) == 2, "redraw must leave exactly two drive hinges")
-	assert(#left:GetSegments() == #second.shapeSpec.segmentPlan, "LeftLeg commit must match authoritative plan")
-	assert(#right:GetSegments() == #second.shapeSpec.segmentPlan, "RightLeg commit must match authoritative plan")
-	assertNoPendingGeometry(model)
+	assert(racer:GetLegPair() == pair, "successful redraw replaced pair")
+	assert(pair:GetDrive() == drive, "successful redraw replaced SharedLegDrive")
+	assert(drive:GetJoint() == joint, "successful redraw replaced DriveJoint")
+	assert(pair:GetLeftLeg() == left and pair:GetRightLeg() == right, "successful redraw replaced leg owners")
+	assert(left:GetModel() == leftModel and right:GetModel() == rightModel, "successful redraw replaced leg models")
+	assert(body.CFrame == bodyCFrameBefore, "anchored body moved during redraw")
+	assert(countSharedDriveModels(legsFolder) == 1, "redraw must keep one SharedLegDrive")
+	assert(countHinges(model) == 1, "redraw must keep one DriveJoint")
+	assert(#left:GetSegments() == #second.shapeSpec.segmentPlan, "left final geometry mismatch")
+	assert(#right:GetSegments() == #second.shapeSpec.segmentPlan, "right final geometry mismatch")
+	assertNoTransientGeometry(model)
 
 	racer:PrepareForRecovery()
-	assertNoPendingGeometry(model)
+	assertNoTransientGeometry(model)
+
 	racer:Destroy()
-	print("[DrawRacers][B13] CR2 transactional redraw identity tests PASS")
+	print("[DrawRacers][B13] Leg Core v2 redraw identity/cleanup tests PASS")
 end
 
 return B13AtomicRedrawSpec

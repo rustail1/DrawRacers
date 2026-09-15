@@ -22,6 +22,9 @@ export type StrokeResultPayload = {
 	shapeVersion: number?,
 	acceptedPoints: SemanticPoints?,
 	rejectReasonCode: string?,
+	-- True only when a mechanical redraw invalidated the previously active pair.
+	-- The client must clear its accepted-stroke presentation in that case.
+	clearAccepted: boolean?,
 }
 
 export type ClampOptions = {
@@ -64,6 +67,7 @@ export type LegShapeResult = {
 	shapeVersion: number?,
 	shapeSpec: ShapeSpec?,
 	rejectReasonCode: string?,
+	clearAccepted: boolean?,
 }
 
 return {}
