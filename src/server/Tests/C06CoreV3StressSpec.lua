@@ -31,6 +31,7 @@ local SHAPE_B = {
 
 local REDRAW_COUNT = 20
 local STATE_TIMEOUT = 2.0
+local APPLY_TIMEOUT = 3.0
 
 local LEGACY_SOURCE_KEYS = {
 	"GetLeftDrive",
@@ -144,14 +145,14 @@ local function assertNoHorizontalForce(model: Model)
 	end
 end
 
-local function assertNoOrphanParts(model: Model, axleRootModel: Instance)
+local function assertNoOrphanParts(model: Model, axleRootModel: Instance, laneOwner: Instance)
 	local body = model:FindFirstChild("BodyCollider")
 	assert(body ~= nil and body:IsA("Part"), "C06 racer missing BodyCollider")
 
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("BasePart") and descendant ~= body then
 			assert(
-				descendant:IsDescendantOf(axleRootModel),
+				descendant:IsDescendantOf(axleRootModel) or descendant:IsDescendantOf(laneOwner),
 				string.format("C06 orphan runtime BasePart found outside SharedAxle: %s", descendant:GetFullName())
 			)
 		end
@@ -230,6 +231,10 @@ local function assertActiveStructure(racer: any, core: any, axle: any, joint: Hi
 	assert(axle:GetJoint() == joint, "C06 redraw replaced HingeConstraint")
 	assert(countClass(model, "HingeConstraint") == 1, "C06 racer must contain exactly one HingeConstraint")
 	assert(countNamedModels(model, "SharedAxle") == 1, "C06 racer must contain exactly one SharedAxle model")
+	assert(countNamedModels(model, "CoreV3LaneConstraint") == 1, "C06 racer must contain exactly one lane owner")
+	assert(countClass(model, "PlaneConstraint") == 1, "C06 racer must contain exactly one PlaneConstraint")
+	assert(countClass(model, "AlignOrientation") == 1, "C06 racer must contain exactly one AlignOrientation")
+	assert(countClass(model, "AlignPosition") == 0, "C06 lane owner must not constrain X/Y translation")
 	assert(#collectLegOwners(model) == 2, "C06 racer must contain exactly two Core V3 leg owners")
 	assert(model:FindFirstChild("CoreV3ClearanceLift", true) == nil, "C06 ACTIVE state leaked clearance VectorForce")
 	assert(model:FindFirstChild("AntiStallForce", true) == nil, "C06 Core V3 validation leaked AntiStall helper")
@@ -242,7 +247,9 @@ local function assertActiveStructure(racer: any, core: any, axle: any, joint: Hi
 	assertNoHorizontalForce(model)
 	local axleModel = axle:GetAxleRoot().Parent
 	assert(axleModel ~= nil, "C06 SharedAxle root lost parent")
-	assertNoOrphanParts(model, axleModel)
+	local laneOwner = model:FindFirstChild("CoreV3LaneConstraint")
+	assert(laneOwner ~= nil, "C06 lane owner missing")
+	assertNoOrphanParts(model, axleModel, laneOwner)
 
 	local counts = snapshotCounts(model)
 	if expectedCounts ~= nil then
@@ -253,18 +260,39 @@ end
 
 local function startStableRedraw(racer: any, body: Part, normalizedPoints: { Vector2 })
 	-- Keep normal stress geometry deterministic without asking production Core V3
-	-- to fight gravity. The body is unanchored only for the redraw hop itself so
-	-- ApplyImpulse always targets a finite-mass assembly, then the test freezes it
-	-- while PREVIEW/WAIT_CLEAR complete above the flat track.
+	-- to fight gravity. The body is unanchored for the redraw hop, then frozen as
+	-- soon as the real controller enters PREVIEW/WAIT_CLEAR.
 	body.Anchored = false
 	body.AssemblyLinearVelocity = Vector3.zero
 	body.AssemblyAngularVelocity = Vector3.zero
 
-	local ok, failure = xpcall(function()
-		racer:ApplyShape(normalizedPoints, false)
-	end, debug.traceback)
+	local completed = false
+	local ok = false
+	local failure = nil :: any
+	task.spawn(function()
+		ok, failure = xpcall(function()
+			racer:ApplyShape(normalizedPoints, false)
+		end, debug.traceback)
+		completed = true
+	end)
+
+	local deadline = os.clock() + APPLY_TIMEOUT
+	while not completed and os.clock() < deadline do
+		local core = racer:GetLegCore()
+		if core ~= nil then
+			local state = core:GetState()
+			if state == "PREVIEW" or state == "WAIT_CLEAR" then
+				break
+			end
+		end
+		RunService.Heartbeat:Wait()
+	end
 
 	body.Anchored = true
+	while not completed and os.clock() < deadline do
+		RunService.Heartbeat:Wait()
+	end
+	assert(completed, "C06 timed out waiting for stable redraw completion")
 	assert(ok, failure)
 end
 

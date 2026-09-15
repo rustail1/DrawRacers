@@ -99,6 +99,17 @@ local function legNearTrack(core: any, track: BasePart): number
 	return count
 end
 
+local function waitFor(predicate: () -> boolean, timeout: number, message: string)
+	local deadline = os.clock() + timeout
+	while os.clock() < deadline do
+		if predicate() then
+			return
+		end
+		RunService.Heartbeat:Wait()
+	end
+	error(message)
+end
+
 function C07CoreV3FlatLocomotionSpec.run()
 	CollisionGroups.ensure()
 	local runtimeFolder, createdRuntime = ensureFolder(Workspace, "Runtime")
@@ -139,12 +150,51 @@ function C07CoreV3FlatLocomotionSpec.run()
 		local body = racer:GetBody()
 		body.AssemblyLinearVelocity = Vector3.zero
 		body.AssemblyAngularVelocity = Vector3.zero
+		local model = racer:GetModel()
+		local lane = racer:GetLaneConstraint()
+		local laneOwner = model:FindFirstChild("CoreV3LaneConstraint")
+		assert(laneOwner ~= nil, "C07 dedicated lane owner missing")
+		assert(countHinges(model) == 0, "C07 lane owner must not create a second/early hinge")
+		assert(lane:GetPlaneConstraint().Enabled == true, "C07 lane PlaneConstraint must be enabled")
+		assert(lane:GetOrientationConstraint().RigidityEnabled == false, "C07 upright torque must remain bounded")
+		assert(not hasHorizontalAssist(model), "C07 lane owner must not use horizontal movement helpers")
+
+		-- No legs and no external X impulse: neither lane confinement nor upright
+		-- torque may manufacture forward locomotion.
+		local passiveStartX = body.Position.X
+		for _ = 1, 4 do
+			RunService.Heartbeat:Wait()
+		end
+		assert(math.abs(body.Position.X - passiveStartX) < 0.05, "C07 lane owner created passive +X/-X locomotion")
+
+		-- One external impulse must remain effective in the plane (X/Y), while an
+		-- imposed Z offset and body tilt are corrected by their dedicated constraints.
+		body.CFrame = CFrame.new(4, 18, 3) * CFrame.Angles(math.rad(28), math.rad(18), math.rad(24))
+		body.AssemblyLinearVelocity = Vector3.zero
+		body.AssemblyAngularVelocity = Vector3.zero
+		local freedomStart = body.Position
+		body:ApplyImpulse(Vector3.new(body.AssemblyMass * 6, body.AssemblyMass * 35, body.AssemblyMass * 12))
+		for _ = 1, 12 do
+			RunService.Heartbeat:Wait()
+		end
+		assert(body.Position.X - freedomStart.X > 0.20, "C07 PlaneConstraint blocked free X translation")
+		assert(body.Position.Y - freedomStart.Y > 0.10, "C07 PlaneConstraint blocked free Y translation")
+		waitFor(function()
+			return math.abs(body.Position.Z - lane:GetLaneCenterZ()) <= 0.10
+		end, 1.0, "C07 body did not return to lane center Z")
+		waitFor(function()
+			return body.CFrame.UpVector:Dot(Vector3.yAxis) >= 0.97
+		end, 1.5, "C07 body did not return upright")
+
+		body.CFrame = CFrame.new(4, 3.3, lane:GetLaneCenterZ())
+		body.AssemblyLinearVelocity = Vector3.zero
+		body.AssemblyAngularVelocity = Vector3.zero
+		RunService.Heartbeat:Wait()
 		local build = LegShapeService.ValidateAndBuild(racer, ROUND_SHAPE, true)
 		assert(build.accepted == true, build.rejectReasonCode or "C07 ROUND must commit ACTIVE")
 
 		local core = racer:GetLegCore()
 		assert(core ~= nil and core:GetState() == "ACTIVE", "C07 accepted ROUND must be mechanically ACTIVE")
-		local model = racer:GetModel()
 		local axle = core:GetSharedAxle()
 		local axleRoot = axle:GetAxleRoot()
 		local joint = axle:GetJoint()

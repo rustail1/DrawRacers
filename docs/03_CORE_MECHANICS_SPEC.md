@@ -1,97 +1,123 @@
-# 03 — CORE MECHANICS SPEC
+# 03 — CORE MECHANICS SPEC — CORE V3
 
-> PRODUCT LOCK v1.3.5 / R17: final target is an 8-player live drawing race; 2-player is an implementation/integration stage only. Product power is never sold.
+Status: **CURRENT PRODUCT/MECHANICAL CONTRACT — 2026-09-15**
 
-> Numeric ownership is split deliberately: global physics/race/camera tuning → `16`; UI geometry → `59`; TrackPiece/launch track geometry → `60`; economy/progression → `61`; exact DrawCanvas→world/pivot/collider mapping → `73`; lifecycle time semantics → `74`; bot behavior defaults → `75`. Этот файл определяет core behavior и не создаёт второй numeric owner.
-
-> R17 mechanical override: current production leg rotation is owned by one `LegPairAssembly` with one shared axle, one `AxleJoint` and one motor. Left/right `LegAssembly` objects are rigid side geometry mounted **co-phase (0° local phase difference)** on opposite Z sides of the cube. This supersedes both the earlier independent per-side hinge/motor assumption and the interim structural-180 interpretation; it does not change R16.3B stroke origin semantics. Live solver/visual acceptance remains HUMAN STUDIO PENDING.
+Primary mechanical authority: `CURRENT_CORE_V3_SOURCE_OF_TRUTH.md`.
+Numeric owners remain split: Core V3 physics values -> `16`; DrawCanvas/world mapping -> `73`; UI geometry -> `59`; track geometry -> `60`; lifecycle -> `74`.
 
 ## A. Drawing input
-### Allowed
-- один continuous stroke на одну новую shape;
+- one continuous stroke per new shape;
 - mouse/touch;
-- self-intersection допустим;
-- open/closed shape допустима;
-- игрок может redraw в любой момент RACING.
+- self-intersection legal;
+- open/closed stroke legal;
+- redraw allowed during racing.
 
-### Flow
-`pointer down → sample Vector2 points → local preview → pointer up → clean/simplify/normalize → submit → validate → build new shared leg pair → atomic swap`.
+Flow:
+`pointer down -> local preview -> pointer up -> cleanup/simplify -> SubmitStroke -> server validation -> ShapeSpec -> Core V3 rebuild`.
 
-### Invalid input
-Stroke считается invalid, если после очистки остаётся меньше минимального количества полезных точек/длина ниже threshold/выходит за payload limits. Invalid input **не удаляет** рабочую shape.
+Invalid/tiny/stale input does not become a new mechanical shape.
 
-## B. Stroke processing
-1. Sample only when pointer moved enough.
-2. Clamp to the visible wide semantic DrawInputRect.
-3. Remove near-duplicates.
-4. Simplify (RDP or equivalent).
-5. Resample to bounded point count/segment length.
-6. Per **R16.3B/`73`**, server-authoritative processing translates the cleaned stroke so the **first cleaned point** becomes `(0,0)` before physical mapping. This is translation-only: do not resize, rotate, mirror, reverse or normalize every shape to a standard radius.
-7. The previous R16.3A rule that required the cleaned **bounds midpoint** / bounds center to become the pivot is superseded. Bounds are still validation/debug data but are not the mechanical-origin owner.
-8. Server repeats validation/clamping and returns authoritative first-point-anchored accepted points; client shape is never trusted. A sequence-scoped client presentation anchor may keep the accepted line visually where it was drawn, but that offset never enters ShapeSpec or physics.
+## B. Shape processing
+- client prediction and server authority use the same canonical semantics;
+- server recomputes/validates from the submitted semantic stroke;
+- after cleanup the first cleaned point becomes authoritative `(0,0)` by translation only;
+- do not resize, rotate, mirror, reverse or normalize every shape to one standard radius;
+- ShapeSpec with no `canCollide=true` drive segment is rejected as `NO_DRIVE_COLLIDERS`.
 
 ## C. Shape semantics
-Нет распознавания «круг/L/звезда» ради movement. Реальная geometry определяет movement. Shape classification разрешён только для analytics/debug, но не заменяет physics.
+There is no movement classification such as "circle gets speed" or "hook gets climb". Real collider geometry and contact create the movement trade-off. Classification may exist only for analytics/debug/reference tests.
 
-## D. Leg construction
-- Один stroke создаёт две duplicated rigid side shapes left/right по Z; exact coordinate/pivot/duplication semantics are `73`.
-- `LegPairAssembly` owns one shared `AxleRoot`, one `AxleJoint` and **one motor** for the pair.
-- Left/right `LegAssembly` objects contain `LegRoot` + welded physical collider segments and are rigidly mounted to the shared axle; they do not own actuators.
-- Both side copies use `RightPhaseOffsetDegrees = 0`: they are **co-phase** on the shared axle while remaining physically separated at the left/right Z sockets.
-- Visual curve может иметь больше segments, чем physics representation and is nonphysical.
-- Physical collider Parts remain hidden from presentation under R16.3B; visual Parts never collide/touch/query or add mass.
-- Canonical collision rule: **own Body↔Leg = no, own Leg↔Leg = no, any Racer↔Racer = no; Body/Leg↔Track = collide**. Exact matrix = `28/65`. Inner-hub segments may additionally set `CanCollide=false` per `73`, but no implementation may re-enable self/rival pushing.
+## D. One shared axle / opposed side legs
+One stroke creates two depth-separated copies of the same XY ShapeSpec:
+- LEFT on `-Z`;
+- RIGHT on `+Z`;
+- fixed structural **180°** relation;
+- one shared `AxleRoot`;
+- shared axle local X/Y fixed at the `BodyCollider` center, independent of ShapeSpec/redraw;
+- exactly one `HingeConstraint`;
+- exactly one motor command owner;
+- no per-side actuator and no phase-chasing loop.
 
-## E. Rotation
-Exact shared hinge axis, axle/body attachment, side socket offsets, starting motor sign and structural phase construction are `73`; tuneable magnitude is `16`.
-- The shared axle постоянно вращается in racing state while an accepted shape is active.
-- Direction одинаково толкает обе rigid side shapes и racer вперёд.
-- Left/right use the same shared-axle angular orientation: **co-phase 0° local difference**.
-- `LegPairAssembly` has one motor; no per-side reverse sign or Heartbeat phase-chasing controller is allowed.
-- Motor должен иметь достаточно torque, чтобы geometry имела значение, но не бесконечно пробивать стены.
+Current implementation owners are `Runtime/CoreV3/SharedAxle`, `LegGeometry`, `LegCoreController`, `FallRecovery` and `LegCoreConfig`.
 
-## F. Body behavior
-Racer locomotion is 2.5D. X/Y are the physical gameplay plane. Z translation is locked to the racer's lane center and is not player steering/gameplay. Under the R16.1 upright-body contract, **rotation about world Z is locked/corrected together with world X/Y rotation**; the cube does not intentionally tumble with its legs.
+The physical hinge stays connected even while motor drive is off. Motor OFF means `ActuatorType.None`; motor ON means `ActuatorType.Motor`.
 
-Cube остаётся настоящим physical body: X/Y translation remains physically free, so collisions ног с Track могут заставлять его ехать, подпрыгивать, подниматься и падать. Upright orientation correction may apply corrective torque only; it must not provide forward propulsion or vertical lift. Для locomotion вращается shared leg pair, а не BodyCollider.
+## E. Movement source
+Normal +X locomotion is only:
+`motor -> shared axle -> drawn leg colliders -> leg/Track friction -> BodyCollider +X`.
 
-## G. Movement source
-Основное forward movement создаётся collision ног с track. Разрешён очень слабый anti-stall assist только для предотвращения «валидная форма вообще не двигается на плоском полу»; assist не должен проходить препятствия вместо shape.
+During the Core V3 Flat Gate the following are forbidden as normal locomotion:
+- constant +X VectorForce;
+- LinearVelocity/BodyVelocity forward assist;
+- AntiStall propulsion;
+- obstacle-recovery propulsion;
+- PivotTo/body CFrame/Position movement;
+- hidden second hinge/motor.
 
-## H. Redraw
-- Во время pointer drag старая shape продолжает работать.
-- Новая форма применяется после release и server validation.
-- Swap атомарный: old `LegPairAssembly` removed only when the staged replacement pair is ready/committed.
-- Body CFrame/linear/angular velocity не сбрасываются solely because of redraw.
-- The one current axle phase is preserved across redraw; both side copies remain co-phase at the two side sockets.
-- Failed build/commit/enable restores the old pair and must not leak retiring Instances.
-- Redraw не ставит global slow motion в multiplayer.
+BodyCollider remains collidable with Track but is not the traction source.
 
-## I. Obstacle read/adaptation
-Core считается работающим, если разные geometry создают реально наблюдаемые trade-offs:
-- rounded/wide → speed on flat;
-- long → reach/gaps;
-- hook/asymmetry → climbing/steps;
-- compact → low clearance;
-- weird multi-point → bounce/unstable but potentially useful.
+## F. 2.5D body behavior
+The intended race is 2.5D:
+- X translation = physical/free;
+- Y translation = physical/free;
+- Z translation = locked to lane plane;
+- body orientation = stabilized upright;
+- shared axle rotation = free through the one hinge.
 
-Нельзя hard-code `if L then climb`.
+The lane/orientation owner may constrain depth/orientation only. It must not add forward propulsion or vertical lift.
 
-## J. Stuck/recovery
-1. Система отслеживает progress delta.
-2. Сначала показывает contextual REDRAW hint.
-3. Если progress долго отсутствует — checkpoint recovery по tuning.
-4. Recovery даёт time disadvantage, но не завершает race.
+Preferred next implementation boundary is a dedicated Core V3 lane owner using a PlaneConstraint plus bounded torque-only orientation stabilization. This decision is approved but remains runtime/human pending until implemented and tested.
 
-## K. Finish
-Finish засчитывается server-side только после обязательной sequence checkpoints. Placement uses the deterministic `FinishAcceptedAt → FinishSequence → SlotIndex` rule from `74`; client time never breaks ties. Reward выдаётся только сервером. Grace window, hard timeout, DNF ordering, kill-plane and requeue semantics are owned by `74_RACE_LIFECYCLE_TIMEOUT_REQUEUE_DEFAULTS.md`.
+## G. Redraw transaction
+Current state machine:
+`EMPTY -> PREVIEW -> WAIT_CLEAR -> ACTIVE`, and `ACTIVE -> PREVIEW -> WAIT_CLEAR -> ACTIVE`; failure -> `EMPTY`.
 
-## L. Core acceptance test
-Prototype проходит gate, только если playtesters без объяснения способны:
-- нарисовать shape;
-- увидеть причинную связь shape→movement;
-- самостоятельно попробовать вторую shape после плохого результата;
-- назвать хотя бы две формы с разным полезным поведением;
-- не использовать одну и ту же «палку» на всех test obstacles.
+Rules:
+- old physical leg geometry is removed at rebuild start;
+- both previews and both physical ghost sides are created together on the current axle;
+- whole-pair required lift is calculated before one bounded +Y redraw hop;
+- preview/ghost geometry follows the moving body/axle assembly;
+- new physical colliders remain ghost/non-colliding until whole-pair clearance passes;
+- after the hop, only bounded +Y clearance assistance may softly finish the lift;
+- pair collision enables atomically;
+- accepted ShapeVersion/ShapeSpec commits only after true ACTIVE;
+- mechanical failure is fail-closed and reports reject;
+- if a previous physical accepted shape was invalidated, accepted client presentation is cleared;
+- pending state clears even on unexpected exception;
+- redraw does not teleport/reset BodyCollider X/Y motion as a locomotion shortcut.
 
-Repository automation can validate the R16.3B shape/network/collider and R17 shared-axle contracts, but live solver/visual acceptance remains a Roblox Studio human gate / **HUMAN STUDIO PENDING**.
+## H. Flat Gate before obstacles
+`COREV3_TEST` runs C01–C08. `COREV3` runs the isolated human flat harness.
+
+Dedicated fall recovery may use one whole-racer `PivotTo` only after `BodyCollider.Position.Y` crosses the configured out-of-bounds threshold. It preserves the accepted pair/one hinge and lane center, clears velocities and adds no forward or obstacle assistance.
+
+Human sequence:
+1. ROUND from rest;
+2. SMALL_ROUND;
+3. LONG;
+4. HOOK;
+5. ASYMMETRIC;
+6. 20 redraws while moving.
+
+Required causal evidence:
+- no hidden +X movement without legs;
+- one shared hinge/axle;
+- LEFT -Z / RIGHT +Z / 180°;
+- leg/Track contact;
+- axle rotates relative to body;
+- BodyCollider advances +X from physical contact only;
+- pair activates atomically;
+- lane depth/upright behavior is stable after the approved 2.5D owner lands;
+- no teleport or horizontal helper.
+
+No walls, steps, gaps, tunnels, obstacle recovery or later systems may enter this validation path until Flat Gate PASS.
+
+## I. Obstacles after Flat PASS
+Once Flat Gate is accepted, geometry should create understandable niches: rounded/wide for flat speed, long for reach, hook/asymmetric for climb/steps, compact for clearance. Do not hard-code shape-name bonuses.
+
+## J. Rider/camera
+Rider is client-side presentation only and never affects racer physics. One client-local `RiderAnchor` on BodyCollider owns its stable body-relative transform; the visual remains massless/non-colliding and uses no mover or physical racer connection. Camera follows the racer for side-view readability and does not inherit BodyCollider roll as camera authority.
+
+## K. Evidence language
+Automation can prove contracts/buildability. Roblox solver/feel requires Studio evidence. Until then use:
+`AUTOMATED PASS / HUMAN PHYSICS PENDING`.

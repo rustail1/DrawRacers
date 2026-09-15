@@ -1,11 +1,11 @@
 # 73 — SHAPE COORDINATE, PIVOT & COLLIDER SPEC
-Статус: **EXACT CORE GEOMETRY CONTRACT v1.5.1 / R16.3B + R17 + MR-06 PERSISTENT OPPOSED SHARED AXLE**.
+Статус: **EXACT CORE GEOMETRY CONTRACT v1.6.0 / CORE V3 OPPOSED SHARED AXLE**.
 
 Цель: убрать неоднозначность между экранным stroke и физической leg assembly. Этот файл владеет точным mapping `DrawCanvas → authoritative ShapeSpec → collider segments → persistent shared axle assembly`. `03` владеет игровым поведением, `16` — tuneable constants, `65` — Studio instance tree, `22` — network payload.
 
 > **R16.3B supersedes R16.3A bounds-center semantics.** Положение рисунка на широком DrawInputRect остаётся presentation input, но механический origin определяется первым cleaned point. Старое правило «bounds center / bounds-center → hub» больше не является текущим контрактом.
 >
-> **R17 fixed the current shared-axle structural phase at 180°; MR-01..MR-06 supersede the legacy duplicated/staged core implementation.** `CanonicalLegShape` is the one canonical processing owner used by client prediction and server authority. Production rotation is owned by one persistent `LegPairAssembly`, one shared axle, one `AxleJoint` and **one motor**. Left/Right use the same canonical XY ShapeSpec and a fixed structural opposition `RightPhaseOffsetDegrees = 180`. Redraw reuses the same pair/axle/joint/side owners. Live solver/visual acceptance remains **HUMAN STUDIO PENDING**.
+> **Core V3 is current.** `CanonicalLegShape` owns canonical processing; production rotation is one `SharedAxle` / one `DriveJoint` / one motor owner. Left/Right use the same XY ShapeSpec at fixed 180°. Live solver acceptance remains **HUMAN PHYSICS PENDING**.
 
 ## 1. Canonical 2D coordinate system
 R16.3B uses one **wide semantic DrawInputRect**. Raw semantic coordinates are:
@@ -74,54 +74,38 @@ Before lane/world transforms, racer body local axes are:
 
 Body collider default is `3×3×3` from `16`.
 
-The rotating mechanical axis is centered at body-local `(HubOffsetX, HubOffsetY, 0)` through `BodyCollider.AxleMotorAttachment`:
-- `HubOffsetX = 0.0`;
-- `HubOffsetY = 0.0`.
+The Core V3 rotating axis is mounted at the cube center through `BodyCollider.LegDriveMount`:
+- local X = `0`;
+- local Z = `0`;
+- local Y = `0`;
+- ShapeSpec size/geometry and redraw do not change this mount.
 
-There are no current runtime Left/Right compatibility hub Parts. `HubOffsetZAbs = 1.62` may remain as legacy/reference config data but does not own current side placement.
+There are no current compatibility hub Parts.
 
-The persistent rigid side sockets on the shared axle are owned by `PhysicsConfig.LegGeometry`:
-- `LegSocketZAbs = 1.5`;
-- Left side socket Z = `-LegSocketZAbs`;
-- Right side socket Z = `+LegSocketZAbs`.
+Core V3 side placement is owned by `LegCoreConfig.Mount`: `sideOffset = body.Size.Z/2 + SideOutset`, with Left negative Z and Right positive Z.
 
-Both legs use the **same first-point-anchored XY ShapeSpec geometry**. They are not mirrored/inverted in XY. Left is mounted at local phase `0`; Right is mounted at local phase `RightPhaseOffsetDegrees = 180`, creating the canonical structurally opposed relation while the two copies remain separated across Z.
+Both legs use the **same first-point-anchored XY ShapeSpec geometry**. They are not mirrored/inverted in XY. Left is mounted at local phase `0`; Right is mounted at local phase `RightPhaseDegrees = 180`, creating the canonical structurally opposed relation while the two copies remain separated across Z.
 
-## 5. LegPairAssembly / shared axle structure
-**DataModel hierarchy is owned by `65`**; the exact relevant runtime subtree is:
+## 5. Core V3 shared axle structure
+Relevant runtime subtree:
 ```text
-Racer_<RaceId>_<Slot> (Model)
+Racer
   BodyCollider
-    AxleMotorAttachment (Attachment)
+    LegDriveMount
   Legs
-    AxleRoot (Part)
-      MotorAttachment (Attachment)
-      AxleJoint (HingeConstraint)
-    LeftLeg (Model)
-      LegRoot (Part)
-        AxleWeld (WeldConstraint)
-      Segments
-        Segment_01..NN
-      Visual
-        VisualSegment_01..NN
-        VisualJoint_01..NN
-    RightLeg (Model)
-      LegRoot (Part)
-        AxleWeld (WeldConstraint)
-      Segments
-        Segment_01..NN
-      Visual
-        VisualSegment_01..NN
-        VisualJoint_01..NN
+    SharedAxle
+      AxleRoot
+        AxleAttachment
+      LeftMount
+        LeftLeg
+      RightMount
+        RightLeg
+      DriveJoint (only HingeConstraint)
 ```
 
-`LegPairAssembly` owns `AxleRoot`, the only `AxleJoint`, the only rotating phase, and **one motor**. `AxleJoint.Attachment0 = BodyCollider.AxleMotorAttachment`; `Attachment1 = AxleRoot.MotorAttachment`. The shared hinge axis is local/world `+Z` at neutral racer orientation.
+`SharedAxle` owns the one rotating joint and fixed side relation. Hinge axis is +Z at neutral orientation. LeftMount phase = 0; RightMount phase = 180°. Mounts are welded to AxleRoot; there is no side hinge or actuator.
 
-Each side `LegAssembly` owns rigid geometry only. Its persistent `LegRoot` is welded to `AxleRoot` with `AxleWeld`; there is no per-side HingeConstraint or per-side actuator. Left uses local phase `0`; Right uses `RightPhaseOffsetDegrees = 180`. Because both roots are welded to the same persistent `AxleRoot`, the structural relation cannot drift independently under contact load.
-
-Initial launch motor direction remains `AngularVelocity = -8.0 rad/s`; magnitude/torque sweep is owned by `16`. Negative sign is canonical because with the local frame above it drives normal bottom contact toward `+X` travel. If API axis orientation causes opposite travel, fix the canonical shared attachment axis rather than introducing per-side hidden signs or a second motor.
-
-No Heartbeat phase-chasing controller is part of the contract.
+Motor angular speed is computed from ShapeSpec extent by `LegCoreController`/`LegCoreConfig` target tip speed and clamp. Negative rotation sign remains the current forward convention. Fix axis/sign at the shared owner rather than introducing side-specific signs.
 
 ## 6. Segment collider construction
 For each consecutive first-point-anchored point pair `A→B` in the canonical segment plan:
@@ -138,19 +122,20 @@ For each consecutive first-point-anchored point pair `A→B` in the canonical se
 
 There is **no automatic collision spoke from axle/socket to the first stroke point**. Under R16.3B the first authoritative point itself is `(0,0)` in each side's XY frame, so the first actual polyline segment begins at that side `LegRoot` XY origin only because that is the accepted stroke origin. The builder must never invent an extra spoke or closing segment.
 
-## 7. Persistent redraw / hub-to-tip reshape
-Normal redraw is an in-place geometry transaction:
-- `RacerRuntime` keeps the current `LegPairAssembly` identity;
-- `LegPairAssembly` keeps `AxleRoot`, `AxleJoint`, Left owner and Right owner identities;
-- both sides receive one shared authoritative ShapeSpec;
-- `LegAssembly:ReplaceGeometry` stores the new canonical plan at progress `0`;
-- `LegReshapeMath.Evaluate` determines arc-length prefix state;
-- at `0 < progress < 1`, gameplay geometry contains only the complete prefix plus at most one partial tip collider/visual;
-- future full colliders do not exist merely hidden;
-- reshape duration remains bounded by `0.08..0.15 s`;
-- temporary reshape support, when enabled, is pair-owned, world-Y only and bounded to the reshape;
-- redraw never writes BodyCollider CFrame/PivotTo/Anchored/linear velocity/angular velocity;
-- recovery preparation may force completion of transient geometry, but destination/teleport policy remains external to the mechanical pair.
+## 7. Core V3 redraw / preview / clearance
+Core V3 redraw is not the old persistent hub-to-tip reshape path.
+- old LeftLeg/RightLeg geometry is destroyed at rebuild start;
+- one SharedAxle/DriveJoint owner remains;
+- new LeftLeg/RightLeg previews and physical ghost Parts are created together;
+- initial whole-pair required lift is calculated before the redraw hop;
+- one bounded +Y impulse starts the hop while all ghost geometry follows the axle;
+- preview grows through the current ShapeSpec centerline;
+- physical Parts remain ghost/non-colliding through PREVIEW/WAIT_CLEAR;
+- whole-pair clearance checks only `canCollide=true` segments;
+- bounded soft +Y lift may finish any clearance remaining after the hop;
+- both sides become physical in one activation step;
+- accepted ShapeSpec/ShapeVersion commits only after ACTIVE;
+- mechanical failure is fail-closed to EMPTY.
 
 ## 8. Acceptance invariants
 Repository/source acceptance requires:
@@ -158,11 +143,13 @@ Repository/source acceptance requires:
 - client prediction and server authority use the same canonical semantics while server recomputes from raw input;
 - `ShapeSpec.normalizedPoints[1]` is the first-point origin;
 - current scale is `LegCanvasHalfSpan = 4.8`, radial cap `MaxLegExtentFromHub = 6.9`;
-- one persistent `LegPairAssembly`, one `AxleRoot`, one `AxleJoint`, **one motor**;
-- `LegSocketZAbs = 1.5` and fixed `RightPhaseOffsetDegrees = 180`;
-- two sides share the same canonical XY centerline and are structurally opposed without a phase-chasing owner;
-- redraw keeps pair/axle/joint/side identities and body motion state;
-- physical and visual centerlines are identical even though thickness differs;
-- traversal evidence never counts `RecoveryKillY` fall or solver instability as success.
+- one Core V3 SharedAxle, one AxleRoot, one DriveJoint, one motor owner;
+- Left/Right same canonical XY centerline, opposite Z sides, structural 180° relation;
+- no per-side hinge/motor or phase-chasing owner;
+- physical/visual centerlines match even though thickness differs;
+- only authoritative `canCollide=true` physical segments may enter clearance/contact;
+- no normal +X helper in the Flat Gate;
+- redraw commits accepted state only after ACTIVE;
+- the approved 2.5D lane/upright owner may constrain Z/orientation only.
 
-Automated repository/build green is not live physics acceptance. Actual contact behavior, obstacle usefulness, redraw feel, camera/rider feel and overall traversal remain **HUMAN STUDIO PENDING** until the normal G0 Studio pass is recorded.
+Automated repository/build green is not live physics acceptance. Actual contact behavior, obstacle usefulness, redraw feel, camera/rider feel and overall traversal remain **HUMAN STUDIO PENDING** until the Core V3 Flat human gate is recorded.

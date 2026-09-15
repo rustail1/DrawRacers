@@ -1,12 +1,12 @@
 # 50 — COMPLETENESS MATRIX / WHERE IS THE ANSWER?
-Статус: **MASTER NAVIGATION v1.3.4 — ZERO-QUESTION PRODUCTION FREEZE**.
+Статус: **MASTER NAVIGATION v1.6.0 CORE V3 — CURRENT CASCADE**.
 
 | Question | Single source / owner |
 |---|---|
 | What game / audience / why Roblox | `00`, `01`, `02` |
 | Dated market/reference evidence | `54_MARKET_EVIDENCE_SNAPSHOT.md` |
 | Reference precedent vs project decision vs empirical | `51`, `54`, `SOURCE_MAP` |
-| Core draw/legs/redraw/stuck/finish | `03`, edge cases `28`; exact coordinate/pivot/collider contract **`73`** |
+| Current Core V3 draw/legs/redraw/flat locomotion | **`CURRENT_CORE_V3_SOURCE_OF_TRUTH`**, `03`, `11`, `16`, `21`, `24`, exact coordinate/pivot/collider contract **`73`** |
 | Global physics/race/camera starting defaults | `16` |
 | Obstacles/level grammar | `04`, `42`; exact build workflow `67` |
 | **Exact launch TrackPiece dimensions/ranges + T01–T20** | **`60`**, assembly/release `67` |
@@ -47,7 +47,7 @@
 | Testing scenarios | `15`, `24` |
 | Human/product empirical pass criteria | `55` |
 | What remains intentionally empirical | `49`; starts still fixed in domain owners |
-| **Current final documentation/build-contract audit** | **`78_FINAL_EXECUTION_CONSISTENCY_AUDIT_v1.3.4.md`** |
+| **Current final documentation/build-contract audit** | **`79_CURRENT_CORE_V3_DOCUMENTATION_AUDIT_2026-09-15.md`** |
 | **Execution dependency order (A04, E04→E10)** | **`25`, `52`, `66`, `SESSION`** |
 | **Canonical self-collision matrix** | **`28`, `65`; implementation context `03/11/73`** |
 | **Deterministic valid-finish tie-break** | **`74`; consumed by `03/05/15`** |

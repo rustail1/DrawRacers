@@ -11,7 +11,7 @@ Purpose: verify that the implemented fix matches the approved plan and removes t
 
 During `/review`:
 - do not modify/create/delete files;
-- do not commit/push;
+- do not perform Git/GitHub actions;
 - do not silently repair issues you discover;
 - do not widen the original task;
 - do not convert missing human evidence into PASS.
@@ -24,8 +24,8 @@ Recover or request only what is necessary:
 
 ```text
 BUG/TASK ID: <if one exists>
-BASE_SHA: <approved plan base>
-FIX_HEAD: <current main head>
+BASELINE: <approved local folder/archive snapshot>
+FIX_ARTIFACT: <current edited folder/archive>
 APPROVED ROOT CAUSE: ...
 APPROVED FILES TO CHANGE: ...
 APPROVED DO NOT TOUCH: ...
@@ -36,7 +36,7 @@ If the approved plan is in the current conversation or repository, use it. Do no
 
 ## 3. DIFF SCOPE CHECK
 
-Compare `BASE_SHA -> FIX_HEAD` and report:
+Compare `BASELINE -> FIX_ARTIFACT` and report:
 - every changed path;
 - whether each path was approved;
 - any unplanned file/change;
@@ -77,8 +77,8 @@ Verify the evidence promised by the plan:
 - targeted GREEN passed;
 - required existing regressions passed;
 - full repository checks passed when required;
-- fresh GitHub Actions/Contract Verify belongs to `FIX_HEAD`;
-- Rojo build evidence belongs to `FIX_HEAD` when required;
+- automated/static evidence belongs to the exact reviewed artifact;
+- Rojo build evidence belongs to the exact reviewed artifact when required;
 - warnings/errors were not ignored if relevant.
 
 For physics/camera/UI/visual/feel bugs, confirm the manual acceptance step is still pending until user evidence exists.
@@ -128,8 +128,8 @@ Use when the necessary plan/base/diff/evidence cannot be established safely.
 
 ```text
 VERDICT: REVIEW PASS / REVIEW ISSUES / REVIEW BLOCKED
-BASE_SHA: ...
-FIX_HEAD: ...
+BASELINE: ...
+FIX_ARTIFACT: ...
 
 PLAN MATCH:
 ...

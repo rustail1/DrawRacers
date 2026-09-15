@@ -38,11 +38,7 @@ local function createBodyMount(body: Part): Attachment
 
 	local attachment = Instance.new("Attachment")
 	attachment.Name = "LegDriveMount"
-	attachment.Position = Vector3.new(
-		0,
-		body.Size.Y * 0.5 * LegCoreConfig.Mount.VerticalFraction,
-		0
-	)
+	attachment.Position = Vector3.zero
 	attachment.Axis = Vector3.zAxis
 	attachment.SecondaryAxis = Vector3.xAxis
 	attachment.Parent = body
@@ -92,7 +88,7 @@ function SharedAxle.new(body: Part, container: Instance)
 		axleMaterial.FrictionWeight,
 		axleMaterial.ElasticityWeight
 	)
-	axleRoot.CFrame = body.CFrame * CFrame.new(bodyMount.Position)
+	axleRoot.CFrame = body.CFrame
 	axleRoot.Parent = model
 
 	local axleAttachment = Instance.new("Attachment")

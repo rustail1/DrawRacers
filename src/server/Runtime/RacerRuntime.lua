@@ -16,6 +16,8 @@ local StrokeTypes = require(
 )
 local CollisionGroups = require(script.Parent:WaitForChild("CollisionGroups"))
 local LegCoreController = require(script.Parent:WaitForChild("CoreV3"):WaitForChild("LegCoreController"))
+local LaneConstraint = require(script.Parent:WaitForChild("CoreV3"):WaitForChild("LaneConstraint"))
+local FallRecovery = require(script.Parent:WaitForChild("CoreV3"):WaitForChild("FallRecovery"))
 
 local BODY_SIZE = Vector3.new(3, 3, 3)
 
@@ -173,14 +175,19 @@ function RacerRuntime.new(params: SpawnParams)
 	publishSpawnAttributes(model, params, laneCenterZ)
 	body.CFrame = params.spawnCFrame
 	model.Parent = racersRoot
+	local laneConstraint = LaneConstraint.new(body, model, laneCenterZ)
 
-	return setmetatable({
+	local self = setmetatable({
 		model = model,
 		body = body,
+		laneConstraint = laneConstraint,
 		legCore = nil :: any?,
+		fallRecovery = nil :: any?,
 		currentShapeSpec = nil :: ShapeSpec?,
 		destroyed = false,
 	}, RacerRuntime)
+	self.fallRecovery = FallRecovery.new(self, params.spawnCFrame, laneCenterZ)
+	return self
 end
 
 function RacerRuntime:_EnsureLegCore()
@@ -204,6 +211,16 @@ end
 function RacerRuntime:GetLegCore()
 	assert(not self.destroyed, "RacerRuntime is destroyed")
 	return self.legCore
+end
+
+function RacerRuntime:GetLaneConstraint()
+	assert(not self.destroyed and self.laneConstraint ~= nil, "RacerRuntime is destroyed")
+	return self.laneConstraint
+end
+
+function RacerRuntime:GetFallRecovery()
+	assert(not self.destroyed and self.fallRecovery ~= nil, "RacerRuntime FallRecovery unavailable")
+	return self.fallRecovery
 end
 
 function RacerRuntime:GetShapeVersion(): number
@@ -332,13 +349,21 @@ function RacerRuntime:Destroy()
 		return
 	end
 	self.destroyed = true
+	if self.fallRecovery ~= nil then
+		self.fallRecovery:Destroy()
+	end
 	if self.legCore ~= nil then
 		self.legCore:Destroy()
+	end
+	if self.laneConstraint ~= nil then
+		self.laneConstraint:Destroy()
 	end
 	if self.model ~= nil then
 		self.model:Destroy()
 	end
 	self.legCore = nil
+	self.fallRecovery = nil
+	self.laneConstraint = nil
 	self.model = nil
 	self.body = nil
 	self.currentShapeSpec = nil

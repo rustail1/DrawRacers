@@ -36,7 +36,7 @@
 | Remote/data contracts | `22_NETWORK_DATA_CONTRACTS.md` |
 | Как тестировать | `24_TESTING_QA_MATRIX.md`, empirical gates `55`, release matrix `57`, UI screenshots `59` |
 | Launch art/content/public identity | `62_LAUNCH_CONTENT_ART_DIRECTION_MANIFEST.md` |
-| Current final documentation audit | `78_FINAL_EXECUTION_CONSISTENCY_AUDIT_v1.3.4.md` |
+| Current final documentation audit | `79_CURRENT_CORE_V3_DOCUMENTATION_AUDIT_2026-09-15.md` |
 
 **Не копировать один и тот же факт в несколько документов.** Если нужен контекст — ставить ссылку на source of truth. `_HISTORY/` не загружается в обычный AI-контекст и не является источником истины.
 
@@ -367,4 +367,4 @@ Launch place topology/routing owner: `23_PROJECT_SETUP_TOOLCHAIN.md` + `41_MATCH
 - Exact heat/timeout/DNF/requeue/spectator lifecycle: `74`.
 - Exact Bot Fill difficulty/preset/decision policy: `75`.
 - Concrete Day 0–30 LiveOps buffer: `76`.
-- Final zero-question audit: `78`.
+- Final zero-question audit: `79`.

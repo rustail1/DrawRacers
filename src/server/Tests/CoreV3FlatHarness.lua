@@ -671,6 +671,12 @@ local function publishEvidence(racer: any, tracksRoot: Folder)
 	model:SetAttribute("CoreV3ReferenceShapes", REFERENCE_SHAPES)
 	model:SetAttribute("CoreV3BodyX", racer:GetBody().Position.X)
 	model:SetAttribute("CoreV3VelocityX", racer:GetBody().AssemblyLinearVelocity.X)
+	local lane = racer:GetLaneConstraint()
+	local body = racer:GetBody()
+	model:SetAttribute("CoreV3LaneErrorZ", math.abs(body.Position.Z - lane:GetLaneCenterZ()))
+	model:SetAttribute("CoreV3UprightDot", body.CFrame.UpVector:Dot(Vector3.yAxis))
+	model:SetAttribute("CoreV3LanePlaneActive", lane:GetPlaneConstraint().Active)
+	model:SetAttribute("CoreV3UprightActive", lane:GetOrientationConstraint().Active)
 
 	if state ~= lastState then
 		lastState = state

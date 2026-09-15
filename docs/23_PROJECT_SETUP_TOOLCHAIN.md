@@ -1,6 +1,6 @@
 # 23 — PROJECT SETUP & TOOLCHAIN
 
-Статус: **PROJECT BOOTSTRAP GUIDE v1.3.4**
+Статус: **PROJECT BOOTSTRAP GUIDE v1.6.0 CORE V3**
 
 Цель: создать проект так, чтобы работа через Codex/Rojo/Studio оставалась воспроизводимой и контролируемой.
 
@@ -35,24 +35,16 @@ Do not create two competing hierarchies: one in filesystem and another manually 
 
 ---
 
-## 3. Version control
+## 3. Current local execution policy
 
-Minimum:
-- Git repository before production changes;
-- small commits matching accepted observable steps;
-- no giant unreviewable AI commit;
-- commit after human acceptance, not after every failed experiment;
-- tags/releases at accepted milestones.
+Current development is intentionally **local-file / local-folder first**:
+- the exact folder/archive supplied for the session is the baseline;
+- Git/GitHub/branches/commits/PRs are not required and must not be used unless the Product Owner explicitly re-enables them;
+- prefer an isolated copy or overlay for edits;
+- filesystem/Rojo-managed scripts remain canonical;
+- Roblox Studio is the runtime/human-physics validation surface.
 
-Recommended branch convention for solo work:
-```text
-main
-feature/m0-stroke-input
-feature/m0-leg-builder
-...
-```
-
-Short-lived branches only; do not create process overhead if solo.
+If Git is re-enabled later, version-control conventions must be approved at that time rather than inferred from historical workflow text.
 
 ---
 

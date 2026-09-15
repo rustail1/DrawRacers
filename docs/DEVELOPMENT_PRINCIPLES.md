@@ -147,7 +147,7 @@ Direct consumers may be migrated atomically in the same rewrite stage when requi
 
 For every approved module rewrite:
 
-1. **Fresh HEAD** — re-read current `main` before planning and again before writing.
+1. **Fresh local baseline** — re-read the exact supplied folder/archive before planning and again before writing; do not assume another local copy is identical.
 2. **Read the owner** — selected module, owner spec, direct consumers, direct dependencies, and relevant tests only.
 3. **State responsibility** — one sentence describing what the rewritten module owns.
 4. **Define boundary** — exact inputs, outputs, owned state, dependencies, and explicit non-responsibilities.
@@ -158,15 +158,26 @@ For every approved module rewrite:
 9. **Migrate direct consumers atomically** — only consumers approved by the plan.
 10. **Delete legacy path** — remove obsolete branches/helpers/transitional state in the same rewrite stage once no approved consumer uses them.
 11. **Focused GREEN** — module/contract tests.
-12. **Repository verification** — `python verify.py` plus required repository checks.
+12. **Current-contract verification** — run the task-specific current tests/checks. For Core V3 Flat work, the authoritative automated Studio suite is C01–C07; do not force legacy CR2/R17 Python contracts to pass by restoring obsolete architecture.
 13. **Rojo build** — pinned/current project build must succeed.
-14. **Fresh CI** — CI evidence must belong to the actual rewrite HEAD when used as completion evidence.
+14. **Fresh artifact evidence** — every automated/build result used as completion evidence must belong to the exact edited artifact. CI is optional and only relevant if the Product Owner later re-enables that workflow.
 15. **Diff/self-review** — confirm scope, ownership, dead code, duplicate pipelines, API leakage, and accidental neighboring changes.
 16. **Human Studio evidence when required** — physics, feel, camera, touch UX, visual readability, and other human gates remain pending until actual Roblox Studio evidence exists.
 
 A rewrite stage is not GREEN merely because CI was made green. It is GREEN only when the intended boundary is simpler and the obsolete path is gone.
 
 ## 6. Testing principles
+
+### 6.0 Current legacy Python-suite warning
+
+The current local package still contains historical Python contract tests under `tests/` and `verify.py`. Many encode superseded CR2/R17 implementation details (twin-drive/staged-pair/old redraw contracts). They are retained for now because test migration/deletion is a separate non-documentation task.
+
+For current Core V3 mechanics:
+- do **not** treat a failing legacy Python contract as authority over `CURRENT_CORE_V3_SOURCE_OF_TRUTH.md`;
+- do **not** restore deleted legacy architecture just to make those tests green;
+- current mechanical automation is C01–C07 in Roblox Studio;
+- migrate/retire stale Python contracts in a dedicated post-approval task.
+
 
 ### 6.1 Test contracts, not history
 
@@ -250,19 +261,15 @@ Do not silently duplicate the same fact in several documents.
 
 When architecture materially changes, update the navigation/owner docs that actually became stale. Do not churn unrelated historical documentation.
 
-## 12. Current Draw Racers mechanical rewrite application
+## 12. Current Draw Racers Core V3 application
 
-The active mechanical rewrite design is:
+The current mechanical authority is `CURRENT_CORE_V3_SOURCE_OF_TRUTH.md` and the current design is `docs/superpowers/specs/2026-09-15-core-v3-flat-physics-design.md`.
 
-`docs/superpowers/specs/2026-09-13-core-module-rewrite-design.md`
+Current owner chain:
 
-That design is an explicit application of this policy. Its current sequence remains:
+`DrawingController -> LegShapeService -> RacerRuntime -> CoreV3/LegCoreController -> SharedAxle + LegGeometry + LegClearanceController`
 
-`MR-01 CanonicalLegShape + LegShapeService -> MR-02 LegAssembly -> MR-03 LegPairAssembly -> MR-04 RacerRuntime -> MR-05 DrawingController -> MR-06 mechanical cleanup/audit -> human G0`
-
-For MR-02 through MR-05, the selected owner is treated as a **MODULE_REWRITE**, not a collection of compatibility patches. Preserve only the approved public behavior/contracts, migrate direct consumers as planned, and remove the obsolete internal path.
-
-Camera, rider, and cosmetics remain outside this mechanical rewrite until MR-06 is complete and the required human G0 mechanical pass is performed.
+Legacy CR2/CR3/R17/MR leg implementation modules are not compatibility targets. Do not reconnect them to avoid fixing Core V3. The next approved architecture repair is a dedicated 2.5D lane/orientation owner that constrains Z/upright only and never supplies normal +X locomotion.
 
 ## 13. Definition of a healthy module
 

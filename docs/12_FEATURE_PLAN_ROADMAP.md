@@ -117,7 +117,7 @@ Only after core/session value exists and G5 passes:
 27. LiveOps configs/G7.
 28. PROD provisioning/ID binding (`64/70`).
 29. QA/performance/rollback drill.
-30. Final execution-consistency release audit `78`.
+30. Final execution-consistency release audit `79`.
 31. Public enable + first-hour/day monitoring.
 
 ## Stop points
@@ -132,4 +132,4 @@ One task = one observable behavior with expected result → minimal change → S
 - Heat timeout/DNF/requeue/spectator semantics: `74`.
 - Production bot difficulty/shape policy: `75`.
 - H05 first-30-day LiveOps buffer: `76`.
-- Final documentation/build audit: `78`.
+- Final documentation/build audit: `79`.

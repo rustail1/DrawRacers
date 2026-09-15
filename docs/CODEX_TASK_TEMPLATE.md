@@ -1,12 +1,13 @@
 # CODEX TASK TEMPLATE
 
-> PRODUCT LOCK v1.3.4: final target is an 8-player live drawing race; 2-player is an implementation/integration stage only. Product power is never sold.
+> CURRENT LOCAL WORKFLOW / CORE V3: final target is an 8-player live drawing race; 2-player is an implementation/integration stage only. Product power is never sold.
 
 ## Context to read
 - `FEATURE_LIST.md`
 - `SESSION.md`
 - relevant row in `26_HANDOFF_MAP.md`
 - [specialized owner spec]
+- `CURRENT_CORE_V3_SOURCE_OF_TRUTH.md` for Core V3 tasks
 - [decision log if one exists]
 - never load `_HISTORY/` unless the task is provenance/audit
 
@@ -58,3 +59,9 @@ If task touches UI/layout, include `59`; launch level dimensions/tracks → `60`
 - Heat/requeue/timeout/DNF/spectator lifecycle: `74`.
 - Bot shapes/difficulty/decision policy: `75`.
 - Day 0–30 LiveOps buffer: `76`.
+
+
+## Current execution boundary
+- Local folder/archive only; no Git/GitHub actions unless explicitly re-enabled.
+- For Core V3 mechanics, old CR2/CR3/R17 implementation docs are not valid owners.
+- C01–C07 + human Flat Gate are the current core validation path.

@@ -161,11 +161,13 @@ Active-race free-look never changes the underlying Local Racer target. Spectator
 ## 12. Rider presentation binding — E03
 `RiderPresentationController` is introduced only at E03 after production camera exists.
 - It creates at most one normalized human rider visual for one visible human racer mapping.
+- It creates exactly one client-local `BodyCollider.RiderAnchor` for that visual and follows its body-local transform.
 - It consumes server-authored presentation identity (`OwnerUserId`) plus player appearance; it does not create/modify authoritative racer state.
 - It applies the deterministic pose/visual envelope from `62` and nonphysical instance rules from `65`.
 - It does not target bots with human avatar presentation.
 - It does not own Body/Ink/Trail/FinishFX entitlement or equip; that remains `CosmeticService`/profile authority.
 - It cleans up rider visuals/connections when the racer or player presentation leaves scope.
+- It creates no mover/force and no physical connection from rider geometry to BodyCollider.
 - It does not become the target input for `RaceCameraController`; camera follows racer position, not rider head/accessories.
 
 ## 13. Reward presentation safety

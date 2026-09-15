@@ -1,9 +1,9 @@
 # 65 — STUDIO DATAMODEL / INSTANCE / PROPERTY SPEC
 Статус: **EXACT AUTHORING & RUNTIME INSTANCE CONTRACT v1.4.0 / MR-06 PERSISTENT SHARED AXLE**.
 
-Цель: убрать вопрос «какие именно Instances/имена/атрибуты/группы/свойства создавать в Studio». Архитектурные владельцы = `21`; numeric physics = `16`; TrackPiece geometry = `60`; UI hierarchy = `68`; current mechanical rewrite = `docs/superpowers/specs/2026-09-13-core-module-rewrite-design.md`.
+Цель: exact Studio/runtime instance contract. Архитектура = `21`; Core V3 authority = `CURRENT_CORE_V3_SOURCE_OF_TRUTH.md`; numeric physics = `16`; geometry = `73`.
 
-The current M0 mechanical contract is one persistent `LegPairAssembly`: one shared `AxleRoot`, one `AxleJoint`, one motor and two persistent rigid side `LegAssembly` owners. Both sides consume the same canonical ShapeSpec and the Right side is structurally opposed by `RightPhaseOffsetDegrees = 180`. Redraw changes side geometry in place; it does not replace the pair, axle, joint or side owners. Camera/rider presentation remains separate and nonphysical. Live physics/camera/rider acceptance remains **HUMAN STUDIO PENDING**.
+Current M0 mechanical contract is Core V3: one `SharedAxle` model, one `AxleRoot`, one `DriveJoint` HingeConstraint and two depth-separated `LegGeometry` owners at fixed 180°. Live physics remains **HUMAN STUDIO PENDING**.
 
 ## 1. Root tree — exact launch names
 ```text
@@ -72,104 +72,58 @@ Required BodyCollider launch properties:
 - CollisionGroup=`RacerBody`;
 - CustomPhysicalProperties = density/friction/elasticity from `16`.
 
-Hub Parts:
-- current MR-06 runtime creates **no compatibility hub Parts** in `RacerTemplate` and no side marker owns locomotion;
-- axle-center numbers are owned by `PhysicsConfig.LegGeometry`: `HubOffsetX = 0.0`, `HubOffsetY = 0.0`;
-- `HubOffsetZAbs = 1.62` remains a legacy/reference configuration value only and does not authorize a runtime marker Part;
-- real side placement is owned by `LegSocketZAbs = 1.5` on the persistent shared axle;
-- `LegPairAssembly` creates/ensures the actual body-side `AxleMotorAttachment` only when an accepted mechanical pair exists.
+Core V3 body/axle mount:
+- current runtime creates no compatibility hub Parts;
+- `BodyCollider.LegDriveMount` is created by Core V3 SharedAxle;
+- `BodyCollider.LegDriveMount` local Position = `(0, 0, 0)`, so the axle X/Y is the body center;
+- no ShapeSpec or redraw path changes the body/axle mount position;
+- side mount Z = `±(body.Size.Z * 0.5 + SideOutset)`, current `SideOutset = 0.45`;
+- RightMount is structurally rotated 180° relative to LeftMount.
 
 No humanoid/character controller is used for racer locomotion.
 
-## 4. Runtime leg assembly exact structure
-Created under `Workspace.Runtime.Racers/<RacerRuntimeId>` / `Legs`. The shared body-side attachment lives on `BodyCollider`:
+## 4. Runtime Core V3 leg structure
 ```text
 Racer_<RaceId>_<Slot>
   BodyCollider
-    AxleMotorAttachment (Attachment)
-  VisualRoot
-  RuntimeAttachments
+    LegDriveMount (Attachment)
   Legs
-    AxleRoot (Part)
-      MotorAttachment (Attachment)
-      AxleJoint (HingeConstraint)
-    LeftLeg (Model)
-      LegRoot (Part)
-        AxleWeld (WeldConstraint)
-      Segments (Folder)
-        Segment_01..NN (Part)
-      Visual (Folder)
-        VisualSegment_01..NN (Part)
-        VisualJoint_01..NN (Part)
-    RightLeg (Model)
-      LegRoot (Part)
-        AxleWeld (WeldConstraint)
-      Segments (Folder)
-        Segment_01..NN (Part)
-      Visual (Folder)
-        VisualSegment_01..NN (Part)
-        VisualJoint_01..NN (Part)
+    SharedAxle (Model)
+      AxleRoot (Part)
+        AxleAttachment (Attachment)
+      LeftMount (Part)
+        LeftLeg (Model)
+          Preview (Folder, during PREVIEW)
+          Physical (Folder, after build)
+      RightMount (Part)
+        RightLeg (Model)
+          Preview (Folder, during PREVIEW)
+          Physical (Folder, after build)
+      DriveJoint (HingeConstraint)
 ```
 
-`BodyCollider.AxleMotorAttachment`:
-- created/ensured by `LegPairAssembly`;
-- Position = `(HubOffsetX, HubOffsetY, 0)`;
-- Axis=`+Z`, SecondaryAxis=`+Y` at neutral body orientation;
-- body-side attachment for the single shared hinge.
+Core V3 properties:
+- `DriveJoint` is the only leg HingeConstraint;
+- `DriveJoint.Enabled = true` structurally; motor off = `ActuatorType.None`;
+- `AxleRoot` Size = `1.5,1.5,1.5`, Anchored=false, noncolliding, Massless=false, `RacerLeg`, density `0.50`;
+- `LegDriveMount` local Position = `(0, 0, 0)` with no vertical-offset tuning/workaround;
+- LeftMount Z = `-(body.Size.Z/2 + 0.45)`;
+- RightMount Z = `+(body.Size.Z/2 + 0.45)` and local phase `180°`;
+- mount Parts are invisible/massless/noncolliding and welded to AxleRoot;
+- visual preview Parts are nonphysical;
+- physical segment Parts are massless, `RacerLeg`, friction `1.0`, collision enabled only when the segmentPlan entry has `canCollide=true`;
+- current BodyCollider Core V3 friction = `0.0` so normal traction comes from the legs.
 
-`AxleRoot`:
-- created exactly once for a racer by `LegPairAssembly` when the first accepted shape materializes the mechanical pair;
-- Size = `0.2,0.2,0.2`;
-- centered at body-local `(HubOffsetX, HubOffsetY,0)` and rotated by the one current axle phase;
-- Anchored=false;
-- CanCollide=false, CanTouch=false, CanQuery=false;
-- Transparency=1, Massless=true;
-- CollisionGroup=`RacerLeg`.
+Redraw creates both preview and physical ghost sides together under the persistent SharedAxle owner, calculates initial whole-pair clearance, applies one bounded +Y BodyCollider impulse, then uses PREVIEW/WAIT_CLEAR while every ghost Part follows the axle. Physical collision stays off until both sides enable atomically. Failed rebuild returns controller to EMPTY.
 
-`AxleJoint`:
-- the **only** HingeConstraint/actuator in the leg pair;
-- `Attachment0 = BodyCollider.AxleMotorAttachment`;
-- `Attachment1 = AxleRoot.MotorAttachment`;
-- `ActuatorType=Motor`;
-- angular speed/torque/acceleration come from `PhysicsConfig.Motor`;
-- **one motor** rotates both rigid side assemblies around canonical +Z.
-
-Side `LegRoot` Parts:
-- are persistent rigid side-geometry roots, not hinge/motor owners;
-- use `LegSocketZAbs = 1.5` from `PhysicsConfig.LegGeometry` as the side mount offset;
-- Left socket Z = `-1.5`, local phase `0`;
-- Right socket Z = `+1.5`, local phase `RightPhaseOffsetDegrees = 180`;
-- both sides use the same canonical XY geometry while remaining structurally **180° opposed**;
-- each `LegRoot` is welded to `AxleRoot` by `AxleWeld`;
-- Anchored=false, CanCollide=false, CanTouch=false, CanQuery=false, Transparency=1, Massless=true;
-- CollisionGroup=`RacerLeg`.
-
-Segment Parts:
-- Anchored=false;
-- CollisionGroup=`RacerLeg`;
-- physical thickness/default count/physical props come from `16`;
-- rigidly welded to that side `LegRoot`; exact local segment centers/orientation/length are `73`;
-- no script per segment;
-- physical collider Parts are hidden from presentation.
-
-Visual Parts:
-- `CanCollide=false`, `CanTouch=false`, `CanQuery=false`, `Massless=true`;
-- presentation only; cannot affect solver/mass/locomotion;
-- use the exact same canonical centerline as physical geometry, with visual-only thickness/smoothing allowed.
-
-Redraw contract:
-- `RacerRuntime` retains the same `LegPairAssembly`;
-- `LegPairAssembly` retains the same `AxleRoot`, `AxleJoint`, Left owner and Right owner;
-- both side owners receive the same new canonical ShapeSpec and reshape **hub-to-tip** in lockstep;
-- no normal redraw staging/retiring pair handoff exists;
-- no body CFrame, anchoring, linear velocity or angular velocity reset is part of redraw.
+Approved next runtime addition: dedicated Core V3 lane-plane/upright constraint owner; exact instance names are not frozen until that implementation task is approved/landed.
 
 ## 5. Runtime racer model
 Each spawned racer is:
 ```text
 Workspace.Runtime.Racers/Racer_<RaceId>_<Slot>
   BodyCollider
-    AxleMotorAttachment (after first accepted LegPairAssembly exists)
+    LegDriveMount (after Core V3 axle exists)
   VisualRoot
   RuntimeAttachments
   Legs
@@ -179,6 +133,8 @@ Workspace.Runtime.Racers/Racer_<RaceId>_<Slot>
   Presentation
   Debug (DEV/STAGING only)
 ```
+
+`RacerRuntime` also owns one non-Instance `CoreV3/FallRecovery` lifecycle object. It watches BodyCollider Y only, creates no mover/force/constraint, preserves the same racer tree and may call whole-model `PivotTo` solely for explicit out-of-bounds respawn. `CoreV3RecoveryCount` is diagnostic evidence, not gameplay authority.
 Attributes required on racer Model:
 - `RaceId:string`
 - `SlotIndex:number` 1..8
@@ -197,19 +153,25 @@ Attributes required on racer Model:
 
 No authoritative Coins/MP/reward attributes are stored on Workspace instances.
 
-### R17 client rider presentation
-The Product Owner early-presentation override authorizes `RiderPresentationController` during M0/R17. E03 remains the later multiplayer/readability extension and acceptance task for this same owner. The controller may create client-local visual models under the existing presentation root:
+### Client rider presentation
+`RiderPresentationController` is the current nonphysical rider presentation owner. E03 remains the later multiplayer/readability extension and acceptance task for this same owner. The controller may create client-local visual models under the existing presentation root:
 
 ```text
 Workspace.Runtime.RacePresentation
   Rider_<UserId> (Model)
     <standardized normalized avatar visual rig>
+
+Workspace.Runtime.Racers.Racer_<RaceId>_<Slot>.BodyCollider
+  RiderAnchor (Attachment, client-local; exactly one for a visible human rider)
 ```
 
 Contract:
-- rider model is presentation-only and is not parented into `BodyCollider`, `LegPairAssembly` or `LegAssembly` physics;
-- its visual transform follows the corresponding human racer body-position observation but does not become physics authority;
+- rider model is presentation-only and is not parented into Core V3 leg physics;
+- its visual transform follows `BodyCollider.RiderAnchor.WorldCFrame` but does not become physics authority;
+- `RiderAnchor` is body-local, client-local, unique per visible human racer and has no mass/force behavior;
 - any rider BasePart is `CanCollide=false`, `CanTouch=false`, `CanQuery=false`, `Massless=true`;
+- one Part per disconnected visual assembly is anchored so no loose avatar/accessory assembly falls under gravity;
+- rider ownership creates no mover or physical connection to BodyCollider;
 - rider geometry never changes the `RacerBody`/`RacerLeg` collision matrix or body mass properties;
 - the active-race camera still targets racer position, not rider head/accessories;
 - normalized scale starts at `0.65`;
@@ -294,8 +256,8 @@ For each racer with an accepted shape, runtime cleanup expectation is exact: one
 ## 12. Acceptance
 Repository/instance-contract PASS requires:
 - a fresh synced project creates the canonical roots;
-- current racer geometry uses one `LegPairAssembly`, one `AxleRoot`, one `AxleJoint`, **one motor**, two rigid side `LegAssembly` models and `LegSocketZAbs = 1.5`;
-- Left/Right use the same canonical XY shape and remain structurally **180° opposed** via `RightPhaseOffsetDegrees = 180`, with no per-side actuator/phase chase;
+- current racer geometry uses one Core V3 `SharedAxle`, one `AxleRoot`, one `DriveJoint`, one motor owner and two side `LegGeometry` models;
+- Left/Right use the same canonical XY shape and remain structurally **180° opposed**, with no per-side actuator/phase chase;
 - collision isolation remains canonical and visual leg/rider geometry remains nonphysical;
 - redraw keeps the same pair/axle/joint/side owners and preserves BodyCollider motion state;
 - runtime teardown returns object counts near baseline;

@@ -1,97 +1,58 @@
-# DRAW RACERS — Roblox Development Bible
+# DRAW RACERS — DEVELOPMENT BIBLE INDEX
 
-## CR3 CURRENT OVERRIDE — canonical current state
-`CR3_CURRENT_SOURCE_OF_TRUTH.md` is the current mechanical owner. The active CR3 contract is **free draw** anywhere inside `DrawInputRect`, deterministic geometry-derived **support anchor** selection, explicit lower `LeftLegMount` / `RightLegMount` attachments, and two physical drive hinges commanded by a **single movement/phase owner** in `LegPairAssembly` with the same base omega and an initial 180° relation. Server authority and transactional redraw remain intact; the cowboy rider is client-only presentation.
+Status: **CURRENT CORE V3 DEVELOPMENT PACKAGE — 2026-09-15**
 
-Repository checks prove source contracts and buildability only. Live contact/solver feel, mount readability, paired motion, redraw feel, obstacle usefulness, camera/rider presentation and the product gate remain **HUMAN STUDIO PENDING**. Normal Studio mode remains `G0`; **B17/G0 remains HUMAN_GATE PENDING**, and M0.5/multiplayer/meta/economy/shop remain blocked.
+## Current mechanical Source of Truth
+Read first for any current locomotion/redraw/physics task:
+1. `CURRENT_CORE_V3_SOURCE_OF_TRUTH.md`
+2. `SESSION.md`
+3. `FEATURE_LIST.md`
+4. `ARCHITECTURE_MAP.md`
+5. relevant owner docs (`03`, `11`, `16`, `21`, `24`, `73`)
 
-The production-bible material below remains valid for product scope and ordered release work, but any older implementation wording that conflicts with CR3 is historical/superseded.
+Old CR2/CR3/twin-drive/R15-R17 mechanical implementation documents have been removed from the working package. Do not recreate them as active context.
 
-Статус: **v1.3.4 ZERO-QUESTION PRODUCTION FREEZE — START-TO-PUBLIC-RELEASE EXECUTION READY**  
-Дата: 2026-09-03  
-Primary public title: **Draw Racers**; release clearance/fallback rule — `48/62`.
+## Product
+DrawRacers is an original Roblox 2.5D drawing race inspired by the observable high-level Draw Climber mechanic: one continuous drawing becomes real locomotion geometry. Final product target remains an 8-player live race; current development is still M0 Core V3 Flat Physics.
 
-## What this package guarantees — and what it cannot
-This package is designed so a programmer/Codex/UI implementer/level designer/artist/release operator can follow one owner path from an empty repository through **public enable and first-live monitoring** without inventing missing WHAT/WHY, UI composition, Studio instance structure, level assembly workflow, launch obstacle dimensions, launch economy values, catalog transaction rules, platform provisioning rules, deployment IDs or launch content identity.
+Non-negotiable product invariants:
+- drawing is the main control;
+- drawn geometry is real locomotion geometry;
+- redraw works during the race;
+- no paid competitive physics power;
+- racers do not physically push each other;
+- server validates competitive outcomes;
+- track/content remains data-driven.
 
-It does **not** guarantee a hit, retention, PTR, payer conversion or revenue. Reference success validates a high-level pattern; our build still has empirical gates in `55`, performance gates in `57`, discovery tests in `38/62`, and live analytics in `10/46`.
+## Current Core V3
+- one shared axle;
+- one HingeConstraint/motor owner;
+- Left -Z / Right +Z at fixed 180°;
+- movement only from legs contacting Track;
+- redraw PREVIEW -> WAIT_CLEAR -> ACTIVE, fail-closed;
+- C01–C07;
+- Flat Gate before obstacles;
+- approved next repair: Z lane-plane lock + upright orientation stabilization with X/Y physical and no forward helper.
 
-## Locked product
-**8-player live physics drawing race.** The player draws one continuous shape; it becomes two real rotating physical legs/wheels. The racer moves automatically from physical contact. The player reads the next obstacle, redraws while moving, compares rival solutions and tries to overtake. Fast rematch is part of the product.
+## Current workflow
+Local folder/archive only. Git/GitHub is currently disabled. See `AI_WORKFLOW_QUICKSTART.md`.
 
-Non-negotiable:
-1. Drawing is the main control; no gas/jump/manual steering.
-2. Drawn geometry is real collision geometry, not a hidden “shape class”.
-3. Redraw works during Racing and swaps atomically.
-4. Final heat target = 8; 2-player is integration/testing only.
-5. Same resolved track/physics baseline for all racers.
-6. Racers never physically collide with each other.
-7. Rivals are visible and socially informative.
-8. Zero paid physics power.
-9. Meta = Collection + Status + Access, not stat power.
-10. Public release includes required bot fill for underfilled heats.
-11. Clean-room original expression; no copied competitor code/assets/UI/levels/audio/branding.
-12. One fact → one owner document.
-
-## Exact owner map
+## Domain owner map
 | Domain | Owner |
 |---|---|
-| Product/audience/core promise | `00`, `01`, `02`, reference boundary `51/54` |
-| Drawing/physical legs/redraw | `03`, global defaults `16`, **exact screen→pivot→collider mapping `73`** |
-| Level grammar | `04`, authoring `42`, **exact TrackPiece dimensions + T01–T20 `60`**, build/release workflow **`67`** |
-| Multiplayer/race/bots/place routing | `05`, `40`, **lifecycle/timeouts/requeue `74`**, bot policy **`75`**, server lifecycle **`41`**, setup/config `23/30` |
-| Meta/Coins/status/access | `06`, `44`, **exact launch values `61`** |
-| Monetization | `07`, `19`, `45`, DP receipt `56`, Coin+Pass transaction contract **`71`**, exact SKUs `61/62`, IDs `70` |
-| FTUE/camera/UI behavior | `08`, `29` |
-| **Exact UI layout/wireframes/copy** | **`59`**, exact child hierarchy/bindings **`68`** |
-| LiveOps/content scale | `09`, schemas `30`, **first 30-day ready buffer `76`** |
-| Analytics/events | `10`, exact event dictionary `46` |
-| Roblox architecture/network | `11`, `21`, `22`, setup `23`, **exact Studio instances/properties `65`** |
-| QA/DoD/performance | `15`, `24`, `33`, `57` |
-| **Exact launch art/content/public identity** | **`62`**, production workflow **`69`**, ID registry **`70`** |
-| Save/migration/session lease/exact-once grants/security | `31`, `32`, receipt `56` |
-| Ops/release/rollback | `34`, `35`, `48`, **platform provisioning `64`**, **deployment registry `70`** |
-| Localization/accessibility/safety | `37`, `39`, exact layout checks `59` |
-| Implementation order | `25`, full route `52`, **per-task acceptance `66`**, current item `SESSION` |
-| Scope | `FEATURE_LIST` |
-| Final completeness audit | **`78_FINAL_EXECUTION_CONSISTENCY_AUDIT_v1.3.4.md`** |
+| Product/audience/core promise | `00`, `01`, `02` |
+| Current Core V3 locomotion/redraw | `CURRENT_CORE_V3_SOURCE_OF_TRUTH`, `03`, `11`, `16`, `21`, `73` |
+| Current Core V3 tests/gate | `24`, `SESSION`, C01–C07 |
+| Level grammar/content | `04`, `42`, `60`, `67` |
+| Multiplayer/race/bots | `05`, `40`, `41`, `74`, `75` |
+| Meta/economy | `06`, `44`, `61` |
+| Monetization | `07`, `19`, `45`, `56`, `71` |
+| UI/camera/FTUE | `08`, `29`, `59`, `68` |
+| LiveOps/analytics | `09`, `10`, `46`, `76` |
+| Persistence/security | `31`, `32` |
+| Release/ops | `34`, `35`, `48`, `57`, `64`, `70` |
+| Implementation order | `25`, `52`, `66`, `SESSION` |
+| Current documentation audit | `79_CURRENT_CORE_V3_DOCUMENTATION_AUDIT_2026-09-15.md` |
 
-## Working route from zero to release
-`A01 repo/Rojo → A02 shared roots → A03 M0 scene → A04 deploy/instance skeleton → B01/B02 DrawCanvas → stroke math → physical leg → hinge → two legs → stabilization/lane → authoritative stroke → atomic redraw → canonical obstacle lab → G0 → adaptation/G1 → 2-player network/social/G2 → 8-player scale/readability → STAGING provisioning → PlayerDataService → RewardService → AnalyticsAdapter → canonical FTUE BotRacerController foundation → confirmed Results → CosmeticService → EntryFTUEPlace→T06→RacePlace routing → Garage/presentation → G3 → T01–T20 + public Bot Fill + G4/G5 → exact launch Passes → discovery G6 → LiveOps foundation/G7 → final UI/content/economy/IP/performance checks → PROD provisioning/ID bind → audit 78 → public enable → first-hour/day monitoring.`
-
-The exact sequence is `25_IMPLEMENTATION_SEQUENCE.md`; never skip ahead because a later system is easier.
-
-## v1.3.4 zero-question closure additions
-The extra pass closed implementation questions that were still technically “HOW”, but could still cause a programmer/agent to ask for design-like guidance:
-- `64` fixes DEV/STAGING/PROD experience provisioning, two-place release outcomes, policy/preflight and publish order;
-- `65` fixes exact Studio runtime/template Instance names, properties, tags and collision matrix;
-- `66` fixes output + acceptance/stop condition for every task A01→I08;
-- `67` fixes the exact level workflow from one TrackPiece blockout through 8-lane themed release;
-- `68` fixes exact UI child hierarchy, controller ownership, focus/input and state binding;
-- `69` fixes art/audio/VFX/content production states and acceptance workflow;
-- `70` is the only owner for generated Universe/Place/Pass/Product/Asset IDs and environment binding;
-- `71` fixes atomic Coin cosmetic purchase and one-time Pass entitlement reconciliation;
-- `73` fixes exact DrawCanvas coordinate/pivot/scale → physical collider construction and shape lifetime;
-- `74` fixes exact arrival/assembly/PREP/finish grace/DNF/Results/requeue/spectator lifecycle;
-- `75` fixes deterministic launch bot difficulty, legal shape presets, lookahead, timing and mistake behavior;
-- `76` freezes the first 30 days of config-ready LiveOps content and objective/reward rules;
-- `78` is the current final audit.
-
-## AI/programmer rule
-Before every task read: `FEATURE_LIST → SESSION → 50 → 26 row → 66 task row → owner docs`. Then:
-`reconnaissance → smallest observable implementation → automated check → Studio test → edge/regression → human acceptance → log → next item`.
-
-AI may decide HOW inside owner contracts. It may not silently invent/change player verbs, layout hierarchy, launch track dimensions, economy meaning, catalog identity, fairness, persistence schema or scope.
-
-## Current repository implementation cursor
-The bounded pre-G0 closure **R14.1–R14.11** is complete at code/contract/CI/documentation level, with Studio checkpoints still outside automation. Final code/tooling evidence head `8a6a05a31427346d2a1437820ffa759f21fca90c`, GitHub Actions run `34387618626`: **120 passed, 0 failed**, followed by a successful **Rojo build**.
-
-R14.11 reconciles the repository status/evidence owners to that verified code/tooling head. The R14 documentation gate itself does not promote gameplay acceptance.
-
-This evidence does not promote the human gate. **Studio checkpoints: HUMAN PENDING. B17/G0 remains HUMAN_GATE.** Roblox Studio physics/presentation/touch checks plus the empirical G0 protocol are still required before C01/M0.5. Detailed evidence is recorded in `DECISION_LOG_PRE_G0_RUNTIME_CLOSURE_R14_2026-09-09.md` and `SESSION.md`.
-
-## History
-Historical audits/changelogs are **not included in the production handoff ZIP**. They are kept only in the separate history archive. Codex/programmers should ingest only files listed in `manifest.json.current_documents`.
-
-## Current revision record
-See `CHANGELOG_v1.3.4.md` for the execution-consistency freeze delta.
+## Gate rule
+Current status is **HUMAN PHYSICS PENDING**. M0.5 and later product systems stay blocked until the Core V3 Flat Gate is human-accepted or the Product Owner explicitly changes the gate.

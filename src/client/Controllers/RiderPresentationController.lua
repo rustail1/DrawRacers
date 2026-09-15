@@ -8,6 +8,7 @@ local RIDER_SCALE = 0.65
 local RIDER_MOUNT_X_OFFSET = -0.15
 local RIDER_SEAT_CLEARANCE = 0.05
 local RIDER_NAME_PREFIX = "RiderPresentation_"
+local RIDER_ANCHOR_NAME = "RiderAnchor"
 local COWBOY_HAT_COLOR = Color3.fromRGB(112, 72, 42)
 local COWBOY_HAT_BAND_COLOR = Color3.fromRGB(48, 33, 25)
 
@@ -18,6 +19,9 @@ type RiderRecord = {
 	visual: Model,
 	sourceCharacter: Model,
 	seatPart: BasePart,
+	seatToPivot: CFrame,
+	anchor: Attachment,
+	ownsAnchor: boolean,
 }
 
 local function canonicalJointName(name: string): string
@@ -73,7 +77,7 @@ local function sanitizeVisual(visual: Model)
 			descendant.CanTouch = false
 			descendant.CanQuery = false
 			descendant.Massless = true
-			descendant.Anchored = descendant.Name == "HumanoidRootPart"
+			descendant.Anchored = false
 			descendant.LocalTransparencyModifier = 0
 			-- Keep the cloned avatar/accessory Transparency authored by the player's
 			-- appearance. Only the invisible presentation root is forced hidden.
@@ -82,6 +86,54 @@ local function sanitizeVisual(visual: Model)
 			end
 		end
 	end
+end
+
+local function stabilizeVisualAssemblies(visual: Model, preferredRoot: BasePart)
+	local visited = {} :: { [BasePart]: boolean }
+
+	local function anchorComponent(root: BasePart)
+		root.Anchored = true
+		visited[root] = true
+		for _, connected in root:GetConnectedParts(true) do
+			if connected ~= root and connected:IsDescendantOf(visual) then
+				connected.Anchored = false
+				visited[connected] = true
+			end
+		end
+	end
+
+	anchorComponent(preferredRoot)
+	for _, descendant in visual:GetDescendants() do
+		if descendant:IsA("BasePart") and visited[descendant] ~= true then
+			anchorComponent(descendant)
+		end
+	end
+end
+
+local function configureAnchorFrame(anchor: Attachment, body: BasePart)
+	local position = Vector3.new(
+		RIDER_MOUNT_X_OFFSET,
+		body.Size.Y * 0.5 + RIDER_SEAT_CLEARANCE,
+		0
+	)
+	anchor.CFrame = CFrame.lookAt(position, position + Vector3.xAxis, Vector3.yAxis)
+end
+
+local function ensureRiderAnchor(body: BasePart): (Attachment?, boolean)
+	local existing = body:FindFirstChild(RIDER_ANCHOR_NAME)
+	if existing ~= nil then
+		if not existing:IsA("Attachment") then
+			return nil, false
+		end
+		configureAnchorFrame(existing, body)
+		return existing, false
+	end
+
+	local anchor = Instance.new("Attachment")
+	anchor.Name = RIDER_ANCHOR_NAME
+	configureAnchorFrame(anchor, body)
+	anchor.Parent = body
+	return anchor, true
 end
 
 local function configureCowboyPart(part: Part, color: Color3)
@@ -214,10 +266,13 @@ function RiderPresentationController:_destroyRecord(racer: Model)
 	if record.visual.Parent ~= nil then
 		record.visual:Destroy()
 	end
+	if record.ownsAnchor and record.anchor.Parent ~= nil then
+		record.anchor:Destroy()
+	end
 	self._records[racer] = nil
 end
 
-function RiderPresentationController:_ensureRecord(racer: Model, player: Player): RiderRecord?
+function RiderPresentationController:_ensureRecord(racer: Model, player: Player, body: BasePart): RiderRecord?
 	local character = player.Character
 	if character == nil then
 		self:_destroyRecord(racer)
@@ -229,7 +284,12 @@ function RiderPresentationController:_ensureRecord(racer: Model, player: Player)
 	end
 
 	local existing = self._records[racer]
-	if existing ~= nil and existing.sourceCharacter == character and existing.visual.Parent ~= nil then
+	if existing ~= nil
+		and existing.sourceCharacter == character
+		and existing.visual.Parent ~= nil
+		and existing.anchor.Parent == body
+	then
+		configureAnchorFrame(existing.anchor, body)
 		return existing
 	end
 	self:_destroyRecord(racer)
@@ -249,11 +309,23 @@ function RiderPresentationController:_ensureRecord(racer: Model, player: Player)
 	end
 	visual.Name = string.format("%s%d", RIDER_NAME_PREFIX, player.UserId)
 	visual.Parent = presentationRoot
+	local stabilityRoot = visual.PrimaryPart or seatPart
+	visual.PrimaryPart = stabilityRoot
+	stabilizeVisualAssemblies(visual, stabilityRoot)
+
+	local anchor, ownsAnchor = ensureRiderAnchor(body)
+	if anchor == nil then
+		visual:Destroy()
+		return nil
+	end
 
 	local record: RiderRecord = {
 		visual = visual,
 		sourceCharacter = character,
 		seatPart = seatPart,
+		seatToPivot = seatPart.CFrame:ToObjectSpace(visual:GetPivot()),
+		anchor = anchor,
+		ownsAnchor = ownsAnchor,
 	}
 	self._records[racer] = record
 	if RunService:IsStudio() then
@@ -262,20 +334,13 @@ function RiderPresentationController:_ensureRecord(racer: Model, player: Player)
 	return record
 end
 
-function RiderPresentationController:_targetSeatCFrame(body: BasePart, seatPart: BasePart): CFrame
-	local position = body.Position
-		+ Vector3.new(
-			RIDER_MOUNT_X_OFFSET,
-			body.Size.Y * 0.5 + seatPart.Size.Y * 0.5 + RIDER_SEAT_CLEARANCE,
-			0
-		)
-	return CFrame.lookAt(position, position + Vector3.xAxis, Vector3.yAxis)
+function RiderPresentationController:_targetSeatCFrame(anchor: Attachment, seatPart: BasePart): CFrame
+	return anchor.WorldCFrame * CFrame.new(0, seatPart.Size.Y * 0.5, 0)
 end
 
-function RiderPresentationController:_placeRider(record: RiderRecord, body: BasePart)
-	local localSeat = record.visual:GetPivot():ToObjectSpace(record.seatPart.CFrame)
-	local targetSeat = self:_targetSeatCFrame(body, record.seatPart)
-	record.visual:PivotTo(targetSeat * localSeat:Inverse())
+function RiderPresentationController:_placeRider(record: RiderRecord)
+	local targetSeat = self:_targetSeatCFrame(record.anchor, record.seatPart)
+	record.visual:PivotTo(targetSeat * record.seatToPivot)
 end
 
 function RiderPresentationController:_step()
@@ -295,9 +360,9 @@ function RiderPresentationController:_step()
 			local body = findBody(candidate)
 			if player ~= nil and body ~= nil then
 				active[candidate] = true
-				local record = self:_ensureRecord(candidate, player)
+				local record = self:_ensureRecord(candidate, player, body)
 				if record ~= nil then
-					self:_placeRider(record, body)
+					self:_placeRider(record)
 				end
 			end
 		end

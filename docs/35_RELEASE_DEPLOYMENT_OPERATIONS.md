@@ -38,7 +38,7 @@ Public release is blocked unless all are true:
 - launch title/themes/20 produced cosmetics/audio/VFX/discovery asset checklist in `62` complete;
 - `48` name/IP/provenance clearance PASS;
 - `57` device/performance matrix PASS;
-- `78_FINAL_EXECUTION_CONSISTENCY_AUDIT_v1.3.4.md` remains PASS after last spec/build-contract change;
+- `79_CURRENT_CORE_V3_DOCUMENTATION_AUDIT_2026-09-15.md` remains PASS after last spec/build-contract change;
 - PROD platform provisioning/registry `64/70` is fully resolved and private smoke-tested.
 
 

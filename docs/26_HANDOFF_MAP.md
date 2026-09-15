@@ -17,7 +17,7 @@ Classify the task before selecting feature owners:
 | TUNING | numeric owner (`16/57/59/60/61` as applicable), evidence/gate owner `55`, `SESSION.md` | one value family at a time; measured evidence; no hidden contract change |
 | DOC_ONLY | exact process/status owners | no runtime scope change; preserve gameplay/human-gate status unless explicitly part of the task |
 
-Human copy/paste prompts and the remote GitHub → PC → Rojo → Studio handoff are in `AI_WORKFLOW_QUICKSTART.md`.
+Human copy/paste prompts and the current local-file -> Rojo -> Studio handoff are in `AI_WORKFLOW_QUICKSTART.md`.
 
 ## Feature/system owner routing
 
@@ -25,10 +25,11 @@ Human copy/paste prompts and the remote GitHub → PC → Rojo → Studio handof
 |---|---|---|---|
 | Drawing input | `03`, `16`, exact mapping `73`, network `22`, exact UI `59/68` | InputController + DrawingController | mouse/touch preview; B01/B02 |
 | Stroke math | `03`, `16`, pivot/scale `73` | StrokeMath | pure tests + canonical strokes |
-| Leg geometry | `03`, `11`, `21`, exact instances `65`, collider construction `73` | LegAssembly + LegShapeService | shape→bounded real collider |
-| Hinge locomotion | `03`, `16`, `55` G0 | LegPairAssembly + RacerRuntime | flat + canonical shapes + shared-axle/R17 phase evidence + G0 |
-| Stabilization/lane | `03`, `16` | RacerStabilizer + RacerRuntime | bounce allowed, lane drift controlled |
-| Redraw | `03`, `22`, `55` | DrawingController + LegShapeService + RacerRuntime | atomic swap/contact stress |
+| Leg geometry | `CURRENT_CORE_V3_SOURCE_OF_TRUTH`, `03`, `11`, `21`, `65`, `73` | CoreV3 LegGeometry + LegShapeService | shape -> bounded real collider |
+| Hinge locomotion | `CURRENT_CORE_V3_SOURCE_OF_TRUTH`, `03`, `16` | CoreV3 SharedAxle + LegCoreController + RacerRuntime | C01–C08 + human Flat Gate |
+| Stabilization/lane | `CURRENT_CORE_V3_SOURCE_OF_TRUTH`, `03`, `16`, current 2.5D Decision Log | dedicated CoreV3 lane/upright owner + RacerRuntime | Z locked, X/Y physical, upright, no forward helper |
+| Redraw | `CURRENT_CORE_V3_SOURCE_OF_TRUTH`, `03`, `22` | DrawingController + LegShapeService + RacerRuntime + LegCoreController | ACTIVE-only commit, fail-closed, atomic pair activation |
+| Fall recovery | `CURRENT_CORE_V3_SOURCE_OF_TRUTH`, `03`, `16`, current FallRecovery Decision Log | CoreV3 FallRecovery + RacerRuntime | C08 + human fall/recovery check |
 | Obstacles / TrackPiece | `04`, `30`, `42`, **`60/65/67`** | TrackPiece assets/config | exact authoring + canonical trade-offs + G1 |
 | TrackBuilder / resolved track | `04`, `30`, `21`, `22` | TrackService/TrackRuntime | same resolved snapshot all lanes |
 | Race state | `05`, `21`, `22`, `28`, exact lifecycle/timeouts `74` | RaceService/RaceRuntime | phase/leave/timeout/rematch |
@@ -52,10 +53,10 @@ Human copy/paste prompts and the remote GitHub → PC → Rojo → Studio handof
 | Performance pass | `33`, `24`, **`57`** | existing systems | 8-player soak + required device matrix |
 | LiveOps/content scale | `09`, `30`, `42`, launch surfaces `60/62/67/69`, first-30-day buffer `76`, `55` G7 | configs + existing services | new content without new architecture |
 | Discovery creative | `38`, evidence `54`, **`62` first A/B/C**, `55` G6, analytics `46` | product/creative + AnalyticsAdapter | comprehension + downstream guardrails |
-| Release | `35`, `34`, `48`, `57`, `59–62`, platform `64/70`, task catalog `66`, current audit **`78`** | ops/process | staging/prod smoke + rollback + device PASS |
+| Release | `35`, `34`, `48`, `57`, `59–62`, platform `64/70`, task catalog `66`, current audit **`79`** | ops/process | staging/prod smoke + rollback + device PASS |
 | Player safety | `39`, `37` | presentation/settings | abuse/readability/accessibility check |
 
-Camera/rider sequencing note: the 2026-09-11 R17 Product Owner overrides supersede the earlier D09/E03 implementation timing. `CameraMath`/`RaceCameraController` and `RiderPresentationController` are current M0 owners; D09/E03 remain later extension/acceptance tasks and must not create duplicate systems. Current task/gate still comes from `SESSION.md`.
+Camera/rider note: `CameraMath`/`RaceCameraController` and `RiderPresentationController` are current M0 presentation owners. D09/E03 remain later multiplayer/readability extensions, not duplicate implementations. Current task/gate comes from `SESSION.md`.
 
 Every task also reads `FEATURE_LIST.md`, `AGENTS.md`, `SESSION.md` and the relevant Decision Log. Do not read `_HISTORY/` for normal implementation. Historical changelogs and superseded audits are provenance only, never current owner specs.
 
@@ -76,4 +77,4 @@ Additional exact-owner shortcuts:
 - heat lifecycle/timeouts/DNF/requeue/spectator → `74`;
 - bot preset/difficulty/decision policy → `75`;
 - first 30-day LiveOps configs/objectives → `76`;
-- current final audit → `78`.
+- current final audit → `79`.

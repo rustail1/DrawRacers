@@ -71,6 +71,36 @@ local function assertPairPhysicsOff(core: any)
 	end
 end
 
+local function captureGhostPairLocalFrames(core: any): { [BasePart]: CFrame }
+	local frames = {} :: { [BasePart]: CFrame }
+	for _, leg in { core:GetLeftLeg(), core:GetRightLeg() } do
+		assert(leg ~= nil, "C04 redraw must create both ghost leg owners immediately")
+		local segments = leg:GetPhysicalSegments()
+		assert(#segments > 0, "C04 redraw must build physical ghost segments before PREVIEW advances")
+		for _, segment in segments do
+			local physicalFolder = segment.Parent
+			local legModel = if physicalFolder ~= nil then physicalFolder.Parent else nil
+			local mount = if legModel ~= nil then legModel.Parent else nil
+			assert(mount ~= nil and mount:IsA("BasePart"), "C04 ghost segment mount missing")
+			frames[segment] = mount.CFrame:ToObjectSpace(segment.CFrame)
+		end
+	end
+	return frames
+end
+
+local function assertGhostPairFollowsMount(frames: { [BasePart]: CFrame })
+	for segment, expectedLocal in frames do
+		assert(segment.Parent ~= nil, "C04 ghost segment disappeared during PREVIEW")
+		local physicalFolder = segment.Parent
+		local legModel = physicalFolder.Parent
+		local mount = if legModel ~= nil then legModel.Parent else nil
+		assert(mount ~= nil and mount:IsA("BasePart"), "C04 ghost segment lost its mount")
+		local actualLocal = mount.CFrame:ToObjectSpace(segment.CFrame)
+		assert((actualLocal.Position - expectedLocal.Position).Magnitude < 1e-3, "C04 ghost pair must follow current assembly")
+		assert(actualLocal.LookVector:Dot(expectedLocal.LookVector) > 0.999, "C04 ghost orientation must follow current assembly")
+	end
+end
+
 local function assertPairPhysicsOn(core: any)
 	for _, leg in { core:GetLeftLeg(), core:GetRightLeg() } do
 		assert(leg ~= nil, "C04 ACTIVE requires both leg owners")
@@ -102,6 +132,18 @@ local function assertAxleConnected(core: any, label: string)
 	assert(errorDistance < 0.20, string.format("%s axle/body separation %.3f", label, errorDistance))
 end
 
+local function assertCenteredAxleMount(core: any, body: Part, expectedMount: Attachment?, label: string): Attachment
+	local joint = core:GetSharedAxle():GetJoint()
+	local bodyMount = joint.Attachment0
+	assert(bodyMount ~= nil and bodyMount:IsA("Attachment"), label .. " body mount missing")
+	assert(bodyMount.Parent == body, label .. " body mount must remain on BodyCollider")
+	assert(bodyMount.Position.Magnitude < 1e-6, label .. " body mount must remain centered")
+	if expectedMount ~= nil then
+		assert(bodyMount == expectedMount, label .. " redraw must preserve the centered axle mount")
+	end
+	return bodyMount
+end
+
 local function waitForState(core: any, target: string, timeout: number)
 	local deadline = os.clock() + timeout
 	while os.clock() < deadline do
@@ -111,6 +153,23 @@ local function waitForState(core: any, target: string, timeout: number)
 		RunService.Heartbeat:Wait()
 	end
 	error(string.format("C04 timed out waiting for state %s; current=%s", target, core:GetState()))
+end
+
+local function resetTestAssemblyPose(testModel: Model, core: any, targetCFrame: CFrame)
+	-- This is fixture setup, not locomotion. Move BodyCollider and the connected
+	-- AxleRoot together so the next scenario does not begin with a solver-created
+	-- hinge separation caused by teleporting only one side of the mechanism.
+	testModel:PivotTo(targetCFrame)
+
+	local body = testModel.PrimaryPart
+	assert(body ~= nil and body:IsA("Part"), "C04 reset requires BodyCollider PrimaryPart")
+	local axleRoot = core:GetSharedAxle():GetAxleRoot()
+	body.AssemblyLinearVelocity = Vector3.zero
+	body.AssemblyAngularVelocity = Vector3.zero
+	axleRoot.AssemblyLinearVelocity = Vector3.zero
+	axleRoot.AssemblyAngularVelocity = Vector3.zero
+	RunService.Heartbeat:Wait()
+	assertAxleConnected(core, "C04 reset")
 end
 
 local function waitForActiveAndObserve(
@@ -260,6 +319,7 @@ function C04CoreV3ControllerSpec.run()
 		assert(firstOk == true, firstError or "C04 first ApplyShape rejected")
 		assert(controller:GetState() == "PREVIEW", "C04 ApplyShape must enter PREVIEW immediately")
 		waitForActiveAndObserve(controller, body, false, nil)
+		local centeredBodyMount = assertCenteredAxleMount(controller, body, nil, "C04 first shape")
 
 		local oldLeft = controller:GetLeftLeg()
 		local oldRight = controller:GetRightLeg()
@@ -268,24 +328,45 @@ function C04CoreV3ControllerSpec.run()
 		local oldRightParts = oldRight:GetPhysicalSegments()
 
 		-- Reset to a deterministic near-floor pose before the clearance redraw.
-		body.AssemblyLinearVelocity = Vector3.zero
-		body.AssemblyAngularVelocity = Vector3.zero
-		body.CFrame = CFrame.new(body.Position.X, 2.2, 0)
-		RunService.Heartbeat:Wait()
+		resetTestAssemblyPose(testModel :: Model, controller, CFrame.new(body.Position.X, 2.2, 0))
 
-		local xVelocityBefore = body.AssemblyLinearVelocity.X
+		local positionBefore = body.Position
+		local velocityBefore = body.AssemblyLinearVelocity
 		local secondShape = makeShape(2, -2.4, 2.6)
 		local redrawOk, redrawError = controller:ApplyShape(secondShape, true)
 		assert(redrawOk == true, redrawError or "C04 redraw rejected")
 		assert(controller:GetState() == "PREVIEW", "C04 redraw must re-enter PREVIEW")
 		assertMotorState(controller, false, "C04 redraw motor")
 		assertAxleConnected(controller, "C04 redraw start")
-		assert(math.abs(body.AssemblyLinearVelocity.X - xVelocityBefore) < 1e-4, "C04 redraw hop must not overwrite X velocity")
+		assertCenteredAxleMount(controller, body, centeredBodyMount, "C04 redraw start")
+		assertPairPhysicsOff(controller)
+		local ghostLocalFrames = captureGhostPairLocalFrames(controller)
+		local initialClearance = Clearance.Evaluate(body, controller:GetLeftLeg(), controller:GetRightLeg(), tracksFolder)
+		assert(initialClearance.requiredLift > 0, "C04 redraw fixture must initially require whole-pair clearance")
+		local expectedInitialTargetY = math.min(
+			positionBefore.Y + LegCoreConfig.Rebuild.MaxLift,
+			positionBefore.Y + initialClearance.requiredLift + LegCoreConfig.Rebuild.ClearancePadding
+		)
+		assert(
+			math.abs(controller.waitClearTargetY - expectedInitialTargetY) < 0.02,
+			"C04 controller must calculate whole-pair requiredLift before the redraw hop"
+		)
+		assert((body.Position - positionBefore).Magnitude < 1e-4, "C04 redraw must not teleport BodyCollider")
+		local velocityAfterHop = body.AssemblyLinearVelocity
+		assert(math.abs(velocityAfterHop.X - velocityBefore.X) < 1e-4, "C04 redraw hop must not overwrite X velocity")
+		assert(math.abs(velocityAfterHop.Z - velocityBefore.Z) < 1e-4, "C04 redraw hop must not overwrite Z velocity")
+		assert(velocityAfterHop.Y > Workspace.Gravity * LegCoreConfig.Rebuild.PreviewDuration, "C04 hop must remain visibly upward while preview appears")
+		assert(
+			velocityAfterHop.Y * velocityAfterHop.Y / (2 * Workspace.Gravity) <= 1.25,
+			"C04 redraw hop must remain a short bounded jump"
+		)
 		-- Redraw hop is applied once to the body assembly. The always-enabled hinge
 		-- must carry the axle with it without requiring a second external impulse.
 		for _ = 1, 3 do
 			RunService.Heartbeat:Wait()
 			assertAxleConnected(controller, "C04 redraw hop")
+			assertCenteredAxleMount(controller, body, centeredBodyMount, "C04 redraw hop")
+			assertGhostPairFollowsMount(ghostLocalFrames)
 		end
 
 		for _, part in oldLeftParts do
@@ -300,10 +381,7 @@ function C04CoreV3ControllerSpec.run()
 		-- Runtime envelope regression: this query-only blocker requires a real
 		-- physical lift greater than the old 2.5-stud timeout envelope, but less
 		-- than MaxLift. The rebuild must still reach ACTIVE.
-		body.AssemblyLinearVelocity = Vector3.zero
-		body.AssemblyAngularVelocity = Vector3.zero
-		body.CFrame = CFrame.new(body.Position.X, 2.2, 0)
-		RunService.Heartbeat:Wait()
+		resetTestAssemblyPose(testModel :: Model, controller, CFrame.new(body.Position.X, 2.2, 0))
 
 		local highLiftBlocker = Instance.new("Part")
 		highLiftBlocker.Name = "C04HighLiftBlocker"

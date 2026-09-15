@@ -210,7 +210,6 @@ function LegCoreController:_BeginRebuild(shapeSpec: any, motorEnabled: boolean)
 	self:_StopLiftAssist()
 	self:_DestroyCurrentPair()
 	self.currentShapeSpec = nil
-	self:_ApplyRedrawHop()
 
 	local leftLeg = LegGeometry.new(self.sharedAxle:GetLeftMount(), "Left")
 	local rightLeg = LegGeometry.new(self.sharedAxle:GetRightMount(), "Right")
@@ -218,6 +217,10 @@ function LegCoreController:_BeginRebuild(shapeSpec: any, motorEnabled: boolean)
 	local ok, failure = xpcall(function()
 		leftLeg:BuildPreview(shapeSpec)
 		rightLeg:BuildPreview(shapeSpec)
+		leftLeg:BuildPhysical(shapeSpec)
+		rightLeg:BuildPhysical(shapeSpec)
+		leftLeg:SetPhysicsEnabled(false)
+		rightLeg:SetPhysicsEnabled(false)
 	end, debug.traceback)
 	if not ok then
 		leftLeg:Destroy()
@@ -231,7 +234,27 @@ function LegCoreController:_BeginRebuild(shapeSpec: any, motorEnabled: boolean)
 	self.requestedMotorEnabled = motorEnabled
 	self.previewElapsed = 0
 	self.waitClearElapsed = 0
-	self.waitClearTargetY = 0
+	self.waitClearStartY = self.body.Position.Y
+	self.waitClearTargetY = self.waitClearStartY
+
+	local tracksRoot = resolveTracksRoot()
+	if tracksRoot == nil then
+		error("Core V3 Track root missing during redraw preparation")
+	end
+	local initialClearance = LegClearanceController.Evaluate(
+		self.body,
+		leftLeg,
+		rightLeg,
+		tracksRoot
+	)
+	if not initialClearance.clear then
+		self.waitClearTargetY = math.min(
+			self.waitClearStartY + LegCoreConfig.Rebuild.MaxLift,
+			self.waitClearStartY + initialClearance.requiredLift + LegCoreConfig.Rebuild.ClearancePadding
+		)
+	end
+
+	self:_ApplyRedrawHop()
 	self.sharedAxle:SetAngularVelocity(computeAngularVelocity(shapeSpec))
 	self.state = STATE_PREVIEW
 end
@@ -267,13 +290,7 @@ function LegCoreController:_StepPreview(dt: number)
 		return
 	end
 
-	self.leftLeg:BuildPhysical(self.pendingShapeSpec)
-	self.rightLeg:BuildPhysical(self.pendingShapeSpec)
-	self.leftLeg:SetPhysicsEnabled(false)
-	self.rightLeg:SetPhysicsEnabled(false)
 	self.waitClearElapsed = 0
-	self.waitClearStartY = self.body.Position.Y
-	self.waitClearTargetY = self.waitClearStartY
 	self.state = STATE_WAIT_CLEAR
 end
 

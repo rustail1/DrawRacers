@@ -1,35 +1,35 @@
 # 25 — IMPLEMENTATION SEQUENCE
 
-Статус: **ORDER OF OPERATIONS v1.4.0 R17**
+Статус: **ORDER OF OPERATIONS v1.6.0 CORE V3**
 
 Этот файл отвечает: **что писать первым, вторым и дальше**, чтобы каждая система появлялась только когда её зависимость уже доказана.
 
-Current sequence override: `DECISION_LOG_R17_REFERENCE_CORE_OVERRIDE_2026-09-11.md`. R17 reference-core work is authorized before B17 acceptance. `RaceCameraController`/`CameraMath` and provisional `RiderPresentationController` are already current M0 presentation owners under R17; D09/E03 later extend these same owners for multiplayer/readability rather than introducing duplicates. `RacerService` remains D05.
+Current sequence owner for M0 is `CURRENT_CORE_V3_SOURCE_OF_TRUTH.md` + `SESSION.md`. Old R17/CR2/CR3 implementation ordering is removed.
 
 ---
 
 # PHASE A — PROJECT BOOTSTRAP
 
-### A01 Repository + Rojo baseline
-Output: пустой проект синхронизируется VS Code ↔ Studio.
+### A01 Local folder + Rojo baseline
+Output: exact local project folder/archive syncs reproducibly through Rojo/Studio. Git is not required in the current workflow.
 
 ### A02 Minimal shared structure
-Output: `Shared/Types`, `Shared/Config`, server/client bootstrap без будущих пустых сервисов.
+Output: `Shared/Types`, `Shared/Config`, server/client bootstrap without speculative future services.
 
-### A03 M0 test scene
-Output: lane, flat floor, debug spawn, five obstacle blockout anchors.
+### A03 M0 test scene foundation
+Output: runtime roots, flat lane/debug spawn and later obstacle authoring anchors exist. **Core V3 Flat modes must not start obstacle geometry before Flat PASS.**
 
 ### A04 Deployment/config skeleton
 Create exact DEV/STAGING/PROD deployment registry files from `64/70`; no fake numeric IDs. Apply exact Studio root/instance contract `65`.
 
-Gate: clean reproducible baseline committed; missing external IDs fail closed rather than being guessed.
+Gate: clean reproducible local baseline; missing external IDs fail closed rather than being guessed.
 
 ---
 
-# PHASE B — M0 PHYSICS LAB
+# PHASE B — M0 CORE V3 FLAT PHYSICS
 
 ### B01 InputController pointer abstraction
-Dependency: A02. UI input rectangle/layout must use `59`, not an improvised canvas.
+Dependency: A02. UI input rectangle/layout must use `59`.
 
 ### B02 DrawingController local preview
 Dependency: B01.
@@ -37,78 +37,47 @@ Dependency: B01.
 ### B03 StrokeTypes + StrokeMath Dedupe/Clamp
 Dependency: B02.
 
-### B04 StrokeMath Simplify/Resample/Normalize
-Dependency: B03. Exact DrawCanvas-center pivot/scale mapping = `73`.
+### B04 CanonicalLegShape / GeometryMath mapping
+Dependency: B03. Exact first-cleaned-point translation anchor and collider mapping = `73`. Do not resize/mirror/reverse the accepted stroke.
 
 ### B05 Stroke math automated tests
 Dependency: B04.
 
-### B06 Racer template + RacerRuntime minimal
-Dependency: A03.
+### B06 RacerTemplate + thin RacerRuntime
+Dependency: A03. `RacerRuntime` delegates current leg mechanics to Core V3; it must not reconnect legacy locomotion owners.
 
-### B07 LegAssembly one-leg constructor
-Dependency: B04+B06. Segment construction/local frame = `73/65`.
+### B07 Core V3 SharedAxle
+Dependency: B06. Exactly one `AxleRoot`, one `HingeConstraint`, one motor owner; LEFT -Z, RIGHT +Z at fixed 180°. Hinge stays structurally enabled.
 
-### B08 One hinge motor flat test
-Dependency: B07.
+### B08 Core V3 LegGeometry
+Dependency: B04+B07. Same authoritative XY ShapeSpec on both sides; visual preview nonphysical; physical segments use `canCollide` plan and leg traction material.
 
-### B09 Left/right legs + phase
-Dependency: B08. Hub offsets/axis/sign/duplication = `73`; numeric phase magnitude = `16`.
+### B09 Core V3 clearance + transactional redraw
+Dependency: B08. `EMPTY/PREVIEW/WAIT_CLEAR/ACTIVE`; bounded +Y-only clearance; pair collision activation atomic; accepted shape/version commits only after real ACTIVE; failure is fail-closed.
 
-### B10 Racer stabilization/lane lock
-Dependency: B09.
+### B10 Core V3 2.5D lane/upright owner — CURRENT NEXT TASK
+Dependency: B07+B09. Lock only Z translation to lane plane and stabilize BodyCollider upright. Preserve X/Y translation and shared axle rotation. No normal +X/+Y mover.
 
-### B11 Authoritative LegShapeService wrapper
-Dependency: B04+B09.
+### B11 Authoritative LegShapeService
+Dependency: B04+B09. Client never authors world geometry; reject zero-drive-collider shapes; mechanical pending is exception-safe.
 
-### B12 SubmitStroke/StrokeResult minimal remote contract
-Dependency: B11.
+### B12 SubmitStroke / StrokeResult contract
+Dependency: B11. Exact bounded remote contract; stale/rate/malformed requests fail closed.
 
-### B13 Atomic redraw
-Dependency: B12.
+### B13 Transactional accepted-UI result
+Dependency: B12. Client accepted drawing follows final server mechanical commit; mechanical failure clears stale accepted state when old physical shape was invalidated.
 
-### B14 Invalid/stress redraw suite
-Dependency: B13.
+### B14 Core V3 automated suite C01–C07
+Dependency: B07–B13. `COREV3_TEST` must run all seven current specs. C07 is the flat locomotion regression.
 
-### B15 Five obstacle lab final geometry
-Dependency: B10+B13. Start from exact canonical geometry/defaults in `60` for Flat/Steps/Wall/Gap/Tunnel representatives.
+### B15 Human Core V3 Flat Gate
+Dependency: B10+B14. `COREV3` mode: ROUND from rest -> SMALL_ROUND -> LONG -> HOOK -> ASYMMETRIC -> 20 moving redraws. Prove natural +X locomotion, lane lock/upright stability and no hidden horizontal helper.
 
-### B16 Debug tuning panel
-Dependency: B15.
+### B16 Core V3 observability/tuning panel
+Dependency: B14. DEV/Studio only; show state, hinge count, motor state, contact, relative rotation, clearance, helper detection and acceptance evidence without becoming physics authority.
 
-## R17 — REFERENCE-CORE PARITY OVERRIDE BEFORE B17
-
-R17 is the current Product Owner override. It does not promote earlier human gates; it orders additional core evidence/fixes before B17 can be accepted.
-
-### R17.0 Contract reconcile
-Record the R17 decision and reconcile current implementation ownership. Camera/rider may exist during M0 under R17; first-point mechanical origin remains current until R17.3 evidence and an explicit R17.4 decision.
-
-### R17.1 Desktop camera input
-Use the existing `RaceCameraController`; do not create another camera owner. Hold RMB over world space with Local Racer present -> bounded orbit, mouse capture, exact mouse-state restoration, automatic smooth return. LMB remains DrawCanvas input. Touch ownership remains unchanged.
-
-### R17.2 Rider mount/pose
-Use the existing `RiderPresentationController`; no second rider manager. Establish deterministic nonphysical jockey/rodeo mount and Studio scale/readability evidence.
-
-### R17.3 Mechanical-origin experiment
-Studio-only comparison of current first-point, bounds-center and deterministic geometry/reference-center candidates using identical canonical shapes/resets. Do not alter production origin or network schema during the experiment.
-
-### R17.4 Mechanical-origin migration
-Only after R17.3 human evidence, record one explicit Product Owner origin decision and migrate the server-owned authoritative geometry consistently if the current first-point origin loses the comparison.
-
-### R17.5 Live phase-lock acceptance
-Prove actual 180-degree anti-phase stability under real hinges/contact/redraw, not only commanded motor correction. Preserve same locomotion sign and configured average motor speed.
-
-### R17.6 Body feel A/B
-Tune in isolation: density first, then friction, then collider size only if belly contact remains the proven limiter. Keep motor `-8 / 35000 / 120` unchanged during these sweeps. Record body/belly contact, leg contact, air time, distance, speed and stuck time.
-
-### R17.7 Reference course pass
-Canonical shape matrix across unchanged Flat/Steps/Wall/Gap/Tunnel plus live redraw. Require meaningful shape niches and no universal winner.
-
-### R17.8 Final core human gate
-Consolidated server regression + R16/R17 Studio/reference-feel acceptance. Only supplied human evidence may close this gate.
-
-### B17 M0 human test + tuning log
-Run `55` G0 only after ordered R17 work reaches R17.8 or Product Owner records another explicit gate decision. B17 remains HUMAN_GATE PENDING until recorded evidence is PASS.
+### B17 Flat-gate record / post-Flat handoff
+Dependency: B15+B16. Record PASS or bounded rework/escalation. Only after human Flat PASS may obstacle work and legacy locomotion-file cleanup resume.
 
 ---
 
@@ -155,9 +124,9 @@ Enable current Workspace server authority setting for test place; document behav
 Security before broader scale.
 
 ### D09 RaceCameraController — 2-player extension/acceptance
-Extend the existing R17 production camera owner to Local Racer + look-ahead + visible rival. Do not create a second camera/controller. Start camera constants from `16` and respect `59` DrawCanvas exclusion zone.
+Extend the existing production camera owner to Local Racer + look-ahead + visible rival. Do not create a second camera/controller. Start camera constants from `16` and respect `59` DrawCanvas exclusion zone.
 
-Preserve the production camera contract from R17 and `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`:
+Preserve the current production camera contract and `DECISION_LOG_CAMERA_RIDER_PRESENTATION_2026-09-10.md`:
 - deterministic frame-rate-independent `CameraMath` remains the pure math owner;
 - active-race target follows Local Racer position without inheriting BodyCollider rotation/roll;
 - stable smoothed target + vertical dead-zone/damping from `16`;
@@ -189,7 +158,7 @@ No new core mechanics.
 Build exact first ten definitions from `60`; do not invent alternate launch blockouts.
 
 ### E03 Full 8-player readability camera/HUD/rider pass
-Use exact presentation owners `08/59/68`; no persistence dependency yet. Extend the existing R17/D09 camera and R17 rider owners to the real 8-player readability case; do not create second systems.
+Use exact presentation owners `08/59/68`; no persistence dependency yet. Extend the existing camera/rider owners to the real 8-player readability case; do not create second systems.
 
 Rider acceptance at E03:
 - cube shell remains the canonical racer body from `62`;

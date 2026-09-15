@@ -1,6 +1,6 @@
 # 11 — TECHNICAL DESIGN FOR ROBLOX
 
-> PRODUCT LOCK v1.3.4: final target is an 8-player live drawing race; 2-player is an implementation/integration stage only. Product power is never sold.
+> CORE V3 CURRENT TECHNICAL DIRECTION: final target is an 8-player live drawing race; 2-player is an implementation/integration stage only. Product power is never sold.
 
 ## 1. Architecture principles
 - Server authoritative for race state/rewards/checkpoints.
@@ -48,35 +48,31 @@ Client and server can share deterministic-ish pure modules for:
 Server reruns critical validation.
 
 ## 6. Physical leg representation
-Current R17 production representation is owned by `LegPairAssembly`: one shared axle `AxleRoot` and one `AxleJoint` motor drive both rigid side shapes. `LegAssembly` owns only each side's welded physical/visual geometry and is rigidly attached to the shared axle.
+Current production path is Core V3:
 
-Conceptually:
-`BodyCollider + one shared axle (LegPairAssembly/AxleRoot/AxleJoint) + Left/Right welded side geometry`.
+`BodyCollider -> RacerRuntime -> LegCoreController -> SharedAxle + Left/Right LegGeometry`.
 
-The two side copies are mounted **co-phase (0° local angular difference)** on opposite Z sockets. Human reference-video evidence supersedes the interim 180° local-offset interpretation. Do not create independent per-side hinge motors or runtime phase-chasing correction.
+`SharedAxle` owns one `AxleRoot`, one `DriveJoint` HingeConstraint and one motor command. Left/Right mounts live on opposite Z sides; Right is structurally 180° opposed. `LegGeometry` owns visual preview plus physical segment Parts for one side; it owns no motor.
 
-Do NOT make every point a motor. Separate:
-- visual curve: smoother/more segments;
-- physics colliders: fewer segments.
+Do not reconnect `LegPairAssembly`, `LegDriveAssembly` or old per-side drive paths to current Core V3.
 
-EditableMesh is optional later for visuals; it is not required for the locked core implementation.
+Visual geometry may be smoother than physical geometry but is non-colliding/non-touching/non-querying/massless.
 
-## 7. Self-collision handling — canonical
-- `RacerBody ↔ RacerLeg = no` for **all** racer bodies/legs, including own assembly.
-- `RacerLeg ↔ RacerLeg = no`; `RacerBody ↔ RacerBody = no`.
-- `RacerBody/RacerLeg ↔ Track = collide`.
-- `Trigger` is overlap/query only; `Decoration` never drives gameplay collision.
-- Inner-hub physical segments may additionally be `CanCollide=false` per `73`, but this never changes the global rule above.
-Exact implementation matrix is `65`; gameplay edge-case owner is `28`. There is no alternate “own-assembly collision” policy.
+## 7. Collision / traction contract
+- RacerBody <-> RacerLeg = no self-collision.
+- RacerLeg <-> RacerLeg = no.
+- RacerBody/RacerLeg <-> Track = collide according to collision groups.
+- Physical leg segments only become collidable when their authoritative segmentPlan entry has `canCollide=true`.
+- Core V3 Body friction is near zero; traction belongs to legs.
 
-## 8. Redraw swap
-Build one staged replacement `LegPairAssembly` with its shared axle disabled → validate/commit at the current authoritative racer transform while preserving the current shared axle phase → enable the new pair → retire/destroy the old pair atomically. Avoid a frame where both old and new colliders can push the racer, and avoid a frame where a failed build removes the working pair.
+## 8. Redraw
+Core V3 does not stage a second whole pair. It destroys old leg geometry at rebuild start while preserving the shared axle/hardware owner, grows both previews, builds ghost physical geometry, performs whole-pair clearance, then enables the pair atomically. Accepted state commits only after real ACTIVE. Failure is fail-closed and leaves the controller EMPTY.
 
-## 9. Lane constraint
-Gameplay is 2.5D: X forward, Y vertical, Z fixed around lane center. Use constraint/force strategy that preserves physical bounce but prevents drift into neighbor lane.
+## 9. Lane constraint — approved next repair
+Gameplay is 2.5D: X/Y physical, Z fixed to lane center. Use a dedicated Core V3 lane owner; preferred primitive is PlaneConstraint for the forbidden Z degree of freedom.
 
-## 10. Body stabilization
-R16.1 upright-body contract is canonical for the current core: `BodyCollider` remains physically free to translate in X/Y while lane Z translation stays mechanically constrained, but all three body rotation axes are locked/corrected toward upright by the stabilization constraint. The stabilizer may apply corrective torque only; it must not provide forward propulsion, vertical lift, or per-frame position teleports. Exact tolerances and numeric tuning are owned by `03/16` and verified by B10/Studio evidence.
+## 10. Body stabilization — approved next repair
+Use bounded torque/orientation stabilization only. Preferred primitive is AlignOrientation or equivalent. It may correct upright orientation but must not apply forward propulsion or vertical lift. Shared axle rotation must remain unconstrained by this owner.
 
 ## 11. Network model
 ### Preferred
@@ -116,10 +112,11 @@ Developer Product grants follow `56_PURCHASE_RECEIPT_GRANT_CONTRACT.md`: a `Purc
 Restricted drawing: stroke only creates locomotion geometry inside bounded canvas/size; no free world drawing, text/image upload, arbitrary asset creation or scripting.
 
 ## 17. Tests
-Pure math unit tests: simplify/resample/bounds.  
-Server tests: invalid payload/rate/sequence.  
-Studio human tests: feel, collision, camera, redraw, mobile input.  
-Regression: old obstacles, finish, respawn, DataStore, purchases after shared-system changes.
+Pure math: simplify/resample/bounds/segmentPlan.
+Server/runtime: invalid payload/rate/sequence, transactional redraw, C01–C07 Core V3 suite.
+Studio human: ROUND from rest, reference shape suite, 20 moving redraws, lane/upright readability, camera/rider feel.
+
+Automation does not promote live Roblox physics to PASS.
 
 ## 18. Implementation architecture source
 This file defines technical direction. Exact module ownership/API/dependencies live in `21_SYSTEM_CLASS_ARCHITECTURE.md`; remote/data schemas live in `22_NETWORK_DATA_CONTRACTS.md`; project bootstrap lives in `23_PROJECT_SETUP_TOOLCHAIN.md`; QA/regression lives in `24_TESTING_QA_MATRIX.md`. Do not duplicate those contracts here.

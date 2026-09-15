@@ -1,39 +1,39 @@
 # 66 — ZERO-TO-RELEASE TASK ACCEPTANCE CATALOG
-Статус: **PROGRAMMER / CODEX EXECUTION CONTRACT v1.3.4**.
+Статус: **PROGRAMMER / CODEX EXECUTION CONTRACT v1.6.0 CORE V3**.
 
 Цель: `25` fixes order; this file fixes the **minimum observable output and acceptance for every implementation task**. The implementer does not ask “what counts as done?” — they read the row, owner docs, implement the smallest end-to-end slice, test it, then move on.
 
 ## Global rule for every task
-Before edit: `FEATURE_LIST → SESSION → 50 → 26 → this row → owner docs → relevant code`. After edit: automated checks → Studio test → regression → human acceptance where visual/feel → update SESSION. No later task starts while current ACTIVE task is not accepted.
+Before edit: `CURRENT_CORE_V3_SOURCE_OF_TRUTH (for M0 mechanics) → FEATURE_LIST → SESSION → 50 → 26 → this row → owner docs → relevant code`. Work from the exact local folder/archive baseline; Git is not required unless explicitly re-enabled. After edit: automated checks → Studio test → regression → human acceptance where visual/feel → update SESSION. No later task starts while the current ACTIVE task is not accepted.
 
 ## Phase A — bootstrap
 | ID | Build | Required owners | Acceptance / stop condition |
 |---|---|---|---|
-| A01 | Git repo + Rojo baseline | `23` | clean repo, `rojo serve/build` path works, Studio sync round-trip, first commit |
+| A01 | local folder + Rojo baseline | `23` | exact local baseline identified; `rojo serve/build` path works when available; Studio sync round-trip; no Git requirement in current local workflow |
 | A02 | Shared/config/type + server/client bootstrap roots | `21/23/65` | exact root tree exists; boot no errors; no empty future services |
-| A03 | M0 test scene | `16/60/65` | flat lane + canonical obstacle anchors + debug spawn reproducible from clean sync |
+| A03 | M0 scene foundation | `16/60/65` | flat lane/debug spawn reproducible; obstacle anchors may exist but Core V3 Flat modes do not start obstacle geometry before Flat PASS |
 | A04 | deployment/config skeleton | `64/70` | DEV/STAGING/PROD config files exist with no fake IDs; missing IDs fail closed |
 
-## Phase B — M0 physics lab
+## Phase B — M0 Core V3 flat physics
 | ID | Build | Required owners | Acceptance / stop condition |
 |---|---|---|---|
 | B01 | pointer abstraction | `03/59/68` | mouse/touch produce same start/move/end/cancel semantic stream; no camera pointer conflict |
 | B02 | local stroke preview | `03/59/68` | one continuous preview, exact DrawCanvas hit rect, cancel leaves current accepted shape |
-| B03 | dedupe/clamp | `03/16` | deterministic unit tests; NaN/Inf/out-of-bounds rejected or clamped per contract |
-| B04 | simplify/resample/pivot-map | `03/16/73` | same input → same normalized output; caps obeyed; useful shape not collapsed below minimum |
+| B03 | dedupe/clamp | `03/16` | deterministic tests; NaN/Inf/out-of-bounds rejected or clamped per contract |
+| B04 | canonical stroke/shape mapping | `03/16/73` | first-cleaned-point translation anchor preserved; no resize/mirror/reverse; deterministic bounded output |
 | B05 | stroke math tests | `24` | canonical, tiny, duplicate, self-cross, max-point, malformed cases PASS |
-| B06 | RacerTemplate/RacerRuntime | `16/21/65` | exact instance tree, 3×3×3 collider, no Humanoid, spawn/despawn clean |
-| B07 | one LegAssembly | `03/16/21/65/73` | normalized ShapeSpec becomes exact bounded physical segment chain around canonical hub/pivot |
-| B08 | one hinge motor | `16` | flat movement exists, motor values from defaults, no hidden +X propulsion except allowed anti-stall |
-| B09 | two legs + phase | `03/16/65/73` | exact same-XY duplicated left/right build at canonical hubs, +Z hinge axis/sign correct, phase offset starts correctly, one accepted shape controls both |
-| B10 | stabilization/lane | `16/65` | R16.1: X/Y translation remains physical, Z translation remains lane-locked, and BodyCollider stays upright about world X/Y/Z within current tolerance; no extra forward race power |
-| B11 | authoritative LegShapeService | `03/21/22` | client cannot create world geometry; server validates and owns ShapeSpec/build |
+| B06 | RacerTemplate/thin RacerRuntime | `16/21/65` | exact racer tree; no Humanoid physics authority; delegates legs to Core V3 only |
+| B07 | SharedAxle | `03/16/21/65/73` | exactly 1 AxleRoot + 1 HingeConstraint + 1 motor owner; LEFT -Z, RIGHT +Z, fixed 180°; hinge structurally remains enabled |
+| B08 | LegGeometry pair | `03/16/21/65/73` | same XY ShapeSpec on both sides; visual preview nonphysical; physical drive segments obey `canCollide`; no per-side actuator |
+| B09 | clearance + Core controller | `03/16/21/24` | PREVIEW→WAIT_CLEAR→ACTIVE; only bounded +Y clearance; pair enables atomically; failure→EMPTY/fail-closed |
+| B10 | 2.5D lane/upright owner | `03/16/21/65` | X/Y translation remains physical, Z is lane-locked, body remains upright, axle rotation remains free; no forward/vertical translation helper |
+| B11 | authoritative LegShapeService | `03/21/22` | server validates/builds; zero usable drive collider shape rejected; mechanical pending clears on every result/exception |
 | B12 | SubmitStroke/StrokeResult | `21/22` | exact remote payload, stale/rate/malformed rejection, no generic RPC |
-| B13 | atomic redraw | `03/28` | old legs remain while drawing/building; valid swap occurs atomically without teleport/reset velocity |
-| B14 | redraw abuse/stress | `24/32` | spam/malformed/stale/large payload cannot leak parts, crash, or remove valid current shape |
-| B15 | five-obstacle lab | `60/67` | flat/steps/wall/gap/tunnel use canonical defaults and are traversable by intended legal shapes |
-| B16 | debug/tuning panel | `23/34` | displays required physics/shape/lane/checkpoint metrics; DEV/STAGING only |
-| B17 | G0 human gate | `15/55` | recorded G0 PASS or bounded rework/escalation; no silent pass |
+| B13 | transactional redraw/result | `03/22/28` | accepted ShapeSpec/version commits only after ACTIVE; failure reports reject and stale accepted UI cannot survive |
+| B14 | C01–C07 suite | `24` | `COREV3_TEST` runs all seven current specs; no weakening C07 to fake GREEN |
+| B15 | human flat shape suite | `15/24/55` | `COREV3`: ROUND from rest, then SMALL_ROUND/LONG/HOOK/ASYMMETRIC and 20 moving redraws; natural +X movement and stable pair |
+| B16 | debug/tuning evidence | `23/34` | state/hinge/contact/relative-rotation/clearance/helper evidence readable; DEV/Studio only, not physics authority |
+| B17 | Core V3 Flat Gate | `15/55` | human Flat PASS or bounded rework/escalation recorded; obstacles and legacy cleanup remain blocked until PASS |
 
 ## Phase C — adaptation
 | ID | Build | Required owners | Acceptance / stop condition |
@@ -119,7 +119,7 @@ Before edit: `FEATURE_LIST → SESSION → 50 → 26 → this row → owner docs
 | I04 | name/IP/safety/platform policy | `39/48/62/64` | clearance/maturity/provenance PASS |
 | I05 | PROD provisioning + ID binding | `35/64/70` | both places + SKU/assets + namespaces resolved; private PROD smoke PASS |
 | I06 | QA/performance/deploy rollback drill | `24/35/57` | no P0/P1, rollback pair known-good, 30-heat/device matrix PASS |
-| I07 | final documentation/build audit | `78` | EXECUTION-CONSISTENCY audit PASS; manifest/static/dependency checks PASS |
+| I07 | final documentation/build audit | `79` | EXECUTION-CONSISTENCY audit PASS; manifest/static/dependency checks PASS |
 | I08 | public enable | `35/64` | only now enable public access/discovery; monitor first hour/day |
 
 ## Completion definition

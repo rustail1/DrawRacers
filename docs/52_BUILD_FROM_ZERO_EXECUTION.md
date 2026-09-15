@@ -1,5 +1,5 @@
 # 52 — BUILD-FROM-ZERO EXECUTION CONTRACT
-Статус: **IMPLEMENTATION ROUTE v1.3.4**.
+Статус: **IMPLEMENTATION ROUTE v1.6.0 CORE V3**.
 
 Цель: разработчик/Codex должен иметь однозначный маршрут от пустого репозитория до public release, не придумывая игровые правила. Этот файл **не дублирует specs** — он маршрутизирует работу по существующим owner documents.
 
@@ -7,10 +7,10 @@
 Read in order: `README` → `FEATURE_LIST` → `SESSION` → `50_COMPLETENESS_MATRIX` → relevant row in `26_HANDOFF_MAP` → exact task row in `66`. Do not load `_HISTORY/` unless investigating provenance. Product/reference boundary: `51`; market evidence: `54`; empirical gates: `55`.
 
 ## Phase 1 — bootstrap
-Execute `25` A01–A04 using `23_PROJECT_SETUP_TOOLCHAIN`, exact Studio contract `65`, and deployment skeleton `64/70`. Acceptance: repository/Rojo/Studio mapping works, required collision groups/config roots/test scene exist.
+Execute `25` A01–A04 using `23_PROJECT_SETUP_TOOLCHAIN`, exact Studio contract `65`, and deployment skeleton `64/70`. Acceptance: exact local baseline/Rojo/Studio mapping works, required collision groups/config roots/test scene exist. Git is not required in the current execution profile.
 
 ## Phase 2 — M0 core physics
-Execute `25` B01–B17. Owners: `03`, exact coordinate/pivot/collider mapping `73`, `11`, `21`, `22`, tuning `16`, DrawCanvas layout `59`, QA `24`. Output: draw→real physical legs→bounded locomotion→atomic redraw→five obstacle lab. Exact runtime Instances/collision = `65`; UI input hierarchy = `68`. Must pass `15` Core Lab DoD **and `55` G0** before M0.5.
+Execute current `25` B01–B17 under `CURRENT_CORE_V3_SOURCE_OF_TRUTH.md`. Owners: `03`, `11`, `16`, `21`, `22`, `24`, exact coordinate/pivot/collider mapping `73`, Studio contract `65`, DrawCanvas `59`. Output before any obstacle work: draw -> one shared axle/hinge -> real physical side legs -> natural flat +X locomotion -> transactional redraw -> 2.5D Z lane lock/upright stabilization -> C01-C07 -> human Flat Gate. **Walls/steps/gaps/tunnels stay out of the Core V3 validation path until human Flat PASS.** After Flat PASS, obstacle/product G0 work may resume.
 
 ## Phase 3 — M0.5 track grammar
 Execute `25` C01–C04. Owners: `04`, `30`, `42`, exact launch geometry/tracks `60`. Output: mixed track, requirement transitions, no normal universal-shape bypass. Exact assembly/release workflow = `67`. Run `55` G1. Failed acceptance = bounded rework TrackPiece/physics/tuning, then explicit escalation, not silent new game design.
@@ -70,7 +70,7 @@ HOW choices inside existing owners: local function names, private helper decompo
 These require explicit owner decision + Decision Log + owner doc + Feature List change.
 
 ## Final release criterion
-The game is release-candidate when exact UI (`59`), launch tracks (`60`), economy/progression (`61`) and launch art/content (`62`) are implemented and accepted, and every `Production completeness` item in `FEATURE_LIST` is `ACCEPTED`, `55` required pre-release gates are recorded, `56` receipt tests pass if Developer Products are enabled, `57` device/performance matrix passes, `35/48` release/IP checks pass, and no P0/P1 issue remains. `78_FINAL_EXECUTION_CONSISTENCY_AUDIT_v1.3.4.md` must remain PASS. Commercial KPIs remain live measurements, not promises.
+The game is release-candidate when exact UI (`59`), launch tracks (`60`), economy/progression (`61`) and launch art/content (`62`) are implemented and accepted, and every `Production completeness` item in `FEATURE_LIST` is `ACCEPTED`, `55` required pre-release gates are recorded, `56` receipt tests pass if Developer Products are enabled, `57` device/performance matrix passes, `35/48` release/IP checks pass, and no P0/P1 issue remains. `79_CURRENT_CORE_V3_DOCUMENTATION_AUDIT_2026-09-15.md` must remain PASS. Commercial KPIs remain live measurements, not promises.
 
 
 ## Two-place launch topology
@@ -78,4 +78,4 @@ By M2 FTUE acceptance the experience must use the final topology, not a temporar
 
 
 ## Final zero-question release rule
-Public enable is `25` I08 only after `78_FINAL_EXECUTION_CONSISTENCY_AUDIT_v1.3.4.md` PASS. A missing generated Roblox ID is resolved through `64/70`, not guessed. A missing observable WHAT/WHY decision stops implementation; a private HOW choice inside `21/22/65/68` belongs to the implementer.
+Public enable is `25` I08 only after `79_CURRENT_CORE_V3_DOCUMENTATION_AUDIT_2026-09-15.md` PASS. A missing generated Roblox ID is resolved through `64/70`, not guessed. A missing observable WHAT/WHY decision stops implementation; a private HOW choice inside `21/22/65/68` belongs to the implementer.

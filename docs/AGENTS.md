@@ -5,18 +5,17 @@
 ## Role split
 Human/vision owner owns **WHAT and WHY**. AI proposes/implements **HOW** inside approved constraints.
 
-The current preferred execution topology for this repository is:
+The current execution topology is:
 
 ```text
-ChatGPT remote GitHub executor
--> rustail1/DrawRacers main
--> user git pull on PC
+local project folder/archive
+-> AI/Codex bounded edit in a separate copy/overlay
 -> Rojo
 -> Roblox Studio
 -> human evidence
 ```
 
-The generic local Codex/Claude workflow described elsewhere remains compatible, but it is not required. A remote GitHub executor cannot inspect the user's uncommitted local worktree and must not claim that it can.
+Git/GitHub execution is currently disabled by Product Owner choice. Do not fetch, branch, commit, push or open PRs unless that policy is explicitly re-enabled.
 
 ## Mandatory task classification
 Before any change, classify the request as exactly one of:
@@ -45,17 +44,16 @@ If current code correctly implements current Source of Truth but the user wants 
 5. For catalog implementation tasks read the exact row in `66_ZERO_TO_RELEASE_TASK_ACCEPTANCE_CATALOG.md`.
 6. For architecture/network tasks read `21_SYSTEM_CLASS_ARCHITECTURE.md` and/or `22_NETWORK_DATA_CONTRACTS.md`.
 7. Read relevant Decision Log and relevant existing code.
-8. Inspect current remote `main` HEAD before planning/writing.
+8. Confirm the exact local folder/archive baseline before planning/writing.
 9. Inspect the existing Roblox/Rojo owner before creating anything new.
 
 ## Repository execution policy
-- Repository: `rustail1/DrawRacers`.
-- Working branch: **`main` only**; no branches/PRs unless the Product Owner explicitly changes policy.
-- After an approved implementation plan, ChatGPT acting through GitHub may commit the bounded change directly to `main`.
-- PLAN ONLY does not authorize any repository write.
-- One Task ID has one active executor. Do not concurrently implement the same task in remote GitHub and a local coding agent.
-- Remote GitHub state is not proof that `C:\Dev\DrawRacers` has no local edits. Existing local user changes are protected.
-- Filesystem/Rojo-managed scripts are canonical. Roblox Studio is for runtime/human validation, not manual competing copies of source scripts.
+- Current mode: **local-file / local-folder only**.
+- No Git/GitHub/branch/commit/PR actions unless explicitly re-enabled.
+- Work against the exact folder/archive supplied for the task.
+- Prefer a separate copy/overlay and produce a complete replacement archive when requested.
+- Filesystem/Rojo-managed scripts are canonical. Roblox Studio is for runtime/human validation.
+- One Task ID has one active executor.
 
 ## BUGFIX lifecycle
 Every BUGFIX defaults to **INVESTIGATE / PLAN ONLY** and must follow `BUGFIX_PROTOCOL.md`.
@@ -69,14 +67,11 @@ evidence
 -> blast radius
 -> exact FILES TO CHANGE / DO NOT TOUCH
 -> RED/test plan + Studio acceptance plan
--> STOP / wait for approval
--> re-check main HEAD
+-> approval when required
 -> RED when meaningful
--> confirm correct failure
 -> minimal GREEN
 -> regression/full verification
--> diff audit
--> direct-main commit
+-> archive/diff audit
 -> /review
 -> human Roblox Studio acceptance
 ```
@@ -124,12 +119,12 @@ BUGFIX uses the stricter `BUGFIX_PROTOCOL.md` lifecycle above. Approved module r
 - Exact heat lifecycle/timeouts/requeue: `74`
 - Exact bot shape/difficulty policy: `75`
 - First 30-day LiveOps buffer: `76`
-- Current final documentation audit: `78`
+- Current final documentation audit: `79`
 - Current state/exact task: `SESSION.md`
 - Why a choice exists: Decision Log
 - Bugfix execution: `BUGFIX_PROTOCOL.md`
 - Post-fix read-only audit: `REVIEW_PROTOCOL.md`
-- Human operator prompts and Git/Rojo handoff: `AI_WORKFLOW_QUICKSTART.md`
+- Human operator prompts and local-file/Rojo handoff: `AI_WORKFLOW_QUICKSTART.md`
 
 Never silently duplicate/change facts across files.
 
@@ -160,26 +155,10 @@ After shared-system change run regression on old scenarios.
 
 Unexpected failure requires root-cause/systematic debugging before another production fix. Never weaken an expectation solely to obtain GREEN.
 
-## Remote verification and Rojo
-`default.project.json` owns the current Rojo mapping. The remote executor should inspect it when sync/mapping is relevant and must not change it as collateral damage.
+## Verification and Rojo
+`default.project.json` owns the current Rojo mapping. Do not change it as collateral damage.
 
-For repository-complete changes, use the checks required by the current plan/task. The current Contract Verify path includes repository verification plus pinned toolchain/Rojo build evidence. Fresh CI must belong to the actual fix head when it is used as completion evidence.
-
-The user performs the local handoff:
-
-```powershell
-cd C:\Dev\DrawRacers
-git status --short
-```
-
-If clean:
-
-```powershell
-git pull --ff-only origin main
-rojo serve default.project.json
-```
-
-If `git status --short` is non-empty, do not assume those local edits are disposable.
+Use the checks required by the current task/plan. If Rojo is available, build/serve the exact edited local artifact. Static/build success does not prove Roblox solver/feel.
 
 ## Human acceptance
 Automated checks can establish `AUTOMATED GREEN`; they cannot establish a required Studio/human PASS.
@@ -201,12 +180,12 @@ At task end state:
 - deviations from spec;
 - what felt fragile/bad in implementation;
 - next smallest step;
-- exact local pull/Rojo/Studio acceptance steps when human evidence is required.
+- exact local sync/Rojo/Studio acceptance steps when human evidence is required.
 
 Update `SESSION.md` after accepted changes where the current-state cursor/process needs to be recorded.
 
 ## v1.3.4 mandatory execution context
-For any catalog implementation task, after FEATURE_LIST/SESSION/HANDOFF read the exact task row in `66_ZERO_TO_RELEASE_TASK_ACCEPTANCE_CATALOG.md`. Use `65` for Studio objects/collision, `68` for UI hierarchy, `70` for generated platform IDs. Never invent numeric Roblox IDs. Coin catalog/Pass grant logic must use `71`. Core geometry uses `73`; race lifecycle uses `74`; bot behavior uses `75`; H05 uses `76`. Final release uses `78`.
+For any catalog implementation task, after FEATURE_LIST/SESSION/HANDOFF read the exact task row in `66_ZERO_TO_RELEASE_TASK_ACCEPTANCE_CATALOG.md`. Use `65` for Studio objects/collision, `68` for UI hierarchy, `70` for generated platform IDs. Never invent numeric Roblox IDs. Coin catalog/Pass grant logic must use `71`. Core geometry uses `73`; race lifecycle uses `74`; bot behavior uses `75`; H05 uses `76`. Final release uses `79`.
 
 ## Hard execution dependency v1.3.4
 A01->A02->A03->A04 is the historical bootstrap dependency. In M2, `E04 PlayerDataService -> E05 RewardService -> E06 AnalyticsAdapter -> E07 canonical BotRacerController -> E08 confirmed Results -> E09 CosmeticService -> E10 FTUE/routing` is mandatory. Do not stub a temporary save/reward/bot system to jump ahead. Production handoff contains no `_HISTORY`; use only manifest current documents.

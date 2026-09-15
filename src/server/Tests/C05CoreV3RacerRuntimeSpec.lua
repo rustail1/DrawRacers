@@ -128,6 +128,26 @@ local function countHinges(root: Instance): number
 	return count
 end
 
+local function countNamedModels(root: Instance, name: string): number
+	local count = 0
+	for _, descendant in root:GetDescendants() do
+		if descendant:IsA("Model") and descendant.Name == name then
+			count += 1
+		end
+	end
+	return count
+end
+
+local function countClass(root: Instance, className: string): number
+	local count = 0
+	for _, descendant in root:GetDescendants() do
+		if descendant:IsA(className) then
+			count += 1
+		end
+	end
+	return count
+end
+
 local function waitForState(core: any, target: string, timeout: number)
 	local deadline = os.clock() + timeout
 	while os.clock() < deadline do
@@ -196,12 +216,28 @@ function C05CoreV3RacerRuntimeSpec.run()
 		body.Anchored = true
 
 		assert(model:GetAttribute("CoreV3Validation") == true, "C05 racer must explicitly mark Core V3 validation mode")
+		local laneOwner = model:FindFirstChild("CoreV3LaneConstraint")
+		assert(laneOwner ~= nil and laneOwner:IsA("Model"), "C05 racer must create one dedicated lane/upright owner")
+		assert(countNamedModels(model, "CoreV3LaneConstraint") == 1, "C05 racer must create lane owner exactly once")
+		assert(countClass(laneOwner, "PlaneConstraint") == 1, "C05 lane owner must create exactly one PlaneConstraint")
+		assert(countClass(laneOwner, "AlignOrientation") == 1, "C05 lane owner must create exactly one AlignOrientation")
+		assert(countClass(laneOwner, "AlignPosition") == 0, "C05 lane owner must not constrain X/Y with AlignPosition")
+		local laneConstraint = racer:GetLaneConstraint()
+		local plane = laneConstraint:GetPlaneConstraint()
+		local upright = laneConstraint:GetOrientationConstraint()
+		assert(plane.Enabled == true, "C05 lane PlaneConstraint must stay enabled")
+		assert(plane.Attachment0 ~= nil and plane.Attachment1 ~= nil, "C05 lane PlaneConstraint attachments missing")
+		assert(math.abs((plane.Attachment0 :: Attachment).WorldAxis:Dot(Vector3.zAxis)) >= 0.999, "C05 lane plane normal must be world Z")
+		assert(upright.Enabled == true, "C05 upright constraint must stay enabled")
+		assert(upright.Mode == Enum.OrientationAlignmentMode.OneAttachment, "C05 upright must target world orientation")
+		assert(upright.RigidityEnabled == false, "C05 upright must use bounded torque")
+		assert(upright.MaxTorque > 0 and upright.MaxTorque < math.huge, "C05 upright torque must be finite and positive")
+		assert(upright.Attachment0 ~= nil and (upright.Attachment0 :: Attachment).Parent == body, "C05 upright must act on BodyCollider only")
 		assert(countHinges(model) == 0, "C05 fresh racer must not create a hinge before the first shape")
 		assert(racer:GetLegCore() == nil, "C05 Core V3 controller must be lazy before first shape")
 		assert(model:FindFirstChild("AntiStallForce", true) == nil, "C05 AntiStall must be absent in Core V3 validation")
 		assert(model:FindFirstChild("BodyFloatForce", true) == nil, "C05 persistent BodyFloat must be absent in Core V3 validation")
-		assert(model:FindFirstChild("OrientationAlign", true) == nil, "C05 RacerStabilizer must be absent in Core V3 validation")
-		assert(model:FindFirstChild("LanePlane", true) == nil, "C05 lane stabilizer constraint must be absent in Core V3 validation")
+		assert(model:FindFirstChild("OrientationAlign", true) == nil, "C05 legacy RacerStabilizer must be absent in Core V3 validation")
 
 		local first = LegShapeService.ValidateAndBuild(racer, FIRST_SHAPE, false)
 		assert(first.accepted == true, first.rejectReasonCode or "C05 first ShapeSpec application rejected")
@@ -215,6 +251,9 @@ function C05CoreV3RacerRuntimeSpec.run()
 		assert(math.abs((bodyProperties :: PhysicalProperties).Friction) < 1e-6, "C05 Core V3 BodyCollider must not add Track friction")
 		local sharedAxle = core:GetSharedAxle()
 		assert(countHinges(model) == 1, "C05 first shape must create exactly one HingeConstraint")
+		assert(model:FindFirstChild("CoreV3LaneConstraint") == laneOwner, "C05 first shape must preserve lane owner identity")
+		assert(racer:GetLaneConstraint() == laneConstraint, "C05 first shape must preserve lane owner object")
+		assert(countNamedModels(model, "CoreV3LaneConstraint") == 1, "C05 first shape must not duplicate lane owner")
 		assert(core:GetState() == "ACTIVE", "C05 accepted first shape must already be mechanically ACTIVE")
 		assert(racer:GetShapeVersion() == 1, "C05 first accepted shape must publish version 1")
 		assert(racer:GetCurrentShapeSpec() == first.shapeSpec, "C05 RacerRuntime must publish the authoritative first ShapeSpec")
@@ -231,6 +270,9 @@ function C05CoreV3RacerRuntimeSpec.run()
 		assert(racer:GetLegCore() == core, "C05 redraw must preserve the same LegCoreController")
 		assert(core:GetSharedAxle() == sharedAxle, "C05 redraw must preserve the same SharedAxle")
 		assert(countHinges(model) == 1, "C05 redraw must not create a second hinge")
+		assert(model:FindFirstChild("CoreV3LaneConstraint") == laneOwner, "C05 redraw must preserve lane owner identity")
+		assert(racer:GetLaneConstraint() == laneConstraint, "C05 redraw must preserve lane owner object")
+		assert(countNamedModels(model, "CoreV3LaneConstraint") == 1, "C05 redraw must not duplicate lane owner")
 		assert(core:GetLeftLeg() ~= oldLeft and core:GetRightLeg() ~= oldRight, "C05 redraw must replace only leg geometry owners")
 		for _, part in oldPhysicalParts do
 			assert(part.Parent == nil, "C05 old physical geometry must be destroyed on redraw")

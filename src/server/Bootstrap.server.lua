@@ -28,6 +28,7 @@ local CORE_V3_SPECS = {
 	"C05CoreV3RacerRuntimeSpec",
 	"C06CoreV3StressSpec",
 	"C07CoreV3FlatLocomotionSpec",
+	"C08CoreV3FallRecoverySpec",
 }
 
 -- Compatibility wiring map for the existing repository contract checks. Execution is delegated

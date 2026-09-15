@@ -163,7 +163,7 @@ Acceptance: `35/48/57/59/60/61/62/64/67/68/69/70/71` pass and no P0/P1 remains.
 Acceptance: exact two-place PROD, registry, 3 Pass IDs, 3 disabled-or-enabled Developer Product IDs, asset IDs and namespaces resolve through `64/70`; private PROD smoke passes before public enable.
 
 ## M5-03 Final documentation/spec drift audit
-Acceptance: `78` stays PASS against implemented release candidate or differences are documented/approved before shipping.
+Acceptance: `79` stays PASS against implemented release candidate or differences are documented/approved before shipping.
 
 Post-release/data-dependent cards: season/tournament, party/friends, private-server features, rewarded video, subscription, procedural/endless.
 
@@ -171,4 +171,4 @@ Listed cards become ACTIVE through normal Feature List status changes. A Decisio
 
 
 ### v1.3.4 exact-contract addendum
-For implementation cards: core geometry must cite `73`; race lifecycle/requeue cards cite `74`; Bot Fill cites `75`; one-month LiveOps buffer card cites `76`; final release audit card cites `78`. These are owner routes, not additional gameplay scope.
+For implementation cards: core geometry must cite `73`; race lifecycle/requeue cards cite `74`; Bot Fill cites `75`; one-month LiveOps buffer card cites `76`; final release audit card cites `79`. These are owner routes, not additional gameplay scope.

@@ -96,7 +96,7 @@ STAGING:
 `publish EntryFTUEPlace → publish RacePlace → set registry → routing smoke → DataStore lease/handoff → analytics smoke → 8-player/bot soak → UI/device matrix → purchase sandbox/test path`.
 
 PROD:
-`backup known-good pair → publish schema-compatible EntryFTUEPlace + RacePlace → verify registry/SKUs → private smoke` → enable public access/discovery only after **`35` + `57` + `78` PASS**.
+`backup known-good pair → publish schema-compatible EntryFTUEPlace + RacePlace → verify registry/SKUs → private smoke` → enable public access/discovery only after **`35` + `57` + `79` PASS**.
 
 ## 12. Platform-change rule
 If Creator Hub/Roblox changes a menu/API/property:
@@ -107,4 +107,4 @@ If Creator Hub/Roblox changes a menu/API/property:
 5. update Decision Log only if observable player contract must change.
 
 ## Acceptance
-Platform provisioning is PASS only when every environment row in `70` has resolved required IDs, two-place routing works in STAGING, all launch Pass IDs resolve, disabled Developer Products cannot be prompted, analytics identifies environment correctly, and PROD remains non-public until `78` passes.
+Platform provisioning is PASS only when every environment row in `70` has resolved required IDs, two-place routing works in STAGING, all launch Pass IDs resolve, disabled Developer Products cannot be prompted, analytics identifies environment correctly, and PROD remains non-public until `79` passes.

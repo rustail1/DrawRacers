@@ -1,5 +1,5 @@
 # 55 — EMPIRICAL PRODUCT GATE PROTOCOL
-Статус: **HUMAN/PLAYER ACCEPTANCE CONTRACT v1.3.4**.
+Статус: **HUMAN/PLAYER ACCEPTANCE CONTRACT v1.6.0 CORE V3**.
 
 Purpose: remove “fun enough?”, “social enough?” and “do players want more?” as open-ended questions. The product direction is locked; this file fixes how evidence is collected, what counts as PASS, how many rework cycles are allowed, and when Product Owner escalation is mandatory. Numbers below are **project acceptance hypotheses**, not universal Roblox benchmarks.
 
@@ -12,6 +12,8 @@ Purpose: remove “fun enough?”, “social enough?” and “do players want m
 - P0/P1 bug, data loss, exploit or performance failure can fail a gate regardless of survey score.
 
 ## G0 — M0 physical causality / redraw
+**Precondition:** the Core V3 isolated human Flat Gate in `CURRENT_CORE_V3_SOURCE_OF_TRUTH.md` has already passed (ROUND + reference shapes + 20 moving redraws, with no hidden +X helper). Do not use G0 obstacle testing to debug a flat locomotion failure.
+
 Minimum: **6 unique external testers** on the five-obstacle lab.
 Method: first attempt with only control instruction (“draw the wheel/leg”), then free retry.
 PASS when all are true:

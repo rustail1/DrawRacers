@@ -3,10 +3,6 @@
 return {
 	Mount = {
 		SideOutset = 0.45,
-		-- Put the shared axle below the cube center so even the smallest valid
-		-- leg can become the load-bearing contact instead of wedging against a
-		-- body that is already flat on the Track.
-		VerticalFraction = -0.50,
 		RightPhaseDegrees = 180,
 		-- Physical inertia carrier for the otherwise-massless drawn geometry.
 		-- It is invisible/noncolliding; its job is solver stability only.
@@ -28,6 +24,14 @@ return {
 		MaxAngularVelocity = 8.0,
 		Torque = 35000,
 		Acceleration = 120,
+	},
+
+	Lane = {
+		-- Initial bounded hypotheses for human Studio tuning. The orientation
+		-- owner applies torque only to BodyCollider and never drives translation.
+		UprightMaxTorque = 12000,
+		UprightMaxAngularVelocity = 6,
+		UprightResponsiveness = 15,
 	},
 
 	Materials = {
@@ -60,12 +64,17 @@ return {
 
 	Rebuild = {
 		PreviewDuration = 0.10,
-		HopTargetVelocity = 3.5,
-		MaxHopDeltaVelocity = 5.0,
+		HopTargetVelocity = 20.0,
+		MaxHopDeltaVelocity = 24.0,
 		ClearancePadding = 0.08,
 		-- Must cover MaxLift/LiftTargetVelocity plus solver/acceleration margin.
 		ClearanceTimeout = 1.25,
 		MaxLift = 4.0,
 		LiftTargetVelocity = 5.0,
+	},
+
+	Recovery = {
+		FallThreshold = -12.0,
+		RearmMargin = 4.0,
 	},
 }
