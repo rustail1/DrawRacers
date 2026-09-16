@@ -4,13 +4,11 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local RIDER_SCALE = 0.65
+local RIDER_PRESENTATION_SCALE = 1.0
 local RIDER_MOUNT_X_OFFSET = -0.15
 local RIDER_SEAT_CLEARANCE = 0.05
 local RIDER_NAME_PREFIX = "RiderPresentation_"
 local RIDER_ANCHOR_NAME = "RiderAnchor"
-local COWBOY_HAT_COLOR = Color3.fromRGB(112, 72, 42)
-local COWBOY_HAT_BAND_COLOR = Color3.fromRGB(48, 33, 25)
 
 local RiderPresentationController = {}
 RiderPresentationController.__index = RiderPresentationController
@@ -22,6 +20,7 @@ type RiderRecord = {
 	seatToPivot: CFrame,
 	anchor: Attachment,
 	ownsAnchor: boolean,
+	sourceTransparency: { [BasePart]: number },
 }
 
 local function canonicalJointName(name: string): string
@@ -63,7 +62,9 @@ local function sanitizeVisual(visual: Model)
 
 	local humanoid = visual:FindFirstChildOfClass("Humanoid")
 	if humanoid ~= nil then
-		humanoid:Destroy()
+		humanoid.AutoRotate = false
+		humanoid.PlatformStand = true
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	end
 
 	local root = visual:FindFirstChild("HumanoidRootPart")
@@ -84,6 +85,26 @@ local function sanitizeVisual(visual: Model)
 			if descendant.Name == "HumanoidRootPart" then
 				descendant.Transparency = 1
 			end
+		end
+	end
+end
+
+local function hideSourceCharacter(character: Model): { [BasePart]: number }
+	local previous = {} :: { [BasePart]: number }
+	for _, descendant in character:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			local part = descendant :: BasePart
+			previous[part] = part.LocalTransparencyModifier
+			part.LocalTransparencyModifier = 1
+		end
+	end
+	return previous
+end
+
+local function restoreSourceCharacter(previous: { [BasePart]: number })
+	for part, previousTransparency in previous do
+		if part.Parent ~= nil then
+			part.LocalTransparencyModifier = previousTransparency
 		end
 	end
 end
@@ -136,65 +157,6 @@ local function ensureRiderAnchor(body: BasePart): (Attachment?, boolean)
 	return anchor, true
 end
 
-local function configureCowboyPart(part: Part, color: Color3)
-	part.Material = Enum.Material.SmoothPlastic
-	part.Color = color
-	part.Anchored = false
-	part.CanCollide = false
-	part.CanTouch = false
-	part.CanQuery = false
-	part.Massless = true
-	part.CastShadow = true
-end
-
-local function weldCowboyPart(head: BasePart, part: Part)
-	local weld = Instance.new("WeldConstraint")
-	weld.Name = part.Name .. "Weld"
-	weld.Part0 = head
-	weld.Part1 = part
-	weld.Parent = part
-end
-
-local function applyCowboyPresentation(visual: Model)
-	local head = visual:FindFirstChild("Head", true)
-	if head == nil or not head:IsA("BasePart") then
-		return
-	end
-
-	local oldHat = visual:FindFirstChild("CowboyHatPresentation")
-	if oldHat ~= nil then
-		oldHat:Destroy()
-	end
-
-	local hat = Instance.new("Folder")
-	hat.Name = "CowboyHatPresentation"
-	hat.Parent = visual
-
-	local brim = Instance.new("Part")
-	brim.Name = "CowboyHatBrim"
-	brim.Size = Vector3.new(head.Size.X * 1.7, math.max(0.08, head.Size.Y * 0.10), head.Size.Z * 1.55)
-	configureCowboyPart(brim, COWBOY_HAT_COLOR)
-	brim.CFrame = head.CFrame * CFrame.new(0, head.Size.Y * 0.54, 0)
-	brim.Parent = hat
-	weldCowboyPart(head, brim)
-
-	local crown = Instance.new("Part")
-	crown.Name = "CowboyHatCrown"
-	crown.Size = Vector3.new(head.Size.X * 0.92, head.Size.Y * 0.58, head.Size.Z * 0.92)
-	configureCowboyPart(crown, COWBOY_HAT_COLOR)
-	crown.CFrame = head.CFrame * CFrame.new(0, head.Size.Y * 0.86, 0)
-	crown.Parent = hat
-	weldCowboyPart(head, crown)
-
-	local band = Instance.new("Part")
-	band.Name = "CowboyHatBand"
-	band.Size = Vector3.new(head.Size.X * 0.98, math.max(0.07, head.Size.Y * 0.10), head.Size.Z * 0.98)
-	configureCowboyPart(band, COWBOY_HAT_BAND_COLOR)
-	band.CFrame = head.CFrame * CFrame.new(0, head.Size.Y * 0.65, 0)
-	band.Parent = hat
-	weldCowboyPart(head, band)
-end
-
 local function findSeatPart(visual: Model): BasePart?
 	for _, name in { "LowerTorso", "Torso", "HumanoidRootPart" } do
 		local candidate = visual:FindFirstChild(name, true)
@@ -219,9 +181,8 @@ local function cloneCharacterVisual(character: Model): Model?
 	local visual = cloned :: Model
 	visual.Name = RIDER_NAME_PREFIX .. character.Name
 	sanitizeVisual(visual)
-	visual:ScaleTo(RIDER_SCALE)
+	visual:ScaleTo(RIDER_PRESENTATION_SCALE)
 	applyJockeyPose(visual)
-	applyCowboyPresentation(visual)
 	return visual
 end
 
@@ -263,6 +224,7 @@ function RiderPresentationController:_destroyRecord(racer: Model)
 	if record == nil then
 		return
 	end
+	restoreSourceCharacter(record.sourceTransparency)
 	if record.visual.Parent ~= nil then
 		record.visual:Destroy()
 	end
@@ -326,6 +288,7 @@ function RiderPresentationController:_ensureRecord(racer: Model, player: Player,
 		seatToPivot = seatPart.CFrame:ToObjectSpace(visual:GetPivot()),
 		anchor = anchor,
 		ownsAnchor = ownsAnchor,
+		sourceTransparency = hideSourceCharacter(character),
 	}
 	self._records[racer] = record
 	if RunService:IsStudio() then

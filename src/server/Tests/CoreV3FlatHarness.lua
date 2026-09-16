@@ -11,6 +11,7 @@ local RemoteNames = require(shared:WaitForChild("Net"):WaitForChild("RemoteNames
 local M0SceneConfig = require(shared:WaitForChild("Config"):WaitForChild("M0SceneConfig"))
 local CollisionGroups = require(script.Parent.Parent.Runtime:WaitForChild("CollisionGroups"))
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
+local LegCoreConfig = require(script.Parent.Parent.Runtime:WaitForChild("CoreV3"):WaitForChild("LegCoreConfig"))
 local LegClearanceController = require(
 	script.Parent.Parent.Runtime:WaitForChild("CoreV3"):WaitForChild("LegClearanceController")
 )
@@ -26,11 +27,6 @@ local TRACK_END_X = M0SceneConfig.Lane.Length
 local TRACK_TOP_Y = M0SceneConfig.Lane.TopY
 local TRACK_THICKNESS = M0SceneConfig.Lane.Thickness
 local TRACK_WIDTH = M0SceneConfig.Lane.Width
-local RACER_SPAWN = Vector3.new(
-	M0SceneConfig.Spawn.X,
-	M0SceneConfig.ReferenceBenchmark.SpawnY,
-	M0SceneConfig.Spawn.Z
-)
 local DEBUG_SAMPLE_INTERVAL = 0.05
 local LOCOMOTION_DIAGNOSTIC_INTERVAL = 0.10
 local TRACK_PROXIMITY_PADDING = 0.08
@@ -64,6 +60,11 @@ local driveAcceptanceGateState = DriveAcceptanceGate.new()
 local lastState = ""
 local lastShapeVersion = -1
 local lastForwardAssistActive = false
+
+local function resolveRacerSpawn(): Vector3
+	local spawnY = TRACK_TOP_Y + LegCoreConfig.Start.RestingAxleHeightAboveTrack
+	return Vector3.new(M0SceneConfig.Spawn.X, spawnY, M0SceneConfig.Spawn.Z)
+end
 
 local function ensureFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
@@ -128,8 +129,9 @@ local function parkRealCharacter(character: Model)
 	if root == nil or not root:IsA("BasePart") then
 		return
 	end
-	local observerPosition = RACER_SPAWN + Vector3.new(-12, 15, 40)
-	character:PivotTo(CFrame.lookAt(observerPosition, RACER_SPAWN))
+	local racerSpawn = resolveRacerSpawn()
+	local observerPosition = racerSpawn + Vector3.new(-12, 15, 40)
+	character:PivotTo(CFrame.lookAt(observerPosition, racerSpawn))
 end
 
 local function disconnectAppearanceWatcher()
@@ -706,17 +708,20 @@ local function publishEvidence(racer: any, tracksRoot: Folder)
 end
 
 local function createActiveRacer(player: Player)
+	local racerSpawn = resolveRacerSpawn()
 	local racer = RacerRuntime.new({
 		raceId = "COREV3_FLAT",
 		slotIndex = 1,
 		laneIndex = 1,
 		isBot = false,
 		trackId = "COREV3_FLAT_TRACK",
-		spawnCFrame = CFrame.new(RACER_SPAWN),
-		laneCenterZ = RACER_SPAWN.Z,
+		spawnCFrame = CFrame.new(racerSpawn),
+		laneCenterZ = racerSpawn.Z,
 	})
 	local model = racer:GetModel()
 	local body = racer:GetBody()
+	body.AssemblyLinearVelocity = Vector3.zero
+	body.AssemblyAngularVelocity = Vector3.zero
 	model:SetAttribute("DebugTarget", true)
 	model:SetAttribute("OwnerUserId", player.UserId)
 	model:SetAttribute("CameraMinFollowY", M0SceneConfig.CameraMinFollowY)

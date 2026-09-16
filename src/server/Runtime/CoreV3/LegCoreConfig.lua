@@ -1,6 +1,18 @@
 --!strict
 
+local PHYSICAL_LEG_THICKNESS = 0.54
+local BODY_HALF_HEIGHT = 1.5
+local START_CONTACT_EPSILON = 0.05
+
 return {
+	Start = {
+		-- EMPTY starts with the cube itself just clear of the Track. Once the
+		-- first ghost pair exists, whole-pair clearance supplies one bounded +Y
+		-- staging placement derived from that actual drawing before release.
+		BodyContactEpsilon = START_CONTACT_EPSILON,
+		RestingAxleHeightAboveTrack = BODY_HALF_HEIGHT + START_CONTACT_EPSILON,
+	},
+
 	Mount = {
 		SideOutset = 0.45,
 		RightPhaseDegrees = 180,
@@ -10,7 +22,7 @@ return {
 	},
 
 	Geometry = {
-		PhysicalThickness = 0.54,
+		PhysicalThickness = PHYSICAL_LEG_THICKNESS,
 		VisualThickness = 0.78,
 		MaxSegments = 14,
 		SegmentOverlapAllowance = 0.06,
@@ -18,7 +30,7 @@ return {
 
 	Motor = {
 		RotationSign = -1,
-		TargetTipSpeed = 15.0,
+		TargetTipSpeed = 30.0,
 		MinimumDriveRadius = 1.75,
 		MinAngularVelocity = 1.5,
 		MaxAngularVelocity = 8.0,
@@ -67,6 +79,8 @@ return {
 		HopTargetVelocity = 20.0,
 		MaxHopDeltaVelocity = 24.0,
 		ClearancePadding = 0.08,
+		ClearanceSettlePositionTolerance = 0.05,
+		ClearanceSettleVerticalSpeed = 0.5,
 		-- Must cover MaxLift/LiftTargetVelocity plus solver/acceleration margin.
 		ClearanceTimeout = 1.25,
 		MaxLift = 4.0,

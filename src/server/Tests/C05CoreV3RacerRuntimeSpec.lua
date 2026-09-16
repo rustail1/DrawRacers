@@ -12,6 +12,7 @@ local CanonicalLegShape = require(
 	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Math"):WaitForChild("CanonicalLegShape")
 )
 local RacerRuntime = require(script.Parent.Parent.Runtime:WaitForChild("RacerRuntime"))
+local LegCoreConfig = require(script.Parent.Parent.Runtime:WaitForChild("CoreV3"):WaitForChild("LegCoreConfig"))
 local LegShapeService = require(script.Parent.Parent.Services:WaitForChild("LegShapeService"))
 
 local C05CoreV3RacerRuntimeSpec = {}
@@ -201,19 +202,25 @@ function C05CoreV3RacerRuntimeSpec.run()
 
 	local racer = nil :: any
 	local ok, failure = xpcall(function()
+		local trackTopY = track.Position.Y + track.Size.Y * 0.5
+		local spawnY = trackTopY + LegCoreConfig.Start.RestingAxleHeightAboveTrack
 		racer = RacerRuntime.new({
 			raceId = "C05_COREV3",
 			slotIndex = 1,
 			laneIndex = 1,
 			isBot = false,
 			trackId = "C05_FLAT",
-			spawnCFrame = CFrame.new(0, 10, 0),
+			spawnCFrame = CFrame.new(0, spawnY, 0),
 			laneCenterZ = 0,
 		})
 
 		local model = racer:GetModel()
 		local body = racer:GetBody()
-		body.Anchored = true
+		local heldPosition = body.Position
+		assert(body.Anchored == true, "C05 fresh racer must remain held during EMPTY")
+		assert(math.abs(body.Position.Y - spawnY) < 1e-4, "C05 EMPTY body must start just above Track contact")
+		assert(body.AssemblyLinearVelocity.Magnitude < 1e-4, "C05 EMPTY hold must begin with zero linear velocity")
+		assert(body.AssemblyAngularVelocity.Magnitude < 1e-4, "C05 EMPTY hold must begin with zero angular velocity")
 
 		assert(model:GetAttribute("CoreV3Validation") == true, "C05 racer must explicitly mark Core V3 validation mode")
 		local laneOwner = model:FindFirstChild("CoreV3LaneConstraint")
@@ -230,7 +237,7 @@ function C05CoreV3RacerRuntimeSpec.run()
 		assert(math.abs((plane.Attachment0 :: Attachment).WorldAxis:Dot(Vector3.zAxis)) >= 0.999, "C05 lane plane normal must be world Z")
 		assert(upright.Enabled == true, "C05 upright constraint must stay enabled")
 		assert(upright.Mode == Enum.OrientationAlignmentMode.OneAttachment, "C05 upright must target world orientation")
-		assert(upright.RigidityEnabled == false, "C05 upright must use bounded torque")
+		assert(upright.RigidityEnabled == true, "C05 BodyCollider upright must use the current rigid contract")
 		assert(upright.MaxTorque > 0 and upright.MaxTorque < math.huge, "C05 upright torque must be finite and positive")
 		assert(upright.Attachment0 ~= nil and (upright.Attachment0 :: Attachment).Parent == body, "C05 upright must act on BodyCollider only")
 		assert(countHinges(model) == 0, "C05 fresh racer must not create a hinge before the first shape")
@@ -239,8 +246,32 @@ function C05CoreV3RacerRuntimeSpec.run()
 		assert(model:FindFirstChild("BodyFloatForce", true) == nil, "C05 persistent BodyFloat must be absent in Core V3 validation")
 		assert(model:FindFirstChild("OrientationAlign", true) == nil, "C05 legacy RacerStabilizer must be absent in Core V3 validation")
 
+		local firstBlocker = Instance.new("Part")
+		firstBlocker.Name = "C05RejectedFirstShapeBlocker"
+		firstBlocker.Size = Vector3.new(60, 40, 40)
+		firstBlocker.CFrame = body.CFrame
+		firstBlocker.Anchored = true
+		firstBlocker.CanCollide = false
+		firstBlocker.CanTouch = false
+		firstBlocker.CanQuery = true
+		firstBlocker.Transparency = 1
+		firstBlocker.Parent = tracksFolder
+		local rejectedFirst = LegShapeService.ValidateAndBuild(racer, FIRST_SHAPE, false)
+		assert(rejectedFirst.accepted == false, "C05 blocked first shape must be rejected")
+		assert(body.Anchored == true, "C05 rejected first shape must retain EMPTY hold")
+		assert((body.Position - heldPosition).Magnitude < 1e-4, "C05 rejected first shape must restore the initial hold pose")
+		assert(body:FindFirstChild("CoreV3ClearanceLift") == nil, "C05 rejected EMPTY build must not create clearance force")
+		assert(racer:GetShapeVersion() == 0, "C05 rejected first shape must not publish a version")
+		firstBlocker:Destroy()
+
 		local first = LegShapeService.ValidateAndBuild(racer, FIRST_SHAPE, false)
 		assert(first.accepted == true, first.rejectReasonCode or "C05 first ShapeSpec application rejected")
+		assert(body.Anchored == false, "C05 first ACTIVE pair must release the EMPTY hold")
+		assert(body.Position.Y > heldPosition.Y, "C05 first ghost pair must place the held assembly above Track before release")
+		assert(math.abs(body.Position.X - heldPosition.X) < 1e-4, "C05 initial support placement must not move X")
+		assert(math.abs(body.Position.Z - heldPosition.Z) < 1e-4, "C05 initial support placement must not move Z")
+		assert(body.AssemblyLinearVelocity.Magnitude < 1e-4, "C05 first release must start with zero linear velocity")
+		assert(body.AssemblyAngularVelocity.Magnitude < 1e-4, "C05 first release must start with zero angular velocity")
 
 		local core = racer:GetLegCore()
 		assert(core ~= nil, "C05 first shape must create exactly one Core V3 controller")

@@ -74,6 +74,14 @@ upright = stabilized
 axle rotation = free through the one HingeConstraint
 ```
 
+Before the first accepted shape, `EMPTY` is a staging exception: RacerRuntime
+holds BodyCollider anchored at the configured suspended start height with zero
+linear/angular velocity. During the first pair's activation callback, the pair
+commits `ACTIVE`, RacerRuntime zeroes/releases Body and AxleRoot, and only then
+does LegCoreController atomically enable both colliding sides and the motor.
+From that release onward X/Y remain fully physical; the
+hold never returns during redraw, recovery, or normal locomotion.
+
 The lane/orientation system may constrain only lane depth/orientation. It must not supply normal forward locomotion or vertical lift.
 
 Preferred implementation boundary for the next Core V3 repair:
@@ -116,6 +124,11 @@ failure -> EMPTY
 ```
 
 Rules:
+- before the first shape, the suspended `EMPTY` hold keeps BodyCollider and its
+  axle point motionless without a force or position mover;
+- a rejected first build retains that hold;
+- the first successful `ACTIVE` commit releases zeroed Body/AxleRoot before
+  pair collision and motor are enabled in that same activation callback;
 - motor command is off during PREVIEW/WAIT_CLEAR, but the physical hinge remains connected;
 - old physical leg geometry is removed at rebuild start;
 - both new previews and both physical ghost sides are created together on the current axle;
@@ -182,7 +195,14 @@ Current development phase is **local-file / local-folder only**.
 
 ## 10. Current next bounded task
 
-Do not retune motor/torque/mass merely because the racer can fall sideways. The next approved architecture repair is the 2.5D body freedom owner:
+**2026-09-16 superseding cursor:** the suspended-start contract is implemented
+for the current Core V3 flat gate and remains human-physics pending. Run one
+ROUND from the held EMPTY state for five seconds with no redraw. Do not tune
+motor/torque/mass/friction or rewrite redraw until that isolated transition has
+human evidence. The older lane/upright paragraph below is retained only as the
+already-completed predecessor, not the active cursor.
+
+The completed predecessor was the 2.5D body freedom owner:
 
 **Z lane-plane lock + upright orientation stabilization, with X/Y translation still physical and no forward helper.**
 

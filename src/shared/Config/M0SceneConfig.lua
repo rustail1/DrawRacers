@@ -16,6 +16,7 @@ return {
 		X = 4,
 		Y = 3,
 		Z = 0,
+		ContactEpsilon = 0.05,
 	},
 	-- G0-only presentation/recovery containment. CameraMinFollowY never changes racer physics;
 	-- RecoveryKillY only controls the Studio human-harness reset boundary.

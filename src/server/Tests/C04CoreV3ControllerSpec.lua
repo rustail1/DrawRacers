@@ -5,6 +5,21 @@ local Workspace = game:GetService("Workspace")
 
 local C04CoreV3ControllerSpec = {}
 
+local ROUND_EXTENT = 4.5
+local SMALL_ROUND_EXTENT = 2.51198
+local LONG_EXTENT = 2.944
+local OMEGA_EPSILON = 1e-4
+
+local function countHinges(root: Instance): number
+	local count = 0
+	for _, descendant in root:GetDescendants() do
+		if descendant:IsA("HingeConstraint") then
+			count += 1
+		end
+	end
+	return count
+end
+
 local function requireCoreV3Modules()
 	local runtimeFolder = script.Parent.Parent:FindFirstChild("Runtime")
 	assert(runtimeFolder ~= nil, "Runtime folder missing")
@@ -60,6 +75,14 @@ local function makeShape(version: number, y: number, extent: number): any
 	}
 end
 
+local function assertMotorOmega(controller: any, expectedMagnitude: number, context: string)
+	local joint = controller:GetSharedAxle():GetJoint()
+	assert(
+		math.abs(math.abs(joint.AngularVelocity) - expectedMagnitude) <= OMEGA_EPSILON,
+		string.format("%s expected |omega| %.6f, got %.6f", context, expectedMagnitude, math.abs(joint.AngularVelocity))
+	)
+end
+
 local function assertPairPhysicsOff(core: any)
 	for _, leg in { core:GetLeftLeg(), core:GetRightLeg() } do
 		if leg ~= nil then
@@ -98,6 +121,34 @@ local function assertGhostPairFollowsMount(frames: { [BasePart]: CFrame })
 		local actualLocal = mount.CFrame:ToObjectSpace(segment.CFrame)
 		assert((actualLocal.Position - expectedLocal.Position).Magnitude < 1e-3, "C04 ghost pair must follow current assembly")
 		assert(actualLocal.LookVector:Dot(expectedLocal.LookVector) > 0.999, "C04 ghost orientation must follow current assembly")
+	end
+end
+
+local function assertPreviewPairFollowsMount(core: any)
+	for _, leg in { core:GetLeftLeg(), core:GetRightLeg() } do
+		assert(leg ~= nil, "C04 redraw must retain both preview owners")
+		local physical = leg:GetPhysicalSegments()
+		assert(#physical > 0, "C04 preview owner must have a physical ghost pair")
+		local physicalFolder = physical[1].Parent
+		local legModel = if physicalFolder ~= nil then physicalFolder.Parent else nil
+		assert(legModel ~= nil and legModel:IsA("Model"), "C04 preview leg owner missing")
+		local mount = if legModel ~= nil then legModel.Parent else nil
+		assert(mount ~= nil and mount:IsA("BasePart"), "C04 preview mount missing")
+		local previewFolder = legModel:FindFirstChild("Preview")
+		assert(previewFolder ~= nil and previewFolder:IsA("Folder"), "C04 preview folder missing")
+
+		for _, child in previewFolder:GetChildren() do
+			if child:IsA("Part") then
+				assert(child.Massless and not child.CanCollide and not child.CanTouch and not child.CanQuery,
+					"C04 preview must remain presentation-only")
+				local joint = child:FindFirstChild("MountWeld")
+				assert(joint ~= nil and joint:IsA("Weld"), "C04 preview must use mount-local Weld")
+				assert(joint.Part0 == mount and joint.Part1 == child, "C04 preview Weld ownership mismatch")
+				local expectedWorld = mount.CFrame * joint.C0 * joint.C1:Inverse()
+				assert((child.Position - expectedWorld.Position).Magnitude < 1e-3,
+					"C04 preview must follow current axle mount")
+			end
+		end
 	end
 end
 
@@ -182,6 +233,7 @@ local function waitForActiveAndObserve(
 	local sawWaitClear = false
 	local waitClearYs = {}
 	local initialRequiredLift = nil :: number?
+	local activationVerticalSpeed = nil :: number?
 	local deadline = os.clock() + 3.0
 
 	while os.clock() < deadline do
@@ -213,6 +265,7 @@ local function waitForActiveAndObserve(
 				assert(math.abs(liftForce.Force.Z) < 1e-6, "C04 clearance lift must not apply Z force")
 			end
 		elseif state == "ACTIVE" then
+			activationVerticalSpeed = math.abs(body.AssemblyLinearVelocity.Y)
 			break
 		elseif state == "EMPTY" then
 			error("C04 rebuild failed closed before expected ACTIVE state")
@@ -253,6 +306,12 @@ local function waitForActiveAndObserve(
 			)
 		end
 		assert(rose, "C04 blocked redraw must raise the body physically over time")
+		assert(
+			activationVerticalSpeed ~= nil
+				and (activationVerticalSpeed :: number)
+					<= LegCoreConfig.Rebuild.ClearanceSettleVerticalSpeed + 0.1,
+			"C04 pair must activate with settled vertical speed"
+		)
 	end
 
 	return initialRequiredLift
@@ -314,11 +373,28 @@ function C04CoreV3ControllerSpec.run()
 		assert(controller:GetState() == "EMPTY", "C04 controller must begin EMPTY")
 		assertMotorState(controller, false, "C04 initial motor")
 
-		local firstShape = makeShape(1, 0.15, 1.4)
+		local firstShapePosition = body.Position
+		local firstShapeLinearVelocity = body.AssemblyLinearVelocity
+		local firstShapeAngularVelocity = body.AssemblyAngularVelocity
+		local firstShape = makeShape(1, -2.4, ROUND_EXTENT)
 		local firstOk, firstError = controller:ApplyShape(firstShape, true)
 		assert(firstOk == true, firstError or "C04 first ApplyShape rejected")
+		assert((body.Position - firstShapePosition).Magnitude < 1e-4, "C04 first shape must not teleport BodyCollider")
+		assert(
+			(body.AssemblyLinearVelocity - firstShapeLinearVelocity).Magnitude < 1e-4,
+			"C04 first shape must not apply redraw hop"
+		)
+		assert(
+			(body.AssemblyAngularVelocity - firstShapeAngularVelocity).Magnitude < 1e-4,
+			"C04 first shape must not alter BodyCollider angular velocity"
+		)
+		assertMotorOmega(controller, 6.666667, "C04 ROUND")
 		assert(controller:GetState() == "PREVIEW", "C04 ApplyShape must enter PREVIEW immediately")
-		waitForActiveAndObserve(controller, body, false, nil)
+		waitForActiveAndObserve(controller, body, true, nil)
+		assert(
+			controller:GetSharedAxle():GetJoint().MotorMaxTorque == 35000,
+			"C04 motor-speed tuning must not change torque"
+		)
 		local centeredBodyMount = assertCenteredAxleMount(controller, body, nil, "C04 first shape")
 
 		local oldLeft = controller:GetLeftLeg()
@@ -332,9 +408,10 @@ function C04CoreV3ControllerSpec.run()
 
 		local positionBefore = body.Position
 		local velocityBefore = body.AssemblyLinearVelocity
-		local secondShape = makeShape(2, -2.4, 2.6)
+		local secondShape = makeShape(2, -2.4, SMALL_ROUND_EXTENT)
 		local redrawOk, redrawError = controller:ApplyShape(secondShape, true)
 		assert(redrawOk == true, redrawError or "C04 redraw rejected")
+		assertMotorOmega(controller, 8.0, "C04 SMALL_ROUND max clamp")
 		assert(controller:GetState() == "PREVIEW", "C04 redraw must re-enter PREVIEW")
 		assertMotorState(controller, false, "C04 redraw motor")
 		assertAxleConnected(controller, "C04 redraw start")
@@ -355,7 +432,7 @@ function C04CoreV3ControllerSpec.run()
 		local velocityAfterHop = body.AssemblyLinearVelocity
 		assert(math.abs(velocityAfterHop.X - velocityBefore.X) < 1e-4, "C04 redraw hop must not overwrite X velocity")
 		assert(math.abs(velocityAfterHop.Z - velocityBefore.Z) < 1e-4, "C04 redraw hop must not overwrite Z velocity")
-		assert(velocityAfterHop.Y > Workspace.Gravity * LegCoreConfig.Rebuild.PreviewDuration, "C04 hop must remain visibly upward while preview appears")
+		assert(velocityAfterHop.Y > Workspace.Gravity * LegCoreConfig.Rebuild.PreviewDuration, "C04 redraw hop must remain visibly upward while preview appears")
 		assert(
 			velocityAfterHop.Y * velocityAfterHop.Y / (2 * Workspace.Gravity) <= 1.25,
 			"C04 redraw hop must remain a short bounded jump"
@@ -367,6 +444,8 @@ function C04CoreV3ControllerSpec.run()
 			assertAxleConnected(controller, "C04 redraw hop")
 			assertCenteredAxleMount(controller, body, centeredBodyMount, "C04 redraw hop")
 			assertGhostPairFollowsMount(ghostLocalFrames)
+			assertPreviewPairFollowsMount(controller)
+			assert(countHinges(testModel :: Model) == 1, "C04 preview animation must preserve one hinge")
 		end
 
 		for _, part in oldLeftParts do
@@ -393,9 +472,10 @@ function C04CoreV3ControllerSpec.run()
 		highLiftBlocker.CanQuery = true
 		highLiftBlocker.Parent = trackModel
 
-		local highLiftShape = makeShape(3, 0.15, 1.4)
+		local highLiftShape = makeShape(3, 0.15, LONG_EXTENT)
 		local highLiftOk, highLiftError = controller:ApplyShape(highLiftShape, true)
 		assert(highLiftOk == true, highLiftError or "C04 high-lift redraw rejected")
+		assertMotorOmega(controller, 8.0, "C04 LONG max clamp")
 		local highLiftRequired = waitForActiveAndObserve(controller, body, true, 2.5)
 		assert(highLiftRequired ~= nil, "C04 high-lift scenario did not report requiredLift")
 		assert(
@@ -404,10 +484,16 @@ function C04CoreV3ControllerSpec.run()
 		)
 		highLiftBlocker:Destroy()
 
+		local tinyShape = makeShape(4, 0.15, 0.01)
+		local tinyOk, tinyError = controller:ApplyShape(tinyShape, true)
+		assert(tinyOk == true, tinyError or "C04 tiny-radius redraw rejected")
+		assertMotorOmega(controller, 8.0, "C04 tiny-radius max clamp")
+		waitForActiveAndObserve(controller, body, true, nil)
+
 		-- Clearance failure must fail closed: no partial physics and motor OFF.
 		body.AssemblyLinearVelocity = Vector3.zero
 		body.AssemblyAngularVelocity = Vector3.zero
-		local impossibleShape = makeShape(4, -20, 20)
+		local impossibleShape = makeShape(5, -20, 20)
 		local impossibleOk, impossibleError = controller:ApplyShape(impossibleShape, true)
 		assert(impossibleOk == true, impossibleError or "C04 impossible redraw did not start")
 		waitForState(controller, "EMPTY", 2.0)

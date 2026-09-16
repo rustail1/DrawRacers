@@ -55,8 +55,20 @@ local function configureBodyForCoreV3(body: Part)
 	)
 end
 
-function LegCoreController.new(racerModel: Model)
+function LegCoreController.new(
+	racerModel: Model,
+	beforePhysicalActivation: (() -> ())?,
+	setInitialHoldLift: ((number) -> ())?
+)
 	assert(racerModel ~= nil and racerModel:IsA("Model"), "LegCoreController requires racer Model")
+	assert(
+		beforePhysicalActivation == nil or type(beforePhysicalActivation) == "function",
+		"beforePhysicalActivation must be a function or nil"
+	)
+	assert(
+		setInitialHoldLift == nil or type(setInitialHoldLift) == "function",
+		"setInitialHoldLift must be a function or nil"
+	)
 	local body = racerModel:FindFirstChild("BodyCollider")
 	assert(body ~= nil and body:IsA("Part"), "LegCoreController requires BodyCollider Part")
 	configureBodyForCoreV3(body)
@@ -86,6 +98,9 @@ function LegCoreController.new(racerModel: Model)
 		waitClearTargetY = 0,
 		pendingShapeSpec = nil :: any?,
 		currentShapeSpec = nil :: any?,
+		beforePhysicalActivation = beforePhysicalActivation,
+		setInitialHoldLift = setInitialHoldLift,
+		initialHoldLift = 0,
 		lastRebuildFailureReason = nil :: string?,
 		liftAttachment = nil :: Attachment?,
 		liftForce = nil :: VectorForce?,
@@ -191,6 +206,15 @@ function LegCoreController:_ApplyRedrawHop()
 end
 
 function LegCoreController:_FailRebuild(reason: string)
+	if self.initialHoldLift > 0 and self.setInitialHoldLift ~= nil then
+		local restored, restoreFailure = xpcall(function()
+			self.setInitialHoldLift(0)
+		end, debug.traceback)
+		if not restored then
+			warn("[DrawRacers][CoreV3] initial hold restore failed: " .. tostring(restoreFailure))
+		end
+	end
+	self.initialHoldLift = 0
 	self.lastRebuildFailureReason = reason
 	self.sharedAxle:SetEnabled(false)
 	self:_StopLiftAssist()
@@ -205,6 +229,8 @@ function LegCoreController:_FailRebuild(reason: string)
 end
 
 function LegCoreController:_BeginRebuild(shapeSpec: any, motorEnabled: boolean)
+	local isRedraw = self.state == STATE_ACTIVE
+	self.initialHoldLift = 0
 	self.lastRebuildFailureReason = nil
 	self.sharedAxle:SetEnabled(false)
 	self:_StopLiftAssist()
@@ -254,7 +280,9 @@ function LegCoreController:_BeginRebuild(shapeSpec: any, motorEnabled: boolean)
 		)
 	end
 
-	self:_ApplyRedrawHop()
+	if isRedraw then
+		self:_ApplyRedrawHop()
+	end
 	self.sharedAxle:SetAngularVelocity(computeAngularVelocity(shapeSpec))
 	self.state = STATE_PREVIEW
 end
@@ -263,16 +291,33 @@ function LegCoreController:_ActivatePair()
 	assert(self.leftLeg ~= nil and self.rightLeg ~= nil, "Core V3 activation requires complete pair")
 	self:_StopLiftAssist()
 
-	-- Both sides are enabled from the same Heartbeat callback. There is no
-	-- progressive segment or per-side activation state in Core V3.
-	self.leftLeg:SetPhysicsEnabled(true)
-	self.rightLeg:SetPhysicsEnabled(true)
-	self.sharedAxle:SetEnabled(self.requestedMotorEnabled)
 	self.currentShapeSpec = self.pendingShapeSpec
 	self.pendingShapeSpec = nil
 	self.lastRebuildFailureReason = nil
 	self.waitClearElapsed = 0
 	self.state = STATE_ACTIVE
+
+	-- The first release is part of this same activation callback. Keep the pair
+	-- ghosted and the motor OFF until RacerRuntime has zeroed and released the
+	-- held assembly, so no solver step can preload the axle against an anchor.
+	local beforePhysicalActivation = self.beforePhysicalActivation
+	if beforePhysicalActivation ~= nil then
+		local released, releaseFailure = xpcall(beforePhysicalActivation, debug.traceback)
+		if not released then
+			self:_FailRebuild("BUILD_FAILED")
+			warn("[DrawRacers][CoreV3] initial release failed: " .. tostring(releaseFailure))
+			return
+		end
+		self.beforePhysicalActivation = nil
+		self.setInitialHoldLift = nil
+		self.initialHoldLift = 0
+	end
+
+	-- Both sides are enabled from the same Heartbeat callback. There is no
+	-- progressive segment or per-side activation state in Core V3.
+	self.leftLeg:SetPhysicsEnabled(true)
+	self.rightLeg:SetPhysicsEnabled(true)
+	self.sharedAxle:SetEnabled(self.requestedMotorEnabled)
 end
 
 function LegCoreController:_StepPreview(dt: number)
@@ -312,32 +357,75 @@ function LegCoreController:_StepWaitClear(dt: number)
 		self.rightLeg,
 		tracksRoot
 	)
-	if result.clear then
+
+	-- EMPTY begins with the cube itself just above the Track. The actual first
+	-- drawing, rather than the global maximum shape cap, determines how far the
+	-- held assembly must move upward. Apply that one bounded +Y placement while
+	-- BodyCollider is still anchored, then re-evaluate the whole ghost pair on
+	-- the next Heartbeat. The callback is cleared after the first ACTIVE commit,
+	-- so redraw never enters this initialization path.
+	if self.body.Anchored and self.setInitialHoldLift ~= nil and not result.clear then
+		if self.initialHoldLift > 0
+			or result.requiredLift >= LegCoreConfig.Rebuild.MaxLift
+		then
+			self:_FailRebuild("CLEARANCE_FAILED")
+			return
+		end
+
+		local placed, placementFailure = xpcall(function()
+			self.setInitialHoldLift(result.requiredLift)
+		end, debug.traceback)
+		if not placed then
+			warn("[DrawRacers][CoreV3] initial support placement failed: " .. tostring(placementFailure))
+			self:_FailRebuild("BUILD_FAILED")
+			return
+		end
+
+		self.initialHoldLift = result.requiredLift
+		self.waitClearStartY = self.body.Position.Y
+		self.waitClearTargetY = self.body.Position.Y
+		self.waitClearElapsed = 0
+		return
+	end
+
+	local maxLiftY = self.waitClearStartY + LegCoreConfig.Rebuild.MaxLift
+	if not result.clear then
+		local requestedTargetY = self.body.Position.Y
+			+ result.requiredLift
+			+ LegCoreConfig.Rebuild.ClearancePadding
+		self.waitClearTargetY = math.max(
+			self.waitClearTargetY,
+			math.min(maxLiftY, requestedTargetY)
+		)
+	end
+
+	local positionSettled = self.body.Position.Y
+		>= self.waitClearTargetY - LegCoreConfig.Rebuild.ClearanceSettlePositionTolerance
+	local verticalSpeedSettled = math.abs(self.body.AssemblyLinearVelocity.Y)
+		<= LegCoreConfig.Rebuild.ClearanceSettleVerticalSpeed
+	if result.clear and positionSettled and verticalSpeedSettled then
 		self:_ActivatePair()
 		return
 	end
 
 	self.waitClearElapsed += dt
-	local maxLiftY = self.waitClearStartY + LegCoreConfig.Rebuild.MaxLift
-	local requestedTargetY = self.body.Position.Y
-		+ result.requiredLift
-		+ LegCoreConfig.Rebuild.ClearancePadding
-	self.waitClearTargetY = math.max(
-		self.waitClearTargetY,
-		math.min(maxLiftY, requestedTargetY)
-	)
 
 	local minimumTimeout = LegCoreConfig.Rebuild.MaxLift
 		/ math.max(LegCoreConfig.Rebuild.LiftTargetVelocity, 1e-3)
 		+ 0.35
 	local timeout = math.max(LegCoreConfig.Rebuild.ClearanceTimeout, minimumTimeout)
-	local exhaustedLift = self.body.Position.Y >= maxLiftY - 0.02
+	local exhaustedLift = not result.clear and self.body.Position.Y >= maxLiftY - 0.02
 	if self.waitClearElapsed >= timeout or exhaustedLift then
 		self:_FailRebuild("CLEARANCE_FAILED")
 		return
 	end
 
-	self:_EnsureLiftAssist(dt)
+	-- Redraw uses the existing force-based +Y clearance owner. A fresh racer is
+	-- still anchored here; its one-time initialization placement is handled by
+	-- the bounded branch above without creating a mover or persistent force.
+	if not self.body.Anchored then
+		self:_EnsureLiftAssist(dt)
+	end
 end
 
 function LegCoreController:_Step(dt: number)

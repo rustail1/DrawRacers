@@ -69,7 +69,10 @@ function LaneConstraint.new(body: Part, container: Instance, laneCenterZ: number
 	upright.Attachment0 = uprightAttachment
 	upright.CFrame = CFrame.new()
 	upright.ReactionTorqueEnabled = false
-	upright.RigidityEnabled = false
+	-- Body-only rigid alignment makes visible chassis tilt negligible. This
+	-- constraint owns orientation only; PlaneConstraint still leaves X/Y free,
+	-- and the SharedAxle is not attached to this AlignOrientation.
+	upright.RigidityEnabled = true
 	upright.MaxTorque = LegCoreConfig.Lane.UprightMaxTorque
 	upright.MaxAngularVelocity = LegCoreConfig.Lane.UprightMaxAngularVelocity
 	upright.Responsiveness = LegCoreConfig.Lane.UprightResponsiveness

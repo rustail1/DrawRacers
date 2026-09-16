@@ -73,6 +73,48 @@ local function publishSpawnAttributes(model: Model, params: SpawnParams, laneCen
 	model:SetAttribute("AntiStallActive", false)
 end
 
+local function zeroInitialAssemblyVelocities(self: any)
+	local body = self.body
+	if self.legCore ~= nil then
+		local axleRoot = self.legCore:GetSharedAxle():GetAxleRoot()
+		axleRoot.AssemblyLinearVelocity = Vector3.zero
+		axleRoot.AssemblyAngularVelocity = Vector3.zero
+	end
+	body.AssemblyLinearVelocity = Vector3.zero
+	body.AssemblyAngularVelocity = Vector3.zero
+end
+
+local function setInitialHoldLift(self: any, lift: number)
+	assert(self.initialHoldActive, "initial hold placement requires active EMPTY hold")
+	assert(type(lift) == "number" and lift == lift and lift >= 0, "initial hold lift must be finite and non-negative")
+
+	local body = self.body
+	local model = self.model
+	local laneReference = self.laneConstraint:GetReference()
+	local laneReferenceCFrame = laneReference.CFrame
+	local targetBodyCFrame = self.initialHoldBaseBodyCFrame + Vector3.new(0, lift, 0)
+	local delta = targetBodyCFrame.Position - body.Position
+	if delta.Magnitude > 1e-6 then
+		model:PivotTo(model:GetPivot() + delta)
+		-- LaneReference is world-authored and must not follow the staged racer
+		-- assembly when the Model is repositioned before first activation.
+		laneReference.CFrame = laneReferenceCFrame
+	end
+	body.Anchored = true
+	zeroInitialAssemblyVelocities(self)
+end
+
+local function releaseInitialHold(self: any)
+	if not self.initialHoldActive then
+		return
+	end
+
+	local body = self.body
+	zeroInitialAssemblyVelocities(self)
+	body.Anchored = false
+	self.initialHoldActive = false
+end
+
 local function makeInternalShapeSpec(normalizedPoints: { Vector2 }, version: number): ShapeSpec
 	local canonical, canonicalError = CanonicalLegShape.Build(
 		normalizedPoints,
@@ -174,6 +216,9 @@ function RacerRuntime.new(params: SpawnParams)
 	end
 	publishSpawnAttributes(model, params, laneCenterZ)
 	body.CFrame = params.spawnCFrame
+	body.AssemblyLinearVelocity = Vector3.zero
+	body.AssemblyAngularVelocity = Vector3.zero
+	body.Anchored = true
 	model.Parent = racersRoot
 	local laneConstraint = LaneConstraint.new(body, model, laneCenterZ)
 
@@ -184,6 +229,8 @@ function RacerRuntime.new(params: SpawnParams)
 		legCore = nil :: any?,
 		fallRecovery = nil :: any?,
 		currentShapeSpec = nil :: ShapeSpec?,
+		initialHoldActive = true,
+		initialHoldBaseBodyCFrame = body.CFrame,
 		destroyed = false,
 	}, RacerRuntime)
 	self.fallRecovery = FallRecovery.new(self, params.spawnCFrame, laneCenterZ)
@@ -193,7 +240,17 @@ end
 function RacerRuntime:_EnsureLegCore()
 	assert(not self.destroyed and self.model ~= nil, "RacerRuntime is destroyed")
 	if self.legCore == nil then
-		self.legCore = LegCoreController.new(self.model)
+		local function beforePhysicalActivation()
+			releaseInitialHold(self)
+		end
+		local function setInitialClearanceLift(lift: number)
+			setInitialHoldLift(self, lift)
+		end
+		self.legCore = LegCoreController.new(
+			self.model,
+			beforePhysicalActivation,
+			setInitialClearanceLift
+		)
 	end
 	return self.legCore
 end

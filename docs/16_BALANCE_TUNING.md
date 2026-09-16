@@ -54,7 +54,7 @@ The first-cleaned-point origin remains current. Any future origin change require
 
 | Parameter | Default | Initial sweep |
 |---|---:|---|
-| Rotation sign / target | sign `-1`; target tip speed `15` | angular magnitude clamps `1.5..8.0 rad/s` |
+| Rotation sign / target | sign `-1`; target tip speed `30` | angular magnitude clamps `1.5..8.0 rad/s` |
 | MotorMaxTorque | 35,000 | 20,000–60,000 after actual mass profiling |
 | MotorMaxAcceleration | 120 rad/s² | 80–180 |
 

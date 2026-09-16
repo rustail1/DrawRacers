@@ -410,7 +410,14 @@ One owner per current side geometry. Builds visual preview and massless physical
 Pure whole-pair clearance evaluator. It considers only authoritative collision segments and computes bounded required +Y lift. It never moves the racer itself.
 
 ## CoreV3 LegCoreController
-Owns `EMPTY/PREVIEW/WAIT_CLEAR/ACTIVE`, pair rebuild, bounded redraw hop/clearance force and atomic collision activation. It preserves the physical hinge connection throughout redraw. Failure is fail-closed to EMPTY.
+Owns `EMPTY/PREVIEW/WAIT_CLEAR/ACTIVE`, pair rebuild, ACTIVE-only bounded redraw hop, clearance force and atomic collision activation. The first EMPTY build receives no redraw hop. WAIT_CLEAR keeps the pair ghosted until geometry is clear and BodyCollider clearance position/vertical speed are settled. On the first activation it calls RacerRuntime's one-shot release hook after committing ACTIVE but before enabling both colliding sides and the motor. It preserves the physical hinge connection throughout redraw. Failure is fail-closed to EMPTY.
+
+`RacerRuntime`, not LegCoreController or LaneConstraint, owns the temporary
+pre-first-shape hold: fresh BodyCollider is anchored and motionless while EMPTY,
+then Body and AxleRoot are zeroed and released once inside the first mechanical
+ACTIVE callback, before physical pair/motor enable. No force,
+AlignPosition, or persistent hover owner is created, and redraw never restores
+the hold.
 
 ## CoreV3 FallRecovery
 One lifecycle owner per racer. It detects `BodyCollider.Position.Y` below the configured fall threshold, latches one recovery transaction, disables the motor, clears assembly velocities, moves the same racer model to its saved spawn/lane, preserves the accepted ACTIVE pair and single hinge, then resumes the motor. It owns no locomotion, obstacle assistance or AntiStall behavior.
@@ -495,7 +502,7 @@ Active M0 production presentation owner. Scriptable camera reads replicated Loca
 ## RiderPresentationController
 **Active M0 presentation owner.** E03 is the later 8-player/readability extension and acceptance task; it is no longer the first introduction of this controller.
 
-Owns one human rider's local visual lifecycle: Player identity → server-authored racer `OwnerUserId` lookup → one client-local `BodyCollider.RiderAnchor` → standardized normalized mini-avatar visual → deterministic jockey/frog-rider pose → cleanup. The visual may render under `Workspace.Runtime.RacePresentation`, but its transform follows the body-local anchor and it has no gameplay authority.
+Owns one human rider's local visual lifecycle: Player identity → server-authored racer `OwnerUserId` lookup → one client-local `BodyCollider.RiderAnchor` → presentation clone of the loaded player avatar at the explicit current scale `1.0` → deterministic jockey/frog-rider pose → cleanup. The clone preserves body appearance, body colors, clothing, hair, accessories and an inert Humanoid needed for avatar presentation; it adds no invented cosmetic geometry. The source Character is locally hidden only while this clone is active and its prior local transparency is restored on teardown. The visual may render under `Workspace.Runtime.RacePresentation`, but its transform follows the body-local anchor and it has no gameplay authority.
 
 It does **not** own:
 - physical BodyCollider/Core V3 SharedAxle/LegGeometry or movement;

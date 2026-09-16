@@ -129,7 +129,7 @@ def test_early_camera_rider_presentation_contract() -> None:
     # the visible avatar is seated above the cube instead of buried inside it.
     assert 'GetAttribute("OwnerUserId")' in rider
     assert "GetPlayerByUserId" in rider
-    assert "RIDER_SCALE = 0.65" in rider
+    assert "RIDER_PRESENTATION_SCALE = 1.0" in rider
     assert "RIDER_MOUNT_X_OFFSET" in rider
     assert "RIDER_SEAT_CLEARANCE" in rider
     assert "seatPart: BasePart" in rider
@@ -138,9 +138,9 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "FindFirstChild(name, true)" in rider
     assert "function RiderPresentationController:_targetSeatCFrame" in rider
     assert "seatPart.Size.Y * 0.5" in rider
-    assert "record.visual:GetPivot():ToObjectSpace(record.seatPart.CFrame)" in rider
-    assert "targetSeat * localSeat:Inverse()" in rider
-    assert "ScaleTo(RIDER_SCALE)" in rider
+    assert "seatPart.CFrame:ToObjectSpace(visual:GetPivot())" in rider
+    assert "targetSeat * record.seatToPivot" in rider
+    assert "ScaleTo(RIDER_PRESENTATION_SCALE)" in rider
     sanitize = rider[rider.index("local function sanitizeVisual"):rider.index("local function findSeatPart")]
     assert 'descendant:IsA("Accessory")' not in sanitize
     assert 'descendant:IsA("Tool")' in sanitize
@@ -148,12 +148,14 @@ def test_early_camera_rider_presentation_contract() -> None:
     assert "CanTouch = false" in rider
     assert "CanQuery = false" in rider
     assert "Massless = true" in rider
-    assert 'descendant.Anchored = descendant.Name == "HumanoidRootPart"' in rider
-    assert "descendant.Anchored = true" not in rider
+    assert "local function stabilizeVisualAssemblies" in rider
+    assert "root.Anchored = true" in rider
+    assert "connected.Anchored = false" in rider
     assert "riderHeight * 0.5" not in rider
     assert "RIDER_MOUNT_Y_OFFSET" not in rider
     assert "BodyCollider" in rider
-    assert "body.Position" in rider
+    assert "body.Size.Y" in rider
+    assert "anchor.WorldCFrame" in rider
     assert "body.CFrame" not in rider
     assert "RemoteEvent" not in rider
     assert "FireServer" not in rider

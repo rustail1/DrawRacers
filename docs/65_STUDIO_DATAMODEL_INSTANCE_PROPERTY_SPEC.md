@@ -64,7 +64,8 @@ RacerTemplate
 
 Required BodyCollider launch properties:
 - Size = `3,3,3` studs (`16` fixed baseline);
-- Anchored=false;
+- Anchored=true only during the fresh `EMPTY` suspended hold, then false once
+  inside the first `ACTIVE` callback before pair collision and motor enable;
 - CanCollide=true;
 - CanTouch=true;
 - CanQuery=true;
@@ -114,7 +115,13 @@ Core V3 properties:
 - physical segment Parts are massless, `RacerLeg`, friction `1.0`, collision enabled only when the segmentPlan entry has `canCollide=true`;
 - current BodyCollider Core V3 friction = `0.0` so normal traction comes from the legs.
 
-Redraw creates both preview and physical ghost sides together under the persistent SharedAxle owner, calculates initial whole-pair clearance, applies one bounded +Y BodyCollider impulse, then uses PREVIEW/WAIT_CLEAR while every ghost Part follows the axle. Physical collision stays off until both sides enable atomically. Failed rebuild returns controller to EMPTY.
+Redraw from ACTIVE creates both preview and physical ghost sides together under the persistent SharedAxle owner, calculates initial whole-pair clearance, applies one bounded +Y BodyCollider impulse, then uses PREVIEW/WAIT_CLEAR while every ghost Part follows the axle. The first EMPTY -> PREVIEW build receives no redraw hop or clearance force while BodyCollider is held; an unsafe first pair fails closed and retains the hold. WAIT_CLEAR may activate the physical pair only after the whole ghost is clear, the BodyCollider has reached its clearance target, and vertical speed has settled. Physical collision stays off until both sides enable atomically. Failed rebuild returns controller to EMPTY.
+
+Before the first accepted pair, `RacerRuntime` holds BodyCollider anchored and
+motionless at the Core V3 suspended axle height. This is an `EMPTY` staging
+property, not an Instance mover or hover force. A rejected first pair keeps the
+hold; the first successful `ACTIVE` commit zeroes Body velocity, unanchors it
+once, and thereafter gravity/leg contact own Y while leg contact owns drive.
 
 Approved next runtime addition: dedicated Core V3 lane-plane/upright constraint owner; exact instance names are not frozen until that implementation task is approved/landed.
 
@@ -159,7 +166,7 @@ No authoritative Coins/MP/reward attributes are stored on Workspace instances.
 ```text
 Workspace.Runtime.RacePresentation
   Rider_<UserId> (Model)
-    <standardized normalized avatar visual rig>
+    <presentation clone of the player's loaded avatar>
 
 Workspace.Runtime.Racers.Racer_<RaceId>_<Slot>.BodyCollider
   RiderAnchor (Attachment, client-local; exactly one for a visible human rider)
@@ -174,7 +181,11 @@ Contract:
 - rider ownership creates no mover or physical connection to BodyCollider;
 - rider geometry never changes the `RacerBody`/`RacerLeg` collision matrix or body mass properties;
 - the active-race camera still targets racer position, not rider head/accessories;
-- normalized scale starts at `0.65`;
+- one explicit presentation scale remains supported and is currently `1.0`;
+- preserve the loaded player's body appearance, body colors, clothing, hair and accessories;
+- retain an inert cloned Humanoid so avatar deformation/appearance remains intact; remove its scripts, disable autorotation and platform movement, and keep it outside racer physics;
+- hide the source Player.Character locally only while its presentation clone is active, then restore its prior local transparency during teardown;
+- do not add procedural hats or other invented cosmetic geometry to the avatar clone;
 - human-video correction: mount by a deterministic seat reference (`LowerTorso`, then `Torso`, then `HumanoidRootPart` fallback) and place that seat reference just above the cube top using the seat Part half-height; do **not** place the avatar by a fixed HumanoidRootPart `+0.30` Y offset;
 - rider teardown occurs with racer/player presentation lifecycle; completed heats must not leak rider models/connections;
 - bots never clone or impersonate a human Player appearance;

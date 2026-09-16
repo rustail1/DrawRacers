@@ -27,7 +27,7 @@ local function weld(part0: BasePart, part1: BasePart, name: string): WeldConstra
 	return constraint
 end
 
-local function segmentFrame(root: CFrame, a: Vector2, b: Vector2): CFrame
+local function segmentLocalFrame(a: Vector2, b: Vector2): CFrame
 	local delta = b - a
 	local direction = delta.Unit
 	local xAxis = Vector3.new(direction.X, direction.Y, 0)
@@ -35,12 +35,27 @@ local function segmentFrame(root: CFrame, a: Vector2, b: Vector2): CFrame
 	local yAxis = zAxis:Cross(xAxis)
 	local midpoint = (a + b) * 0.5
 
-	return root * CFrame.fromMatrix(
+	return CFrame.fromMatrix(
 		Vector3.new(midpoint.X, midpoint.Y, 0),
 		xAxis,
 		yAxis,
 		zAxis
 	)
+end
+
+local function segmentFrame(root: CFrame, a: Vector2, b: Vector2): CFrame
+	return root * segmentLocalFrame(a, b)
+end
+
+local function createPreviewWeld(mount: Part, part: Part, localFrame: CFrame): Weld
+	local joint = Instance.new("Weld")
+	joint.Name = "MountWeld"
+	joint.Part0 = mount
+	joint.Part1 = part
+	joint.C0 = localFrame
+	joint.C1 = CFrame.identity
+	joint.Parent = part
+	return joint
 end
 
 local function validateShape(shapeSpec: ShapeSpec)
@@ -127,6 +142,7 @@ function LegGeometry.new(mount: Part, side: string)
 		visualColor = if side == "Left" then LEFT_COLOR else RIGHT_COLOR,
 		previewFolder = nil :: Folder?,
 		previewSegments = {} :: { Part },
+		previewWelds = {} :: { Weld },
 		previewPlan = {} :: { SegmentPlanEntry },
 		physicalFolder = nil :: Folder?,
 		physicalSegments = {} :: { Part },
@@ -147,8 +163,10 @@ function LegGeometry:BuildPreview(shapeSpec: ShapeSpec)
 	folder.Parent = self.model
 
 	local parts = table.create(#shapeSpec.segmentPlan)
+	local joints = table.create(#shapeSpec.segmentPlan)
 	for index, entry in shapeSpec.segmentPlan do
 		local length = (entry.b - entry.a).Magnitude
+		local localFrame = segmentLocalFrame(entry.a, entry.b)
 		local part = Instance.new("Part")
 		part.Name = string.format("PreviewSegment_%02d", index)
 		part.Shape = Enum.PartType.Cylinder
@@ -157,16 +175,20 @@ function LegGeometry:BuildPreview(shapeSpec: ShapeSpec)
 			LegCoreConfig.Geometry.VisualThickness,
 			LegCoreConfig.Geometry.VisualThickness
 		)
-		part.CFrame = segmentFrame(self.mount.CFrame, entry.a, entry.b)
+		-- Initial world placement happens before attachment. From attachment onward,
+		-- the mount-relative Weld is the preview's sole transform owner.
+		part.CFrame = self.mount.CFrame * localFrame
 		part.Transparency = 1
 		configureVisual(part, self.visualColor)
 		part.Parent = folder
-		weld(self.mount, part, "MountWeld")
+		local joint = createPreviewWeld(self.mount, part, localFrame)
 		parts[index] = part
+		joints[index] = joint
 	end
 
 	self.previewFolder = folder
 	self.previewSegments = parts
+	self.previewWelds = joints
 	self.previewPlan = shapeSpec.segmentPlan
 	self.mappedPoints = copyMappedPoints(shapeSpec.mappedPoints)
 	self:SetPreviewProgress(0)
@@ -189,7 +211,9 @@ function LegGeometry:SetPreviewProgress(alpha: number)
 	local remaining = totalLength * alpha
 	for index, entry in self.previewPlan do
 		local part = self.previewSegments[index]
+		local joint = self.previewWelds[index]
 		assert(part ~= nil, "preview pool missing segment")
+		assert(joint ~= nil, "preview pool missing local-transform Weld")
 		local length = (entry.b - entry.a).Magnitude
 
 		if remaining <= 0 then
@@ -200,7 +224,7 @@ function LegGeometry:SetPreviewProgress(alpha: number)
 				LegCoreConfig.Geometry.VisualThickness,
 				LegCoreConfig.Geometry.VisualThickness
 			)
-			part.CFrame = segmentFrame(self.mount.CFrame, entry.a, entry.b)
+			joint.C0 = segmentLocalFrame(entry.a, entry.b)
 			part.Transparency = 0
 			remaining -= length
 		else
@@ -212,7 +236,7 @@ function LegGeometry:SetPreviewProgress(alpha: number)
 				LegCoreConfig.Geometry.VisualThickness,
 				LegCoreConfig.Geometry.VisualThickness
 			)
-			part.CFrame = segmentFrame(self.mount.CFrame, entry.a, endpoint)
+			joint.C0 = segmentLocalFrame(entry.a, endpoint)
 			part.Transparency = if visibleLength > MIN_SEGMENT_LENGTH then 0 else 1
 			remaining = 0
 		end
@@ -275,6 +299,7 @@ function LegGeometry:DestroyPreview()
 	destroyIfPresent(self.previewFolder)
 	self.previewFolder = nil
 	self.previewSegments = {}
+	self.previewWelds = {}
 	self.previewPlan = {}
 end
 

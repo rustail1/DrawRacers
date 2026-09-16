@@ -62,6 +62,19 @@ local function assertSameInstances(before: { Part }, after: { Part })
 	end
 end
 
+local function assertCFrameNear(actual: CFrame, expected: CFrame, message: string)
+	assert((actual.Position - expected.Position).Magnitude < 1e-4, message .. " position changed")
+	assert(actual.RightVector:Dot(expected.RightVector) > 0.9999, message .. " orientation changed")
+	assert(actual.UpVector:Dot(expected.UpVector) > 0.9999, message .. " orientation changed")
+end
+
+local function getPreviewWeld(part: Part, mount: Part): Weld
+	local joint = part:FindFirstChild("MountWeld")
+	assert(joint ~= nil and joint:IsA("Weld"), "C02 preview must use a local-transform Weld")
+	assert(joint.Part0 == mount and joint.Part1 == part, "C02 preview Weld must connect mount -> preview Part")
+	return joint
+end
+
 function C02CoreV3LegGeometrySpec.run()
 	local LegGeometry = requireLegGeometry()
 
@@ -69,13 +82,38 @@ function C02CoreV3LegGeometrySpec.run()
 	testModel.Name = "C02CoreV3LegGeometryTest"
 	testModel.Parent = workspace
 
+	local body = Instance.new("Part")
+	body.Name = "BodyCollider"
+	body.Size = Vector3.new(3, 3, 3)
+	body.CFrame = CFrame.new(10, 8, -4)
+	body.Anchored = true
+	body.CanCollide = false
+	body.Parent = testModel
+	testModel.PrimaryPart = body
+
+	local axleRoot = Instance.new("Part")
+	axleRoot.Name = "AxleRoot"
+	axleRoot.Size = Vector3.new(1, 1, 1)
+	axleRoot.CFrame = body.CFrame
+	axleRoot.Anchored = false
+	axleRoot.CanCollide = false
+	axleRoot.Parent = testModel
+	local bodyWeld = Instance.new("WeldConstraint")
+	bodyWeld.Part0 = body
+	bodyWeld.Part1 = axleRoot
+	bodyWeld.Parent = axleRoot
+
 	local mount = Instance.new("Part")
 	mount.Name = "LeftMount"
 	mount.Size = Vector3.new(0.2, 0.2, 0.2)
-	mount.CFrame = CFrame.new(10, 8, -4)
-	mount.Anchored = true
+	mount.CFrame = axleRoot.CFrame * CFrame.new(0, 0, -2)
+	mount.Anchored = false
 	mount.CanCollide = false
 	mount.Parent = testModel
+	local mountWeld = Instance.new("WeldConstraint")
+	mountWeld.Part0 = axleRoot
+	mountWeld.Part1 = mount
+	mountWeld.Parent = mount
 
 	local ok, failure = xpcall(function()
 		local shapeSpec = makeShapeSpec()
@@ -90,9 +128,34 @@ function C02CoreV3LegGeometrySpec.run()
 			assert(part.CanQuery == false, "C02 preview must never query")
 			assert(part.Massless == true, "C02 preview must be massless")
 			assert(part.CollisionGroup == "RacerLeg", "C02 preview must use RacerLeg collision group")
+			getPreviewWeld(part, mount)
 		end
 
-		leg:SetPreviewProgress(0.2)
+		-- Move and rotate the complete racer after preview creation. Preview growth
+		-- must remain mount-local and must not become a second transform owner.
+		testModel:PivotTo(CFrame.new(-6, 13, 9) * CFrame.Angles(0.2, -0.4, 0.3))
+		local bodyBefore = body.CFrame
+		local axleBefore = axleRoot.CFrame
+		local mountBefore = mount.CFrame
+		local firstSegmentLength = (shapeSpec.segmentPlan[1].b - shapeSpec.segmentPlan[1].a).Magnitude
+		local totalLength = 0
+		for _, entry in shapeSpec.segmentPlan do
+			totalLength += (entry.b - entry.a).Magnitude
+		end
+		leg:SetPreviewProgress((firstSegmentLength * 0.5) / totalLength)
+		assertCFrameNear(body.CFrame, bodyBefore, "C02 preview animation moved BodyCollider")
+		assertCFrameNear(axleRoot.CFrame, axleBefore, "C02 preview animation moved AxleRoot")
+		assertCFrameNear(mount.CFrame, mountBefore, "C02 preview animation moved mount")
+
+		local firstPreview = partsBefore[1]
+		local firstWeld = getPreviewWeld(firstPreview, mount)
+		local expectedLocalPosition = Vector3.new(firstSegmentLength * 0.25, 0, 0)
+		assert(
+			(firstWeld.C0.Position - expectedLocalPosition).Magnitude < 1e-4,
+			"C02 partial preview must preserve expected mount-local geometry"
+		)
+		assertCFrameNear(firstPreview.CFrame, mount.CFrame * firstWeld.C0, "C02 preview did not follow moved mount")
+
 		leg:SetPreviewProgress(0.5)
 		leg:SetPreviewProgress(1.0)
 
